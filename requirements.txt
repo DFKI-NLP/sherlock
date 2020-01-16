@@ -1,0 +1,6 @@
+# Project dependencies
+spacy
+transformers
+
+# Testing
+pytest

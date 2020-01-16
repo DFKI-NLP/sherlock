@@ -1,0 +1,305 @@
+{
+    "id": "e7798fb926b9403cfcd2",
+    "text": "At the same time , Chief Financial Officer Douglas Flint will become chairman , succeeding Stephen Green who is leaving to take a government job .",
+    "tokens": [
+        {
+            "start": 0,
+            "end": 2,
+            "lemma": "At",
+            "pos": "IN",
+            "tag": "IN",
+            "dep": "case",
+            "dep_head": 4,
+            "ent_type": "O"
+        },
+        {
+            "start": 3,
+            "end": 6,
+            "lemma": "the",
+            "pos": "DT",
+            "tag": "DT",
+            "dep": "det",
+            "dep_head": 4,
+            "ent_type": "O"
+        },
+        {
+            "start": 7,
+            "end": 11,
+            "lemma": "same",
+            "pos": "JJ",
+            "tag": "JJ",
+            "dep": "amod",
+            "dep_head": 4,
+            "ent_type": "O"
+        },
+        {
+            "start": 12,
+            "end": 16,
+            "lemma": "time",
+            "pos": "NN",
+            "tag": "NN",
+            "dep": "nmod",
+            "dep_head": 12,
+            "ent_type": "O"
+        },
+        {
+            "start": 17,
+            "end": 18,
+            "lemma": ",",
+            "pos": ",",
+            "tag": ",",
+            "dep": "punct",
+            "dep_head": 12,
+            "ent_type": "O"
+        },
+        {
+            "start": 19,
+            "end": 24,
+            "lemma": "Chief",
+            "pos": "NNP",
+            "tag": "NNP",
+            "dep": "compound",
+            "dep_head": 10,
+            "ent_type": "O"
+        },
+        {
+            "start": 25,
+            "end": 34,
+            "lemma": "Financial",
+            "pos": "NNP",
+            "tag": "NNP",
+            "dep": "compound",
+            "dep_head": 10,
+            "ent_type": "O"
+        },
+        {
+            "start": 35,
+            "end": 42,
+            "lemma": "Officer",
+            "pos": "NNP",
+            "tag": "NNP",
+            "dep": "compound",
+            "dep_head": 10,
+            "ent_type": "O"
+        },
+        {
+            "start": 43,
+            "end": 50,
+            "lemma": "Douglas",
+            "pos": "NNP",
+            "tag": "NNP",
+            "dep": "compound",
+            "dep_head": 10,
+            "ent_type": "PERSON"
+        },
+        {
+            "start": 51,
+            "end": 56,
+            "lemma": "Flint",
+            "pos": "NNP",
+            "tag": "NNP",
+            "dep": "nsubj",
+            "dep_head": 12,
+            "ent_type": "PERSON"
+        },
+        {
+            "start": 57,
+            "end": 61,
+            "lemma": "will",
+            "pos": "MD",
+            "tag": "MD",
+            "dep": "aux",
+            "dep_head": 12,
+            "ent_type": "O"
+        },
+        {
+            "start": 62,
+            "end": 68,
+            "lemma": "become",
+            "pos": "VB",
+            "tag": "VB",
+            "dep": "ROOT",
+            "dep_head": 0,
+            "ent_type": "O"
+        },
+        {
+            "start": 69,
+            "end": 77,
+            "lemma": "chairman",
+            "pos": "NN",
+            "tag": "NN",
+            "dep": "xcomp",
+            "dep_head": 12,
+            "ent_type": "O"
+        },
+        {
+            "start": 78,
+            "end": 79,
+            "lemma": ",",
+            "pos": ",",
+            "tag": ",",
+            "dep": "punct",
+            "dep_head": 12,
+            "ent_type": "O"
+        },
+        {
+            "start": 80,
+            "end": 90,
+            "lemma": "succeeding",
+            "pos": "VBG",
+            "tag": "VBG",
+            "dep": "xcomp",
+            "dep_head": 12,
+            "ent_type": "O"
+        },
+        {
+            "start": 91,
+            "end": 98,
+            "lemma": "Stephen",
+            "pos": "NNP",
+            "tag": "NNP",
+            "dep": "compound",
+            "dep_head": 17,
+            "ent_type": "PERSON"
+        },
+        {
+            "start": 99,
+            "end": 104,
+            "lemma": "Green",
+            "pos": "NNP",
+            "tag": "NNP",
+            "dep": "dobj",
+            "dep_head": 15,
+            "ent_type": "PERSON"
+        },
+        {
+            "start": 105,
+            "end": 108,
+            "lemma": "who",
+            "pos": "WP",
+            "tag": "WP",
+            "dep": "nsubj",
+            "dep_head": 20,
+            "ent_type": "O"
+        },
+        {
+            "start": 109,
+            "end": 111,
+            "lemma": "is",
+            "pos": "VBZ",
+            "tag": "VBZ",
+            "dep": "aux",
+            "dep_head": 20,
+            "ent_type": "O"
+        },
+        {
+            "start": 112,
+            "end": 119,
+            "lemma": "leaving",
+            "pos": "VBG",
+            "tag": "VBG",
+            "dep": "acl:relcl",
+            "dep_head": 17,
+            "ent_type": "O"
+        },
+        {
+            "start": 120,
+            "end": 122,
+            "lemma": "to",
+            "pos": "TO",
+            "tag": "TO",
+            "dep": "mark",
+            "dep_head": 22,
+            "ent_type": "O"
+        },
+        {
+            "start": 123,
+            "end": 127,
+            "lemma": "take",
+            "pos": "VB",
+            "tag": "VB",
+            "dep": "xcomp",
+            "dep_head": 20,
+            "ent_type": "O"
+        },
+        {
+            "start": 128,
+            "end": 129,
+            "lemma": "a",
+            "pos": "DT",
+            "tag": "DT",
+            "dep": "det",
+            "dep_head": 25,
+            "ent_type": "O"
+        },
+        {
+            "start": 130,
+            "end": 140,
+            "lemma": "government",
+            "pos": "NN",
+            "tag": "NN",
+            "dep": "compound",
+            "dep_head": 25,
+            "ent_type": "O"
+        },
+        {
+            "start": 141,
+            "end": 144,
+            "lemma": "job",
+            "pos": "NN",
+            "tag": "NN",
+            "dep": "dobj",
+            "dep_head": 22,
+            "ent_type": "O"
+        },
+        {
+            "start": 145,
+            "end": 146,
+            "lemma": ".",
+            "pos": ".",
+            "tag": ".",
+            "dep": "punct",
+            "dep_head": 12,
+            "ent_type": "O"
+        }
+    ],
+    "sents": [
+        {
+            "start": 0,
+            "end": 146
+        }
+    ],
+    "ments": [
+        {
+            "start": 8,
+            "end": 10,
+            "label": "PERSON"
+        },
+        {
+            "start": 12,
+            "end": 13,
+            "label": "TITLE"
+        }
+    ],
+    "ents": [
+        {
+            "mentions_indices": [
+                0
+            ],
+            "label": "Douglas Flint"
+        },
+        {
+            "mentions_indices": [
+                1
+            ],
+            "label": "chairman"
+        }
+    ],
+    "rels": [
+        {
+            "head_idx": 0,
+            "tail_idx": 1,
+            "label": "per:title"
+        }
+    ]
+}
