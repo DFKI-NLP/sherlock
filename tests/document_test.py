@@ -36,7 +36,7 @@ def _doc_from_tacred(example):
         # increment offset because of whitespace
         start_offset = end_offset + 1
 
-    doc.sents = [Span(doc=doc, start=0, end=len(text))]
+    doc.sents = [Span(doc=doc, start=0, end=len(tokens))]
     doc.ments = [Span(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
                  Span(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"])]
     doc.ents = [Entity(doc=doc, mentions_indices=[0], label=" ".join(tokens[head_start: head_end])),
@@ -91,7 +91,3 @@ def test_document_from_dict():
     assert doc == expected_doc
 
     assert len(doc.rels) == 1
-
-    relation = doc.rels[0]
-    # assert relation.head == 
-

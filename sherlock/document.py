@@ -8,14 +8,16 @@ from spacy.tokens import Doc, Token as SpacyToken
 @dataclass
 class Token:
     """
-    A simple token representation, keeping track of the token's text, offset in the passage it was
-    taken from, POS tag, dependency relation, and similar information.
+    A simple token representation, keeping track of the token's start and end offset
+    in the text it was taken from, POS tag, dependency relation, and similar information.
     Parameters
     ----------
-    text : ``str``
-        The original text represented by this token.
-    idx : ``int``
-        The character offset of this token into the tokenized passage.
+    doc : ``Document``
+        The document the token belongs to.
+    start : ``int``
+        The start character offset of this token in the document text.
+    end : ``int``
+        The end character offset (exclusive) of this token in the document text.
     lemma : ``str``, optional
         The lemma of this token.
     pos : ``str``, optional
@@ -24,6 +26,8 @@ class Token:
         The fine-grained part of speech of this token.
     dep : ``str``, optional
         The dependency relation for this token.
+    dep_head : ``int``, optional
+        The dependency relation head for this token.
     ent_type : ``str``, optional
         The entity type (i.e., the NER tag) for this token.
     """
