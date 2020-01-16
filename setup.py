@@ -2,7 +2,7 @@ from io import open
 from setuptools import find_packages, setup
 
 setup(
-    name="clues",
+    name="sherlock",
     version="0.0.1a",
     author="Christoph Alt",
     author_email="christoph.alt@posteo.de",
