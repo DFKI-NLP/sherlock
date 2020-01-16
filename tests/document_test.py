@@ -3,7 +3,7 @@ import json
 
 from tests import FIXTURES_ROOT
 
-import spacy
+# import spacy
 
 from sherlock.document import Token, Span, Entity, Relation, Document
 
@@ -48,21 +48,21 @@ def _doc_from_tacred(example):
     return doc
 
 
-def test_create_document_from_spacy():
-    nlp = spacy.load("en_core_web_sm")
+# def test_create_document_from_spacy():
+#     nlp = spacy.load("en_core_web_sm")
 
-    with open(os.path.join(FIXTURES_ROOT, "tacred.json"), "r") as f:
-        dataset = json.load(f)
+#     with open(os.path.join(FIXTURES_ROOT, "tacred.json"), "r") as f:
+#         dataset = json.load(f)
 
-    text = " ".join(dataset[0]["token"])
-    spacy_doc = nlp(text)
+#     text = " ".join(dataset[0]["token"])
+#     spacy_doc = nlp(text)
 
-    doc = Document.from_spacy(id="0", doc=spacy_doc)
+#     doc = Document.from_spacy(id="0", doc=spacy_doc)
 
-    assert len(doc.tokens) == 26
-    assert doc.tokens[0].text == "At"
-    assert doc.tokens[-1].text == "."
-    assert doc.id == "0"
+#     assert len(doc.tokens) == 26
+#     assert doc.tokens[0].text == "At"
+#     assert doc.tokens[-1].text == "."
+#     assert doc.id == "0"
 
 
 def test_document_to_dict():
