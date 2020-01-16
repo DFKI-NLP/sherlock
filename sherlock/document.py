@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from dataclasses import dataclass, field
 
@@ -35,12 +35,12 @@ class Token:
     doc: "Document" = field(compare=False)
     start: int
     end: int
-    lemma: str = None
-    pos: str = None
-    tag: str = None
-    dep: str = None
-    dep_head: int = None
-    ent_type: str = None
+    lemma: Optional[str] = None
+    pos: Optional[str] = None
+    tag: Optional[str] = None
+    dep: Optional[str] = None
+    dep_head: Optional[int] = None
+    ent_type: Optional[str] = None
 
     @property
     def text(self) -> str:
@@ -92,7 +92,7 @@ class Span:
     doc: "Document" = field(compare=False)
     start: int
     end: int
-    label: str = None
+    label: Optional[str] = None
 
     @classmethod
     def from_spacy(cls, span):

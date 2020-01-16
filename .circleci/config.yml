@@ -36,7 +36,7 @@ jobs:
           name: run mypy
           command: |
             . venv/bin/activate
-            mypy relex --ignore-missing-imports
+            mypy sherlock --ignore-missing-imports
       - store_artifacts:
           path: test-reports
           destination: test-reports
