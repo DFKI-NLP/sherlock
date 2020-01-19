@@ -10,7 +10,7 @@ setup(
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     keywords="neural information extraction named entity recognition relation extraction entity linking event extraction",
-    license="MIT",
+    license="Apache",
     url="https://github.com/ChristophAlt/sherlock",
     packages=find_packages(exclude=["*.tests", "*.tests.*",
                                     "tests.*", "tests"]),
