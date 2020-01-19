@@ -19,7 +19,7 @@ def _doc_from_tacred(example):
     tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
     text = " ".join(tokens)
 
-    doc = Document(id=example["id"], text=text)
+    doc = Document(guid=example["id"], text=text)
 
     start_offset = 0
     for idx, token in enumerate(tokens):
@@ -57,12 +57,12 @@ def _doc_from_tacred(example):
 #     text = " ".join(dataset[0]["token"])
 #     spacy_doc = nlp(text)
 
-#     doc = Document.from_spacy(id="0", doc=spacy_doc)
+#     doc = Document.from_spacy(guid="0", doc=spacy_doc)
 
 #     assert len(doc.tokens) == 26
 #     assert doc.tokens[0].text == "At"
 #     assert doc.tokens[-1].text == "."
-#     assert doc.id == "0"
+#     assert doc.guid == "0"
 
 
 def test_document_to_dict():

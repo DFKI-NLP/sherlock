@@ -16,9 +16,8 @@ class TacredDatasetReader(DatasetReader):
                  dev_file: str = "dev.json",
                  test_file: str = "test.json",
                  negative_label: str = "no_relation",
-                 convert_ptb_tokens: bool = True,
-                 cache_features: bool = False) -> None:
-        super().__init__(data_dir, cache_features)
+                 convert_ptb_tokens: bool = True) -> None:
+        super().__init__(data_dir)
         self.convert_ptb_tokens = convert_ptb_tokens
         self.negative_label = negative_label
         self.input_files = {split: os.path.join(data_dir, filename)
@@ -48,12 +47,11 @@ class TacredDatasetReader(DatasetReader):
             return '}'
         return token
 
-    @property
-    def available_splits(self) -> List[str]:
+    def get_available_splits(self) -> List[str]:
         return ["train", "dev", "test"]
 
     def get_documents(self, split: str) -> List[Document]:
-        if split not in self.available_splits:
+        if split not in self.get_available_splits():
             raise ValueError("Selected split '%s' not available." % split)
         return self._create_documents(self._read_json(self.input_files[split]), split)
 
@@ -98,7 +96,7 @@ class TacredDatasetReader(DatasetReader):
         tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
         text = " ".join(tokens)
 
-        doc = Document(id=example["id"], text=text)
+        doc = Document(guid=example["id"], text=text)
 
         start_offset = 0
         for idx, token in enumerate(tokens):

@@ -5,9 +5,8 @@ from sherlock import Document
 
 class DatasetReader:
     def __init__(self,
-                 data_dir: str,
-                 cache_features: bool = False) -> None:
-        self.cache_features = cache_features
+                 data_dir: str) -> None:
+        self.data_dir = data_dir
 
     def get_documents(self, split: str) -> List[Document]:
         raise NotImplementedError("DatasetReader must implement 'get_train_documents'")
@@ -18,6 +17,5 @@ class DatasetReader:
     def get_additional_tokens(self) -> List[str]:
         raise NotImplementedError("DatasetReader must implement 'get_additional_tokens'")
 
-    @property
-    def available_splits(self) -> List[str]:
-        raise NotImplementedError("DatasetReader must implement 'available_splits'")
+    def get_available_splits(self) -> List[str]:
+        raise NotImplementedError("DatasetReader must implement 'get_available_splits'")

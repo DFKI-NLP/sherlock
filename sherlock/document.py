@@ -168,7 +168,7 @@ class Relation:
 
 @dataclass
 class Document:
-    id: str
+    guid: str
     text: str
     tokens: List[Token] = field(default_factory=list)
     sents: List[Span] = field(default_factory=list)
@@ -181,14 +181,14 @@ class Document:
         return len(self.tokens) == 0
 
     @classmethod
-    def from_spacy(cls, id: str, doc: Doc) -> "Document":
-        ret_doc = Document(id=id, text=doc.text)
+    def from_spacy(cls, guid: str, doc: Doc) -> "Document":
+        ret_doc = Document(guid=guid, text=doc.text)
         for token in doc:
             ret_doc.tokens.append(Token.from_spacy(ret_doc, token))
         return ret_doc
 
     def to_dict(self) -> Dict[str, Any]:
-        return dict(id=self.id,
+        return dict(guid=self.guid,
                     text=self.text,
                     tokens=[token.to_dict() for token in self.tokens],
                     sents=[sent.to_dict() for sent in self.sents],
@@ -198,7 +198,7 @@ class Document:
 
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]) -> "Document":
-        doc = Document(id=dct["id"], text=dct["text"])
+        doc = Document(guid=dct["guid"], text=dct["text"])
         doc.tokens = [Token.from_dict(doc, token) for token in dct["tokens"]]
         doc.sents = [Span.from_dict(doc, sent) for sent in dct["sents"]]
         doc.ments = [Span.from_dict(doc, ment) for ment in dct["ments"]]
