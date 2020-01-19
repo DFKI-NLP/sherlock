@@ -1,10 +1,13 @@
 from typing import List
 
+import logging
 import copy
 import json
 
 from transformers import PreTrainedTokenizer
 from sherlock import Document
+
+logger = logging.getLogger(__name__)
 
 
 class InputFeatures(object):
@@ -59,7 +62,8 @@ class FeatureConverter:
         self.tokenizer = tokenizer
         self.labels = labels
         self.max_length = max_length
-        self.label_map = {l: i for i, l in enumerate(labels)}
+        self.id_to_label_map = {i: l for i, l in enumerate(labels)}
+        self.label_to_id_map = {l: i for i, l in enumerate(labels)}
 
     def document_to_features(self, document: Document,
                              verbose: bool = False) -> List[InputFeatures]:
@@ -70,3 +74,10 @@ class FeatureConverter:
         for document in documents:
             input_features.extend(self.document_to_features(document))
         return input_features
+
+    @classmethod
+    def from_pretrained(self, path: str, tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
+        raise NotImplementedError("FeatureConverter must implement 'save'.")
+
+    def save(self, save_directory: str) -> None:
+        raise NotImplementedError("FeatureConverter must implement 'save'.")

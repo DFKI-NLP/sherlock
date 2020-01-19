@@ -1,5 +1,7 @@
 from typing import List, Tuple, Optional
 
+import os
+import json
 import logging
 import itertools
 
@@ -20,7 +22,7 @@ class BinaryRelationClfConverter(FeatureConverter):
                  pad_token_id: int = 0,
                  pad_token_segment_id: int = 0,
                  mask_padding_with_zero: bool = True,
-                 log_num_input_features: int = 20) -> None:
+                 log_num_input_features: int = -1) -> None:
         super().__init__(tokenizer, labels, max_length)
         if entity_handling not in ["mark_entity", "mark_entity_append_ner",
                                    "mask_entity", "mask_entity_append_text"]:
@@ -32,6 +34,51 @@ class BinaryRelationClfConverter(FeatureConverter):
         self.pad_token_segment_id = pad_token_segment_id
         self.mask_padding_with_zero = mask_padding_with_zero
         self.log_num_input_features = log_num_input_features
+
+    @classmethod
+    def from_pretrained(cls,
+                        path: str,
+                        tokenizer: PreTrainedTokenizer) -> "BinaryRelationClfConverter":
+        vocab_file = os.path.join(path, "converter_label_vocab.txt")
+        converter_config_file = os.path.join(path, "converter_config.json")
+        with open(converter_config_file, "r", encoding="utf-8") as config_file:
+            config = json.load(config_file)
+        with open(vocab_file, "r", encoding="utf-8") as reader:
+            config["labels"] = [line.strip() for line in reader.readlines()]
+        config["tokenizer"] = tokenizer
+        return cls(**config)
+
+    def save(self, save_directory: str) -> None:
+        if not os.path.isdir(save_directory):
+            logger.error("Saving directory ({}) should be a directory".format(save_directory))
+        self.save_vocabulary(save_directory)
+        config = dict(max_length=self.max_length,
+                      entity_handling=self.entity_handling,
+                      pad_on_left=self.pad_on_left,
+                      pad_token_id=self.pad_token_id,
+                      pad_token_segment_id=self.pad_token_segment_id,
+                      mask_padding_with_zero=self.mask_padding_with_zero)
+        converter_config_file = os.path.join(save_directory, "converter_config.json")
+        with open(converter_config_file, "w", encoding="utf-8") as writer:
+            writer.write(json.dumps(config, ensure_ascii=False))
+
+    def save_vocabulary(self, vocab_path: str) -> None:
+        """Save the converters label vocabulary to a directory or file."""
+        index = 0
+        if os.path.isdir(vocab_path):
+            vocab_file = os.path.join(vocab_path, "converter_label_vocab.txt")
+        else:
+            vocab_file = vocab_path
+        with open(vocab_file, "w", encoding="utf-8") as writer:
+            for label, label_index in self.label_to_id_map.items():
+                if index != label_index:
+                    logger.warning(
+                        "Saving vocabulary to {}: vocabulary indices are not consecutive."
+                        " Please check that the vocabulary is not corrupted!".format(vocab_file)
+                    )
+                    index = label_index
+                writer.write(label + "\n")
+                index += 1
 
     def document_to_features(self,
                              document: Document,
@@ -101,7 +148,7 @@ class BinaryRelationClfConverter(FeatureConverter):
             assert len(token_type_ids) == self.max_length, "Error with input length {} vs {}".format(len(token_type_ids), self.max_length)
 
             if label is not None:
-                label_id = self.label_map[label]
+                label_id = self.label_to_id_map[label]
 
             features = InputFeatures(input_ids=input_ids,
                                      attention_mask=attention_mask,
