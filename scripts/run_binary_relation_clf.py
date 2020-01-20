@@ -302,12 +302,14 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
 
     tensor_dicts = []
     for features in input_features:
-        tensor_dicts.append({
+        tensor_dict = {
             "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
-            "token_type_ids": torch.tensor(features.token_type_ids, dtype=torch.long),
-            "labels": torch.tensor(features.labels, dtype=torch.long)
-        })
+            "token_type_ids": torch.tensor(features.token_type_ids, dtype=torch.long)
+        }
+        if features.labels is not None:
+            tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
+        tensor_dicts.append(tensor_dict)
 
     dataset = TensorDictDataset(tensor_dicts)
     return dataset

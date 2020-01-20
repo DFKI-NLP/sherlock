@@ -110,7 +110,7 @@ class BinaryRelationClfConverter(FeatureConverter):
         else:
             for head_idx, tail_idx in itertools.product(range(len(document.ments)), repeat=2):
                 if head_idx == tail_idx:
-                    break
+                    continue
                 mention_combinations.append((head_idx, tail_idx, None))
 
         input_features = []
@@ -147,8 +147,7 @@ class BinaryRelationClfConverter(FeatureConverter):
             assert len(attention_mask) == self.max_length, "Error with input length {} vs {}".format(len(attention_mask), self.max_length)
             assert len(token_type_ids) == self.max_length, "Error with input length {} vs {}".format(len(token_type_ids), self.max_length)
 
-            if label is not None:
-                label_id = self.label_to_id_map[label]
+            label_id = self.label_to_id_map[label] if label is not None else None
 
             features = InputFeatures(input_ids=input_ids,
                                      attention_mask=attention_mask,
@@ -172,6 +171,7 @@ class BinaryRelationClfConverter(FeatureConverter):
             verbose = num_shown_input_features < self.log_num_input_features
             doc_input_features = self.document_to_features(document, verbose)
             input_features.extend(doc_input_features)
+            num_shown_input_features += 1
 
         # logger.info("Average #tokens: %.2f" % (num_tokens * 1.0 / len(examples)))
         num_fit_examples = len(documents) - sum([features.metadata["truncated"]

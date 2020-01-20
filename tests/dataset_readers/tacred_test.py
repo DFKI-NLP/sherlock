@@ -34,7 +34,6 @@ def test_additional_tokens():
     reader = TacredDatasetReader(data_dir=FIXTURES_ROOT, train_file="tacred.json")
 
     additional_tokens = reader.get_additional_tokens()
-    print(additional_tokens)
 
     assert sorted(additional_tokens) == sorted(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]",
                                                 "[HEAD=PERSON]", "[TAIL=TITLE]", "[TAIL=PERSON]", "[TAIL=CITY]"])
