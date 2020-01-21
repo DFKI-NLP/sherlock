@@ -24,8 +24,8 @@ class TacredDatasetReader(DatasetReader):
                             for split, filename in zip(["train", "dev", "test"],
                                                        [train_file, dev_file, test_file])}
 
-    @classmethod
-    def _read_json(cls, input_file: str):
+    @staticmethod
+    def _read_json(input_file: str) -> Dict[str, Any]:
         with open(input_file, "r", encoding="utf-8") as tacred_file:
             data = json.load(tacred_file)
         return data

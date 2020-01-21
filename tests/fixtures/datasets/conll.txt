@@ -1,0 +1,51 @@
+-DOCSTART- -X- O O
+
+EU NNP I-NP I-ORG
+rejects VBZ I-VP O
+German JJ I-NP I-MISC
+call NN I-NP O
+to TO I-VP O
+boycott VB I-VP O
+British JJ I-NP I-MISC
+lamb NN I-NP O
+. . O O
+
+Peter NNP I-NP I-PER
+Blackburn NNP I-NP I-PER
+
+BRUSSELS NNP I-NP I-LOC
+1996-08-22 CD I-NP O
+
+-DOCSTART- -X- O O
+
+Rare NNP I-NP O
+Hendrix NNP I-NP I-PER
+song NN I-NP O
+draft NN I-NP O
+sells VBZ I-VP O
+for IN I-PP O
+almost RB I-NP O
+$ $ I-NP O
+17,000 CD I-NP O
+. . O O
+
+LONDON NNP I-NP I-LOC
+1996-08-22 CD I-NP O
+
+-DOCSTART- -X- O O
+
+SOCCER NN I-NP O
+- : O O
+ENGLISH JJ I-NP I-MISC
+SOCCER NNP I-NP O
+RESULTS NNS I-NP O
+. . O O
+
+LONDON NNP I-NP I-LOC
+1996-08-30 CD I-NP O
+
+Results NNS I-NP O
+of IN I-PP O
+English JJ I-NP I-MISC
+league NN I-NP O
+matches NNS I-NP O

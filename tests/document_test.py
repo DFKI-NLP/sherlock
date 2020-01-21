@@ -66,7 +66,7 @@ def _doc_from_tacred(example):
 
 
 def test_document_to_dict():
-    with open(os.path.join(FIXTURES_ROOT, "tacred.json"), "r") as f:
+    with open(os.path.join(FIXTURES_ROOT, "datasets", "tacred.json"), "r") as f:
         dataset = json.load(f)
 
     doc = _doc_from_tacred(dataset[0])
@@ -81,7 +81,7 @@ def test_document_from_dict():
     with open(os.path.join(FIXTURES_ROOT, "doc.json"), "r") as f:
         dct = json.load(f)
 
-    with open(os.path.join(FIXTURES_ROOT, "tacred.json"), "r") as f:
+    with open(os.path.join(FIXTURES_ROOT, "datasets", "tacred.json"), "r") as f:
         dataset = json.load(f)
 
     expected_doc = _doc_from_tacred(dataset[0])

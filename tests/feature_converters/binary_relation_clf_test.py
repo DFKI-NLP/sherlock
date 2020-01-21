@@ -1,3 +1,5 @@
+import os
+
 from tests import FIXTURES_ROOT
 
 from transformers import BertTokenizer
@@ -6,7 +8,8 @@ from sherlock.feature_converters import BinaryRelationClfConverter
 
 
 def test_convert_documents_to_features():
-    reader = TacredDatasetReader(data_dir=FIXTURES_ROOT, train_file="tacred.json")
+    reader = TacredDatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
+                                 train_file="tacred.json")
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(reader.get_additional_tokens())

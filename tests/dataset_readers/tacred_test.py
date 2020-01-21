@@ -1,10 +1,13 @@
+import os
+
 from tests import FIXTURES_ROOT
 
 from sherlock.dataset_readers import TacredDatasetReader
 
 
 def test_get_documents():
-    reader = TacredDatasetReader(data_dir=FIXTURES_ROOT, train_file="tacred.json")
+    reader = TacredDatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
+                                 train_file="tacred.json")
 
     documents = reader.get_documents(split="train")
     assert len(documents) == 3
@@ -24,16 +27,20 @@ def test_get_documents():
 
 
 def test_get_labels():
-    reader = TacredDatasetReader(data_dir=FIXTURES_ROOT, train_file="tacred.json")
+    reader = TacredDatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
+                                 train_file="tacred.json")
 
     labels = reader.get_labels()
     assert labels == ["no_relation", "per:title", "per:city_of_death"]
 
 
 def test_additional_tokens():
-    reader = TacredDatasetReader(data_dir=FIXTURES_ROOT, train_file="tacred.json")
+    reader = TacredDatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
+                                 train_file="tacred.json")
 
     additional_tokens = reader.get_additional_tokens()
 
-    assert sorted(additional_tokens) == sorted(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]",
-                                                "[HEAD=PERSON]", "[TAIL=TITLE]", "[TAIL=PERSON]", "[TAIL=CITY]"])
+    assert sorted(additional_tokens) == sorted(["[HEAD_START]", "[HEAD_END]",
+                                                "[TAIL_START]", "[TAIL_END]",
+                                                "[HEAD=PERSON]", "[TAIL=TITLE]",
+                                                "[TAIL=PERSON]", "[TAIL=CITY]"])
