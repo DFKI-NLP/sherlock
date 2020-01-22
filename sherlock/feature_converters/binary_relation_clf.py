@@ -18,10 +18,7 @@ class BinaryRelationClfConverter(FeatureConverter):
                  labels: List[str],
                  max_length: int = 512,
                  entity_handling: str = "mark_entity",
-                 pad_on_left: bool = False,
-                 pad_token_id: int = 0,
                  pad_token_segment_id: int = 0,
-                 mask_padding_with_zero: bool = True,
                  log_num_input_features: int = -1) -> None:
         super().__init__(tokenizer, labels, max_length)
         if entity_handling not in ["mark_entity", "mark_entity_append_ner",
@@ -29,10 +26,7 @@ class BinaryRelationClfConverter(FeatureConverter):
             raise ValueError("Unknown entity handling '%s'." % entity_handling)
 
         self.entity_handling = entity_handling
-        self.pad_on_left = pad_on_left
-        self.pad_token_id = pad_token_id
         self.pad_token_segment_id = pad_token_segment_id
-        self.mask_padding_with_zero = mask_padding_with_zero
         self.log_num_input_features = log_num_input_features
 
     @classmethod
@@ -54,10 +48,7 @@ class BinaryRelationClfConverter(FeatureConverter):
         self.save_vocabulary(save_directory)
         config = dict(max_length=self.max_length,
                       entity_handling=self.entity_handling,
-                      pad_on_left=self.pad_on_left,
-                      pad_token_id=self.pad_token_id,
-                      pad_token_segment_id=self.pad_token_segment_id,
-                      mask_padding_with_zero=self.mask_padding_with_zero)
+                      pad_token_segment_id=self.pad_token_segment_id)
         converter_config_file = os.path.join(save_directory, "converter_config.json")
         with open(converter_config_file, "w", encoding="utf-8") as writer:
             writer.write(json.dumps(config, ensure_ascii=False))
@@ -83,26 +74,6 @@ class BinaryRelationClfConverter(FeatureConverter):
     def document_to_features(self,
                              document: Document,
                              verbose: bool = False) -> List[InputFeatures]:
-        """
-        Loads a data file into a list of ``InputFeatures``
-        Args:
-            examples: List of ``InputExamples`` or ``tf.data.Dataset`` containing the examples.
-            tokenizer: Instance of a tokenizer that will tokenize the examples
-            label_list: List of labels
-            max_length: Maximum example length, 512 by default
-            entity_handling: mark_entity, mark_entity_append_ner, mask_entity, mask_entity_append_text
-            pad_on_left: If set to ``True``, the examples will be padded on the left rather than on the right (default)
-            pad_token_id: Padding token
-            pad_token_segment_id: The segment ID for the padding token (It is usually 0, but can vary such as for XLNet where it is 4)
-            mask_padding_with_zero: If set to ``True``, the attention mask will be filled by ``1`` for actual values
-                and by ``0`` for padded values. If set to ``False``, inverts it (``1`` for padded values, ``0`` for
-                actual values)
-        Returns:
-            If the ``examples`` input is a ``tf.data.Dataset``, will return a ``tf.data.Dataset``
-            containing the task-specific features. If the input is a list of ``InputExamples``, will return
-            a list of task-specific ``InputFeatures`` which can be fed to the model.
-        """
-
         mention_combinations = []  # type: List[Tuple[int, int, Optional[str]]]
         if document.rels:
             for relation in document.rels:
@@ -121,37 +92,23 @@ class BinaryRelationClfConverter(FeatureConverter):
                 text=tokens,
                 add_special_tokens=True,
                 max_length=self.max_length,
+                pad_to_max_length=True,
+                return_overflowing_tokens=True
             )
-            input_ids, token_type_ids = inputs["input_ids"], inputs["token_type_ids"]
 
             metadata = dict(truncated="overflowing_tokens" in inputs,
                             head_idx=head_idx,
                             tail_idx=tail_idx)
 
-            # The mask has 1 for real tokens and 0 for padding tokens. Only real
-            # tokens are attended to.
-            attention_mask = [1 if self.mask_padding_with_zero else 0] * len(input_ids)
-
-            # Zero-pad up to the sequence length.
-            padding_length = self.max_length - len(input_ids)
-            if self.pad_on_left:
-                input_ids = ([self.pad_token_id] * padding_length) + input_ids
-                attention_mask = ([0 if self.mask_padding_with_zero else 1] * padding_length) + attention_mask
-                token_type_ids = ([self.pad_token_segment_id] * padding_length) + token_type_ids
-            else:
-                input_ids = input_ids + ([self.pad_token_id] * padding_length)
-                attention_mask = attention_mask + ([0 if self.mask_padding_with_zero else 1] * padding_length)
-                token_type_ids = token_type_ids + ([self.pad_token_segment_id] * padding_length)
-
-            assert len(input_ids) == self.max_length, "Error with input length {} vs {}".format(len(input_ids), self.max_length)
-            assert len(attention_mask) == self.max_length, "Error with input length {} vs {}".format(len(attention_mask), self.max_length)
-            assert len(token_type_ids) == self.max_length, "Error with input length {} vs {}".format(len(token_type_ids), self.max_length)
+            assert len(inputs["input_ids"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["input_ids"]), self.max_length)
+            assert len(inputs["attention_mask"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["attention_mask"]), self.max_length)
+            assert len(inputs["token_type_ids"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["token_type_ids"]), self.max_length)
 
             label_id = self.label_to_id_map[label] if label is not None else None
 
-            features = InputFeatures(input_ids=input_ids,
-                                     attention_mask=attention_mask,
-                                     token_type_ids=token_type_ids,
+            features = InputFeatures(input_ids=inputs["input_ids"],
+                                     attention_mask=inputs["attention_mask"],
+                                     token_type_ids=inputs["token_type_ids"],
                                      labels=label_id,
                                      metadata=metadata)
             input_features.append(features)

@@ -84,7 +84,7 @@ class Token:
                    tag=token.tag_,
                    dep=token.dep_,
                    dep_head=token.head.i,
-                   ent_type=token.ent_type_)
+                   ent_type=token.ent_type_ or None)
 
 
 @dataclass

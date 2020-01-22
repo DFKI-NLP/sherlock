@@ -91,7 +91,7 @@ class Conll2003DatasetReader:
                                     start=start_offset,
                                     end=end_offset,
                                     lemma=token,
-                                    ent_type=label[2:]))
+                                    ent_type=label))
             # increment offset because of whitespace
             start_offset = end_offset + 1
 
