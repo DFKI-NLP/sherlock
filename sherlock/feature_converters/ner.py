@@ -69,9 +69,9 @@ class NerConverter(FeatureConverter):
     def document_to_features(self,
                              document: Document,
                              verbose: bool = False) -> List[InputFeatures]:
-        tokens = []
-        labels = []
-        label_ids = []
+        tokens = []  # type: List[str]
+        labels = []  # type: List[str]
+        label_ids = []  # type: List[int]
         for token in document.tokens:
             subword_tokens = self.tokenizer.tokenize(token.text)
             tokens.extend(subword_tokens)
@@ -79,8 +79,10 @@ class NerConverter(FeatureConverter):
             if label is None:
                 label = "O"
             labels.append(label)
-            # Use the real label id for the first token of the word, and padding ids for the remaining tokens
-            label_ids.extend([self.label_to_id_map[label]] + [self.pad_token_label_id] * (len(subword_tokens) - 1))
+            # Use the real label id for the first token of the word,
+            # and padding ids for the remaining tokens
+            label_ids.extend([self.label_to_id_map[label]]
+                             + [self.pad_token_label_id] * (len(subword_tokens) - 1))
 
         inputs = self.tokenizer.encode_plus(
             text=tokens,
@@ -148,7 +150,7 @@ class NerConverter(FeatureConverter):
                             tokens: List[str],
                             document: Document,
                             features: InputFeatures,
-                            labels: str = None) -> None:
+                            labels: List[str]) -> None:
         logger.info("*** Example ***")
         logger.info("guid: %s" % (document.guid))
         logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))

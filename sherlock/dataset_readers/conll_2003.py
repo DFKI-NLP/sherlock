@@ -24,8 +24,8 @@ class Conll2003DatasetReader:
         guid_index = 1
         dataset = []
         with open(self.input_files[split], encoding="utf-8") as conll_file:
-            tokens = []
-            labels = []
+            tokens = []  # type: List[str]
+            labels = []  # type: List[str]
             for line in conll_file:
                 if line.startswith("-DOCSTART-") or line == "" or line == "\n":
                     if tokens:

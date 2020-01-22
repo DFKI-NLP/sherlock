@@ -25,7 +25,7 @@ class TacredDatasetReader(DatasetReader):
                                                        [train_file, dev_file, test_file])}
 
     @staticmethod
-    def _read_json(input_file: str) -> Dict[str, Any]:
+    def _read_json(input_file: str) -> List[Dict[str, Any]]:
         with open(input_file, "r", encoding="utf-8") as tacred_file:
             data = json.load(tacred_file)
         return data
