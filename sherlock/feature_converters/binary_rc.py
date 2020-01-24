@@ -12,7 +12,7 @@ from sherlock.feature_converters import FeatureConverter, InputFeatures
 logger = logging.getLogger(__name__)
 
 
-class BinaryRelationClfConverter(FeatureConverter):
+class BinaryRcConverter(FeatureConverter):
     def __init__(self,
                  tokenizer: PreTrainedTokenizer,
                  labels: List[str],

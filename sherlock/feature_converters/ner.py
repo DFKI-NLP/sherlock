@@ -4,7 +4,9 @@ import os
 import json
 import logging
 
+from torch.nn import CrossEntropyLoss
 from transformers import PreTrainedTokenizer, XLNetTokenizer
+
 from sherlock import Document
 from sherlock.feature_converters import FeatureConverter, InputFeatures
 
@@ -17,7 +19,7 @@ class NerConverter(FeatureConverter):
                  labels: List[str],
                  max_length: int = 512,
                  pad_token_segment_id: int = 0,
-                 pad_token_label_id: int = -100,
+                 pad_token_label_id: int = CrossEntropyLoss().ignore_index,
                  log_num_input_features: int = -1) -> None:
         super().__init__(tokenizer, labels, max_length)
         self.pad_token_segment_id = pad_token_segment_id
@@ -109,11 +111,6 @@ class NerConverter(FeatureConverter):
             label_ids += [self.pad_token_label_id] * padding_length
 
         metadata = dict(guid=document.guid, truncated=num_truncated_tokens > 0)
-
-        assert len(inputs["input_ids"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["input_ids"]), self.max_length)
-        assert len(inputs["attention_mask"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["attention_mask"]), self.max_length)
-        assert len(inputs["token_type_ids"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["token_type_ids"]), self.max_length)
-        assert len(label_ids) == self.max_length, "Error with input length {} vs {}".format(len(label_ids), self.max_length)
 
         features = InputFeatures(input_ids=inputs["input_ids"],
                                  attention_mask=inputs["attention_mask"],
