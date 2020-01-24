@@ -96,7 +96,8 @@ class BinaryRelationClfConverter(FeatureConverter):
                 return_overflowing_tokens=True
             )
 
-            metadata = dict(truncated="overflowing_tokens" in inputs,
+            metadata = dict(guid=document.guid,
+                            truncated="overflowing_tokens" in inputs,
                             head_idx=head_idx,
                             tail_idx=tail_idx)
 

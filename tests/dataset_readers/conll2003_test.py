@@ -37,12 +37,12 @@ def test_get_labels():
     reader = Conll2003DatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
                                     train_file="conll.txt")
 
-    labels = reader.get_labels()
+    labels = reader.get_labels("ner")
     assert list(sorted(labels)) == list(sorted(["O", "I-MISC", "I-PER", "I-ORG", "I-LOC"]))
 
 
-def test_additional_tokens():
+def test_get_additional_tokens():
     reader = Conll2003DatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
                                     train_file="conll.txt")
 
-    assert len(reader.get_additional_tokens()) == 0
+    assert len(reader.get_additional_tokens("ner")) == 0

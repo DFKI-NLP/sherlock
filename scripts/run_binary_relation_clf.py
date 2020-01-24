@@ -459,7 +459,7 @@ def main():
     set_seed(args)
 
     dataset_reader = TacredDatasetReader(data_dir=args.data_dir)
-    labels = dataset_reader.get_labels()
+    labels = dataset_reader.get_labels(task="binary_re")
     num_labels = len(labels)
 
     # Load pretrained model and tokenizer
@@ -480,7 +480,7 @@ def main():
                                            pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0,
                                            log_num_input_features=20)
 
-    additional_tokens = dataset_reader.get_additional_tokens()
+    additional_tokens = dataset_reader.get_additional_tokens(task="binary_re")
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
         model.resize_token_embeddings(len(tokenizer))

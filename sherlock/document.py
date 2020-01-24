@@ -32,7 +32,7 @@ class Token:
         The entity type (i.e., the NER tag) for this token.
     """
 
-    doc: "Document" = field(compare=False)
+    doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
     lemma: Optional[str] = None
@@ -89,7 +89,7 @@ class Token:
 
 @dataclass
 class Span:
-    doc: "Document" = field(compare=False)
+    doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
     label: Optional[str] = None
@@ -119,7 +119,7 @@ class Span:
 
 @dataclass
 class Entity:
-    doc: "Document" = field(compare=False)
+    doc: "Document" = field(compare=False, repr=False)
     mentions_indices: List[int]
     label: str
 
@@ -140,7 +140,7 @@ class Entity:
 
 @dataclass
 class Relation:
-    doc: "Document" = field(compare=False)
+    doc: "Document" = field(compare=False, repr=False)
     head_idx: int
     tail_idx: int
     label: str

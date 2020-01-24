@@ -108,7 +108,7 @@ class NerConverter(FeatureConverter):
         else:
             label_ids += [self.pad_token_label_id] * padding_length
 
-        metadata = dict(truncated=num_truncated_tokens > 0)
+        metadata = dict(guid=document.guid, truncated=num_truncated_tokens > 0)
 
         assert len(inputs["input_ids"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["input_ids"]), self.max_length)
         assert len(inputs["attention_mask"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["attention_mask"]), self.max_length)

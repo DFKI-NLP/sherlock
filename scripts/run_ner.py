@@ -56,7 +56,7 @@ try:
 except ImportError:
     from tensorboardX import SummaryWriter
 
-from sherlock.dataset_readers import Conll2003DatasetReader
+from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.feature_converters import NerConverter
 from sherlock.dataset import TensorDictDataset
 
@@ -466,8 +466,9 @@ def main():
     # Set seed
     set_seed(args)
 
-    dataset_reader = Conll2003DatasetReader(data_dir=args.data_dir)
-    labels = dataset_reader.get_labels()
+    # dataset_reader = Conll2003DatasetReader(data_dir=args.data_dir)
+    dataset_reader = TacredDatasetReader(data_dir=args.data_dir, tagging_scheme="bio")
+    labels = dataset_reader.get_labels(task="ner")
     num_labels = len(labels)
 
     # Load pretrained model and tokenizer
@@ -488,7 +489,7 @@ def main():
                              pad_token_segment_id=4 if args.model_type in ['xlnet'] else 0,
                              log_num_input_features=20)
 
-    additional_tokens = dataset_reader.get_additional_tokens()
+    additional_tokens = dataset_reader.get_additional_tokens(task="ner")
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
         model.resize_token_embeddings(len(tokenizer))
