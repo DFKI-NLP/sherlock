@@ -14,7 +14,8 @@ def test_convert_documents_to_features():
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(reader.get_additional_tokens(task="binary_re"))
     converter = BinaryRcConverter(tokenizer=tokenizer,
-                                  labels=reader.get_labels(task="binary_re"))
+                                  labels=reader.get_labels(task="binary_re"),
+                                  log_num_input_features=1)
 
     documents = reader.get_documents(split="train")
 
@@ -161,3 +162,24 @@ def test_entity_handling_mask_entity_append_text():
     features = input_features[0]
     tokens = tokenizer.convert_ids_to_tokens([i for i in features.input_ids if i != 0])
     assert tokens == expected_tokens
+
+
+def test_save_and_load(tmpdir):
+    reader = TacredDatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
+                                 train_file="tacred.json")
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    converter = BinaryRcConverter(tokenizer=tokenizer,
+                                  labels=reader.get_labels(task="binary_re"),
+                                  max_length=1,
+                                  pad_token_segment_id=2,
+                                  log_num_input_features=3,
+                                  entity_handling="mask_entity_append_text")
+    converter.save(tmpdir)
+
+    loaded_converter = BinaryRcConverter.from_pretrained(tmpdir, tokenizer)
+    assert loaded_converter.max_length == converter.max_length
+    assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
+    assert loaded_converter.entity_handling == converter.entity_handling
+    assert loaded_converter.label_to_id_map == converter.label_to_id_map
+    assert loaded_converter.id_to_label_map == converter.id_to_label_map
+    assert loaded_converter.log_num_input_features == -1

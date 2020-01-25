@@ -28,7 +28,8 @@ def test_convert_documents_to_features():
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(reader.get_additional_tokens(task="ner"))
     converter = NerConverter(tokenizer=tokenizer,
-                             labels=reader.get_labels(task="ner"))
+                             labels=reader.get_labels(task="ner"),
+                             log_num_input_features=1)
 
     documents = reader.get_documents(split="train")
 
@@ -90,3 +91,24 @@ def test_convert_documents_to_features_truncate():
     assert len(features.attention_mask) == max_length
     assert len(features.token_type_ids) == max_length
     assert len(features.labels) == max_length
+
+
+def test_save_and_load(tmpdir):
+    reader = TacredDatasetReader(data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
+                                 train_file="tacred.json")
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    converter = NerConverter(tokenizer=tokenizer,
+                             labels=reader.get_labels(task="ner"),
+                             max_length=1,
+                             pad_token_segment_id=2,
+                             pad_token_label_id=3,
+                             log_num_input_features=4)
+    converter.save(tmpdir)
+
+    loaded_converter = NerConverter.from_pretrained(tmpdir, tokenizer)
+    assert loaded_converter.max_length == converter.max_length
+    assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
+    assert loaded_converter.pad_token_label_id == converter.pad_token_label_id
+    assert loaded_converter.label_to_id_map == converter.label_to_id_map
+    assert loaded_converter.id_to_label_map == converter.id_to_label_map
+    assert loaded_converter.log_num_input_features == -1

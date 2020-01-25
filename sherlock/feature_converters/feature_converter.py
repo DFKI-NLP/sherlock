@@ -1,5 +1,6 @@
-from typing import List
+from typing import List, Union, Optional
 
+import os
 import logging
 import copy
 import json
@@ -76,8 +77,48 @@ class FeatureConverter:
         return input_features
 
     @classmethod
-    def from_pretrained(self, path: str, tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
-        raise NotImplementedError("FeatureConverter must implement 'save'.")
+    def from_pretrained(cls,
+                        path: str,
+                        tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
+        vocab_file = os.path.join(path, "converter_label_vocab.txt")
+        converter_config_file = os.path.join(path, "converter_config.json")
+        with open(converter_config_file, "r", encoding="utf-8") as config_file:
+            config = json.load(config_file)
+        with open(vocab_file, "r", encoding="utf-8") as reader:
+            config["labels"] = [line.strip() for line in reader.readlines()]
+        config["tokenizer"] = tokenizer
+        return cls(**config)
 
     def save(self, save_directory: str) -> None:
         raise NotImplementedError("FeatureConverter must implement 'save'.")
+
+    def save_vocabulary(self, vocab_path: str) -> None:
+        """Save the converters label vocabulary to a directory or file."""
+        index = 0
+        if os.path.isdir(vocab_path):
+            vocab_file = os.path.join(vocab_path, "converter_label_vocab.txt")
+        else:
+            vocab_file = vocab_path
+        with open(vocab_file, "w", encoding="utf-8") as writer:
+            for label, label_index in self.label_to_id_map.items():
+                if index != label_index:
+                    logger.warning(
+                        "Saving vocabulary to %s: vocabulary indices are not consecutive."
+                        " Please check that the vocabulary is not corrupted!", vocab_file)
+                    index = label_index
+                writer.write(label + "\n")
+                index += 1
+
+    def _log_input_features(self,
+                            tokens: List[str],
+                            document: Document,
+                            features: InputFeatures,
+                            labels: Optional[Union[str, List[str]]] = None) -> None:
+        logger.info("*** Example ***")
+        logger.info("guid: %s", document.guid)
+        logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
+        logger.info("input_ids: %s", " ".join([str(x) for x in features.input_ids]))
+        logger.info("attention_mask: %s", " ".join([str(x) for x in features.attention_mask]))
+        logger.info("token_type_ids: %s", " ".join([str(x) for x in features.token_type_ids]))
+        if labels:
+            logger.info("labels: %s (ids = %s)", labels, features.labels)

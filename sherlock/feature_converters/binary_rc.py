@@ -29,19 +29,6 @@ class BinaryRcConverter(FeatureConverter):
         self.pad_token_segment_id = pad_token_segment_id
         self.log_num_input_features = log_num_input_features
 
-    @classmethod
-    def from_pretrained(cls,
-                        path: str,
-                        tokenizer: PreTrainedTokenizer) -> "BinaryRelationClfConverter":
-        vocab_file = os.path.join(path, "converter_label_vocab.txt")
-        converter_config_file = os.path.join(path, "converter_config.json")
-        with open(converter_config_file, "r", encoding="utf-8") as config_file:
-            config = json.load(config_file)
-        with open(vocab_file, "r", encoding="utf-8") as reader:
-            config["labels"] = [line.strip() for line in reader.readlines()]
-        config["tokenizer"] = tokenizer
-        return cls(**config)
-
     def save(self, save_directory: str) -> None:
         if not os.path.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
@@ -52,24 +39,6 @@ class BinaryRcConverter(FeatureConverter):
         converter_config_file = os.path.join(save_directory, "converter_config.json")
         with open(converter_config_file, "w", encoding="utf-8") as writer:
             writer.write(json.dumps(config, ensure_ascii=False))
-
-    def save_vocabulary(self, vocab_path: str) -> None:
-        """Save the converters label vocabulary to a directory or file."""
-        index = 0
-        if os.path.isdir(vocab_path):
-            vocab_file = os.path.join(vocab_path, "converter_label_vocab.txt")
-        else:
-            vocab_file = vocab_path
-        with open(vocab_file, "w", encoding="utf-8") as writer:
-            for label, label_index in self.label_to_id_map.items():
-                if index != label_index:
-                    logger.warning(
-                        "Saving vocabulary to {}: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!".format(vocab_file)
-                    )
-                    index = label_index
-                writer.write(label + "\n")
-                index += 1
 
     def document_to_features(self,
                              document: Document,
@@ -100,10 +69,6 @@ class BinaryRcConverter(FeatureConverter):
                             truncated="overflowing_tokens" in inputs,
                             head_idx=head_idx,
                             tail_idx=tail_idx)
-
-            assert len(inputs["input_ids"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["input_ids"]), self.max_length)
-            assert len(inputs["attention_mask"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["attention_mask"]), self.max_length)
-            assert len(inputs["token_type_ids"]) == self.max_length, "Error with input length {} vs {}".format(len(inputs["token_type_ids"]), self.max_length)
 
             label_id = self.label_to_id_map[label] if label is not None else None
 
@@ -138,20 +103,6 @@ class BinaryRcConverter(FeatureConverter):
                     num_fit_examples * 100.0 / len(documents), self.max_length))
 
         return input_features
-
-    def _log_input_features(self,
-                            tokens: List[str],
-                            document: Document,
-                            features: InputFeatures,
-                            label: str = None) -> None:
-        logger.info("*** Example ***")
-        logger.info("guid: %s" % (document.guid))
-        logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
-        logger.info("input_ids: %s" % " ".join([str(x) for x in features.input_ids]))
-        logger.info("attention_mask: %s" % " ".join([str(x) for x in features.attention_mask]))
-        logger.info("token_type_ids: %s" % " ".join([str(x) for x in features.token_type_ids]))
-        if label:
-            logger.info("label: %s (id = %d)" % (label, features.labels))
 
     def _handle_entities(self,
                          document: Document,

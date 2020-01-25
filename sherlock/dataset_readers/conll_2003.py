@@ -4,7 +4,7 @@ import os
 
 from sherlock.document import Token, Span, Document
 from sherlock.dataset_readers import DatasetReader
-from sherlock.dataset_readers.span_utils import bio_tags_to_spans
+from seqeval.metrics.sequence_labeling import get_entities
 
 
 class Conll2003DatasetReader(DatasetReader):
@@ -100,7 +100,7 @@ class Conll2003DatasetReader(DatasetReader):
             # increment offset because of whitespace
             start_offset = end_offset + 1
 
-        for label, (start, end) in bio_tags_to_spans(ner):
+        for label, start, end in get_entities(ner):
             # end is inclusive, we want exclusive -> +1
             doc.ments.append(Span(doc=doc, start=start, end=end + 1, label=label))
         return doc
