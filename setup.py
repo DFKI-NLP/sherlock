@@ -1,6 +1,19 @@
 from io import open
 from setuptools import find_packages, setup
 
+
+extras = {}
+
+extras["torch"] = ["torch"]
+
+extras["serving"] = ["pydantic", "uvicorn", "fastapi"]
+extras["all"] = extras["serving"] + ["torch"]
+
+extras["testing"] = ["pytest", "pytest-xdist"]
+extras["quality"] = ["black", "isort", "flake8"]
+extras["docs"] = ["recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme"]
+extras["dev"] = extras["testing"] + extras["quality"] + ["torch"]
+
 setup(
     name="sherlock",
     version="0.0.1a",
@@ -15,7 +28,7 @@ setup(
     packages=find_packages(exclude=["*.tests", "*.tests.*",
                                     "tests.*", "tests"]),
     install_requires=["transformers", "spacy", "seqeval"],
-    tests_require=["pytest", "mypy", "pylint", "flake8"],
+    extras_require=extras,
     entry_points={
       "console_scripts": []
     },
