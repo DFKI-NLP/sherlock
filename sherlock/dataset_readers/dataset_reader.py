@@ -4,8 +4,7 @@ from sherlock import Document
 
 
 class DatasetReader:
-    def __init__(self,
-                 data_dir: str) -> None:
+    def __init__(self, data_dir: str) -> None:
         self.data_dir = data_dir
 
     def get_documents(self, split: str) -> List[Document]:

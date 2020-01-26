@@ -1,8 +1,8 @@
-from typing import List, Dict, Any, Optional
-
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
-from spacy.tokens import Doc, Token as SpacyToken
+from spacy.tokens import Doc
+from spacy.tokens import Token as SpacyToken
 
 
 @dataclass
@@ -44,7 +44,7 @@ class Token:
 
     @property
     def text(self) -> str:
-        return self.doc.text[self.start: self.end]
+        return self.doc.text[self.start : self.end]
 
     def whitespace(self) -> bool:
         return False if self.start == 0 else self.doc.text[self.start - 1] == " "
@@ -53,8 +53,7 @@ class Token:
     #     return self.text
 
     def to_dict(self) -> Dict[str, Any]:
-        dct = dict(start=self.start,
-                   end=self.end)
+        dct = dict(start=self.start, end=self.end)
 
         for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type"]:
             attr_val = getattr(self, attr)
@@ -64,9 +63,7 @@ class Token:
 
     @classmethod
     def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Token":
-        tmp_dct = dict(doc=doc,
-                       start=dct["start"],
-                       end=dct["end"])
+        tmp_dct = dict(doc=doc, start=dct["start"], end=dct["end"])
 
         for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type"]:
             attr_val = dct.get(attr)
@@ -76,15 +73,17 @@ class Token:
 
     @classmethod
     def from_spacy(cls, doc: Doc, token: SpacyToken):
-        return cls(doc=doc,
-                   start=token.idx,
-                   end=token.idx + len(token.text),
-                   lemma=token.lemma_,
-                   pos=token.pos_,
-                   tag=token.tag_,
-                   dep=token.dep_,
-                   dep_head=token.head.i,
-                   ent_type=token.ent_type_ or None)
+        return cls(
+            doc=doc,
+            start=token.idx,
+            end=token.idx + len(token.text),
+            lemma=token.lemma_,
+            pos=token.pos_,
+            tag=token.tag_,
+            dep=token.dep_,
+            dep_head=token.head.i,
+            ent_type=token.ent_type_ or None,
+        )
 
 
 @dataclass
@@ -96,22 +95,17 @@ class Span:
 
     @classmethod
     def from_spacy(cls, span):
-        return cls(start=span.start,
-                   end=span.end,
-                   label=span.label_)
+        return cls(start=span.start, end=span.end, label=span.label_)
 
     def to_dict(self):
-        dct = dict(start=self.start,
-                   end=self.end)
+        dct = dict(start=self.start, end=self.end)
         if self.label:
             dct["label"] = self.label
         return dct
 
     @classmethod
     def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Span":
-        tmp_dct = dict(doc=doc,
-                       start=dct["start"],
-                       end=dct["end"])
+        tmp_dct = dict(doc=doc, start=dct["start"], end=dct["end"])
         if "label" in dct:
             tmp_dct["label"] = dct["label"]
         return cls(**tmp_dct)
@@ -128,14 +122,11 @@ class Entity:
         return [self.doc.ments[idx] for idx in self.mentions_indices]
 
     def to_dict(self):
-        return dict(mentions_indices=self.mentions_indices,
-                    label=self.label)
+        return dict(mentions_indices=self.mentions_indices, label=self.label)
 
     @classmethod
     def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Entity":
-        return cls(doc=doc,
-                   mentions_indices=dct["mentions_indices"],
-                   label=dct["label"])
+        return cls(doc=doc, mentions_indices=dct["mentions_indices"], label=dct["label"])
 
 
 @dataclass
@@ -154,16 +145,11 @@ class Relation:
         return self.doc.ments[self.tail_idx]
 
     def to_dict(self):
-        return dict(head_idx=self.head_idx,
-                    tail_idx=self.tail_idx,
-                    label=self.label)
+        return dict(head_idx=self.head_idx, tail_idx=self.tail_idx, label=self.label)
 
     @classmethod
     def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Relation":
-        return cls(doc=doc,
-                   head_idx=dct["head_idx"],
-                   tail_idx=dct["tail_idx"],
-                   label=dct["label"])
+        return cls(doc=doc, head_idx=dct["head_idx"], tail_idx=dct["tail_idx"], label=dct["label"])
 
 
 @dataclass
@@ -188,13 +174,15 @@ class Document:
         return ret_doc
 
     def to_dict(self) -> Dict[str, Any]:
-        return dict(guid=self.guid,
-                    text=self.text,
-                    tokens=[token.to_dict() for token in self.tokens],
-                    sents=[sent.to_dict() for sent in self.sents],
-                    ments=[ment.to_dict() for ment in self.ments],
-                    ents=[ent.to_dict() for ent in self.ents],
-                    rels=[rel.to_dict() for rel in self.rels])
+        return dict(
+            guid=self.guid,
+            text=self.text,
+            tokens=[token.to_dict() for token in self.tokens],
+            sents=[sent.to_dict() for sent in self.sents],
+            ments=[ment.to_dict() for ment in self.ments],
+            ents=[ent.to_dict() for ent in self.ents],
+            rels=[rel.to_dict() for rel in self.rels],
+        )
 
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]) -> "Document":

@@ -1,28 +1,38 @@
-from typing import List, Tuple, Optional
-
-import os
+import itertools
 import json
 import logging
-import itertools
+import os
+from typing import List, Optional, Tuple
 
 from transformers import PreTrainedTokenizer
+
 from sherlock import Document
-from sherlock.feature_converters import FeatureConverter, InputFeatures
+from sherlock.feature_converters.feature_converter import (
+    FeatureConverter,
+    InputFeatures,
+)
+
 
 logger = logging.getLogger(__name__)
 
 
 class BinaryRcConverter(FeatureConverter):
-    def __init__(self,
-                 tokenizer: PreTrainedTokenizer,
-                 labels: List[str],
-                 max_length: int = 512,
-                 entity_handling: str = "mark_entity",
-                 pad_token_segment_id: int = 0,
-                 log_num_input_features: int = -1) -> None:
+    def __init__(
+        self,
+        tokenizer: PreTrainedTokenizer,
+        labels: List[str],
+        max_length: int = 512,
+        entity_handling: str = "mark_entity",
+        pad_token_segment_id: int = 0,
+        log_num_input_features: int = -1,
+    ) -> None:
         super().__init__(tokenizer, labels, max_length)
-        if entity_handling not in ["mark_entity", "mark_entity_append_ner",
-                                   "mask_entity", "mask_entity_append_text"]:
+        if entity_handling not in [
+            "mark_entity",
+            "mark_entity_append_ner",
+            "mask_entity",
+            "mask_entity_append_text",
+        ]:
             raise ValueError("Unknown entity handling '%s'." % entity_handling)
 
         self.entity_handling = entity_handling
@@ -33,16 +43,18 @@ class BinaryRcConverter(FeatureConverter):
         if not os.path.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
         self.save_vocabulary(save_directory)
-        config = dict(max_length=self.max_length,
-                      entity_handling=self.entity_handling,
-                      pad_token_segment_id=self.pad_token_segment_id)
+        config = dict(
+            max_length=self.max_length,
+            entity_handling=self.entity_handling,
+            pad_token_segment_id=self.pad_token_segment_id,
+        )
         converter_config_file = os.path.join(save_directory, "converter_config.json")
         with open(converter_config_file, "w", encoding="utf-8") as writer:
             writer.write(json.dumps(config, ensure_ascii=False))
 
-    def document_to_features(self,
-                             document: Document,
-                             verbose: bool = False) -> List[InputFeatures]:
+    def document_to_features(
+        self, document: Document, verbose: bool = False
+    ) -> List[InputFeatures]:
         mention_combinations = []  # type: List[Tuple[int, int, Optional[str]]]
         if document.rels:
             for relation in document.rels:
@@ -62,21 +74,25 @@ class BinaryRcConverter(FeatureConverter):
                 add_special_tokens=True,
                 max_length=self.max_length,
                 pad_to_max_length=True,
-                return_overflowing_tokens=True
+                return_overflowing_tokens=True,
             )
 
-            metadata = dict(guid=document.guid,
-                            truncated="overflowing_tokens" in inputs,
-                            head_idx=head_idx,
-                            tail_idx=tail_idx)
+            metadata = dict(
+                guid=document.guid,
+                truncated="overflowing_tokens" in inputs,
+                head_idx=head_idx,
+                tail_idx=tail_idx,
+            )
 
             label_id = self.label_to_id_map[label] if label is not None else None
 
-            features = InputFeatures(input_ids=inputs["input_ids"],
-                                     attention_mask=inputs["attention_mask"],
-                                     token_type_ids=inputs["token_type_ids"],
-                                     labels=label_id,
-                                     metadata=metadata)
+            features = InputFeatures(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                token_type_ids=inputs["token_type_ids"],
+                labels=label_id,
+                metadata=metadata,
+            )
             input_features.append(features)
 
             if verbose:
@@ -97,17 +113,17 @@ class BinaryRcConverter(FeatureConverter):
             num_shown_input_features += 1
 
         # logger.info("Average #tokens: %.2f" % (num_tokens * 1.0 / len(examples)))
-        num_fit_examples = len(documents) - sum([features.metadata["truncated"]
-                                                 for features in input_features])
-        logger.info("%d (%.2f %%) examples can fit max_seq_length = %d" % (num_fit_examples,
-                    num_fit_examples * 100.0 / len(documents), self.max_length))
+        num_fit_examples = len(documents) - sum(
+            [features.metadata["truncated"] for features in input_features]
+        )
+        logger.info(
+            "%d (%.2f %%) examples can fit max_seq_length = %d"
+            % (num_fit_examples, num_fit_examples * 100.0 / len(documents), self.max_length)
+        )
 
         return input_features
 
-    def _handle_entities(self,
-                         document: Document,
-                         head_idx: int,
-                         tail_idx: int) -> List[str]:
+    def _handle_entities(self, document: Document, head_idx: int, tail_idx: int) -> List[str]:
         head_mention = document.ments[head_idx]
         tail_mention = document.ments[tail_idx]
 

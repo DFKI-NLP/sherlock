@@ -1,7 +1,7 @@
 # taken from https://github.com/allenai/allennlp/blob/master/allennlp/data/dataset_readers/dataset_utils/span_utils.py
 
-from typing import Callable, List, Set, Tuple, TypeVar, Optional
 import warnings
+from typing import Callable, List, Optional, Set, Tuple, TypeVar
 
 from sherlock.document import Token
 

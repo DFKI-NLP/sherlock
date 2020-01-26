@@ -1,24 +1,27 @@
-from typing import List, Dict, Set, Any
-
 import os
+from typing import Any, Dict, List, Set
 
-from sherlock.document import Token, Span, Document
-from sherlock.dataset_readers import DatasetReader
 from seqeval.metrics.sequence_labeling import get_entities
+
+from sherlock.dataset_readers.dataset_reader import DatasetReader
+from sherlock.document import Document, Span, Token
 
 
 class Conll2003DatasetReader(DatasetReader):
-    def __init__(self,
-                 data_dir: str,
-                 train_file: str = "eng.train",
-                 dev_file: str = "eng.testa",
-                 test_file: str = "eng.testb",
-                 negative_label: str = "O") -> None:
+    def __init__(
+        self,
+        data_dir: str,
+        train_file: str = "eng.train",
+        dev_file: str = "eng.testa",
+        test_file: str = "eng.testb",
+        negative_label: str = "O",
+    ) -> None:
         super().__init__(data_dir)
         self.negative_label = negative_label
-        self.input_files = {split: os.path.join(data_dir, filename)
-                            for split, filename in zip(["train", "dev", "test"],
-                                                       [train_file, dev_file, test_file])}
+        self.input_files = {
+            split: os.path.join(data_dir, filename)
+            for split, filename in zip(["train", "dev", "test"], [train_file, dev_file, test_file])
+        }
 
     def _read_txt(self, split: str) -> List[Dict[str, Any]]:
         guid_index = 1
@@ -29,9 +32,9 @@ class Conll2003DatasetReader(DatasetReader):
             for line in conll_file:
                 if line.startswith("-DOCSTART-") or line == "" or line == "\n":
                     if tokens:
-                        dataset.append(dict(guid="{}-{}".format(split, guid_index),
-                                            tokens=tokens,
-                                            ner=ner))
+                        dataset.append(
+                            dict(guid="{}-{}".format(split, guid_index), tokens=tokens, ner=ner)
+                        )
                         guid_index += 1
                         tokens = []
                         ner = []
@@ -41,12 +44,10 @@ class Conll2003DatasetReader(DatasetReader):
                     if len(splits) > 1:
                         ner.append(splits[-1].replace("\n", ""))
                     # else:
-                        # Examples could have no label for mode = "test"
-                        # ner.append("O")
+                    # Examples could have no label for mode = "test"
+                    # ner.append("O")
             if tokens:
-                dataset.append(dict(guid="{}-{}".format(split, guid_index),
-                                    tokens=tokens,
-                                    ner=ner))
+                dataset.append(dict(guid="{}-{}".format(split, guid_index), tokens=tokens, ner=ner))
         return dataset
 
     def get_available_splits(self) -> List[str]:
@@ -92,11 +93,9 @@ class Conll2003DatasetReader(DatasetReader):
         start_offset = 0
         for idx, token in enumerate(tokens):
             end_offset = start_offset + len(token)
-            doc.tokens.append(Token(doc=doc,
-                                    start=start_offset,
-                                    end=end_offset,
-                                    lemma=token,
-                                    ent_type=ner[idx]))
+            doc.tokens.append(
+                Token(doc=doc, start=start_offset, end=end_offset, lemma=token, ent_type=ner[idx])
+            )
             # increment offset because of whitespace
             start_offset = end_offset + 1
 

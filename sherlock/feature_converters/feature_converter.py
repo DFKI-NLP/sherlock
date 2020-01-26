@@ -1,12 +1,13 @@
-from typing import List, Union, Optional
-
-import os
-import logging
 import copy
 import json
+import logging
+import os
+from typing import List, Optional, Union
 
 from transformers import PreTrainedTokenizer
+
 from sherlock import Document
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,16 @@ class InputFeatures(object):
         label: Label corresponding to the input
     """
 
-    def __init__(self,
-                 input_ids,
-                 attention_mask=None,
-                 token_type_ids=None,
-                 position_ids=None,
-                 head_mask=None,
-                 labels=None,
-                 metadata=None) -> None:
+    def __init__(
+        self,
+        input_ids,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        labels=None,
+        metadata=None,
+    ) -> None:
         self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
@@ -56,18 +59,18 @@ class InputFeatures(object):
 
 
 class FeatureConverter:
-    def __init__(self,
-                 tokenizer: PreTrainedTokenizer,
-                 labels: List[str],
-                 max_length: int = 512) -> None:
+    def __init__(
+        self, tokenizer: PreTrainedTokenizer, labels: List[str], max_length: int = 512
+    ) -> None:
         self.tokenizer = tokenizer
         self.labels = labels
         self.max_length = max_length
         self.id_to_label_map = {i: l for i, l in enumerate(labels)}
         self.label_to_id_map = {l: i for i, l in enumerate(labels)}
 
-    def document_to_features(self, document: Document,
-                             verbose: bool = False) -> List[InputFeatures]:
+    def document_to_features(
+        self, document: Document, verbose: bool = False
+    ) -> List[InputFeatures]:
         raise NotImplementedError("FeatureConvert must implement 'document_to_features'.")
 
     def documents_to_features(self, documents: List[Document]) -> List[InputFeatures]:
@@ -77,9 +80,7 @@ class FeatureConverter:
         return input_features
 
     @classmethod
-    def from_pretrained(cls,
-                        path: str,
-                        tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
+    def from_pretrained(cls, path: str, tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
         vocab_file = os.path.join(path, "converter_label_vocab.txt")
         converter_config_file = os.path.join(path, "converter_config.json")
         with open(converter_config_file, "r", encoding="utf-8") as config_file:
@@ -104,16 +105,20 @@ class FeatureConverter:
                 if index != label_index:
                     logger.warning(
                         "Saving vocabulary to %s: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!", vocab_file)
+                        " Please check that the vocabulary is not corrupted!",
+                        vocab_file,
+                    )
                     index = label_index
                 writer.write(label + "\n")
                 index += 1
 
-    def _log_input_features(self,
-                            tokens: List[str],
-                            document: Document,
-                            features: InputFeatures,
-                            labels: Optional[Union[str, List[str]]] = None) -> None:
+    def _log_input_features(
+        self,
+        tokens: List[str],
+        document: Document,
+        features: InputFeatures,
+        labels: Optional[Union[str, List[str]]] = None,
+    ) -> None:
         logger.info("*** Example ***")
         logger.info("guid: %s", document.guid)
         logger.info("tokens: %s", " ".join([str(x) for x in tokens]))

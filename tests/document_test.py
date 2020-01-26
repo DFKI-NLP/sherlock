@@ -1,11 +1,11 @@
-import os
 import json
+import os
 
+from sherlock.document import Document, Entity, Relation, Span, Token
 from tests import FIXTURES_ROOT
 
-# import spacy
 
-from sherlock.document import Token, Span, Entity, Relation, Document
+# import spacy
 
 
 def _doc_from_tacred(example):
@@ -24,27 +24,32 @@ def _doc_from_tacred(example):
     start_offset = 0
     for idx, token in enumerate(tokens):
         end_offset = start_offset + len(token)
-        doc.tokens.append(Token(doc=doc,
-                                start=start_offset,
-                                end=end_offset,
-                                lemma=token,
-                                pos=pos[idx],
-                                tag=pos[idx],
-                                dep=dep[idx],
-                                dep_head=dep_head[idx],
-                                ent_type=ner[idx]))
+        doc.tokens.append(
+            Token(
+                doc=doc,
+                start=start_offset,
+                end=end_offset,
+                lemma=token,
+                pos=pos[idx],
+                tag=pos[idx],
+                dep=dep[idx],
+                dep_head=dep_head[idx],
+                ent_type=ner[idx],
+            )
+        )
         # increment offset because of whitespace
         start_offset = end_offset + 1
 
     doc.sents = [Span(doc=doc, start=0, end=len(tokens))]
-    doc.ments = [Span(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
-                 Span(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"])]
-    doc.ents = [Entity(doc=doc, mentions_indices=[0], label=" ".join(tokens[head_start: head_end])),
-                Entity(doc=doc, mentions_indices=[1], label=" ".join(tokens[tail_start: tail_end]))]
-    doc.rels = [Relation(doc=doc,
-                         head_idx=0,
-                         tail_idx=1,
-                         label=example["relation"])]
+    doc.ments = [
+        Span(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
+        Span(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
+    ]
+    doc.ents = [
+        Entity(doc=doc, mentions_indices=[0], label=" ".join(tokens[head_start:head_end])),
+        Entity(doc=doc, mentions_indices=[1], label=" ".join(tokens[tail_start:tail_end])),
+    ]
+    doc.rels = [Relation(doc=doc, head_idx=0, tail_idx=1, label=example["relation"])]
     return doc
 
 
