@@ -21,7 +21,6 @@ import glob
 import logging
 import os
 import random
-from types import SimpleNamespace
 
 import numpy as np
 import torch
@@ -388,7 +387,7 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
 def main():
     parser = argparse.ArgumentParser()
 
-    ## Required parameters
+    # Required parameters
     parser.add_argument(
         "--data_dir",
         default=None,
@@ -425,7 +424,7 @@ def main():
         "--do_predict", action="store_true", help="Whether to run predictions on the test set."
     )
 
-    ## Other parameters
+    # Other parameters
     parser.add_argument(
         "--config_name",
         default="",
@@ -619,7 +618,7 @@ def main():
         assert "TPU_NAME" in os.environ
         assert "XRT_TPU_CONFIG" in os.environ
 
-        import torch_xla
+        import torch_xla  # noqa: F401
         import torch_xla.core.xla_model as xm
 
         args.device = xm.xla_device()
