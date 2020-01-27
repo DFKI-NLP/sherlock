@@ -62,7 +62,7 @@ class Token:
         return dct
 
     @classmethod
-    def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Token":
+    def from_dict(cls, doc: Document, dct: Dict[str, Any]) -> "Token":
         tmp_dct = dict(doc=doc, start=dct["start"], end=dct["end"])
 
         for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type"]:
@@ -72,7 +72,7 @@ class Token:
         return cls(**tmp_dct)
 
     @classmethod
-    def from_spacy(cls, doc: Doc, token: SpacyToken):
+    def from_spacy(cls, doc: Document, token: SpacyToken):
         return cls(
             doc=doc,
             start=token.idx,
@@ -104,7 +104,7 @@ class Span:
         return dct
 
     @classmethod
-    def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Span":
+    def from_dict(cls, doc: Document, dct: Dict[str, Any]) -> "Span":
         tmp_dct = dict(doc=doc, start=dct["start"], end=dct["end"])
         if "label" in dct:
             tmp_dct["label"] = dct["label"]
@@ -125,7 +125,7 @@ class Entity:
         return dict(mentions_indices=self.mentions_indices, label=self.label)
 
     @classmethod
-    def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Entity":
+    def from_dict(cls, doc: Document, dct: Dict[str, Any]) -> "Entity":
         return cls(doc=doc, mentions_indices=dct["mentions_indices"], label=dct["label"])
 
 
@@ -148,7 +148,7 @@ class Relation:
         return dict(head_idx=self.head_idx, tail_idx=self.tail_idx, label=self.label)
 
     @classmethod
-    def from_dict(cls, doc: Doc, dct: Dict[str, Any]) -> "Relation":
+    def from_dict(cls, doc: Document, dct: Dict[str, Any]) -> "Relation":
         return cls(doc=doc, head_idx=dct["head_idx"], tail_idx=dct["tail_idx"], label=dct["label"])
 
 
