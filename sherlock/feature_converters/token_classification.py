@@ -14,8 +14,8 @@ from sherlock.feature_converters.feature_converter import (
 logger = logging.getLogger(__name__)
 
 
-@FeatureConverter.register("ner")
-class NerConverter(FeatureConverter):
+@FeatureConverter.register("token_classification")
+class TokenClassificationConverter(FeatureConverter):
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,
@@ -32,7 +32,7 @@ class NerConverter(FeatureConverter):
 
     @property
     def name(self) -> str:
-        return "ner"
+        return "token_classification"
 
     @property
     def persist_attributes(self) -> List[str]:

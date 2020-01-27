@@ -3,8 +3,8 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import torch
+from registrable import Registrable
 from torch.utils.data import DataLoader, SequentialSampler
-from tqdm import tqdm
 from transformers import (
     BertPreTrainedModel,
     DistilBertPreTrainedModel,
@@ -19,7 +19,10 @@ from sherlock.feature_converters import FeatureConverter
 from sherlock.tasks import NLP_TASK_CLASSES, NLPTask
 
 
-class Predictor:
+class Predictor(Registrable):
+    name = ""
+    task = NLPTask.NONE
+
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,
@@ -37,25 +40,24 @@ class Predictor:
         self.unused_token_type_ids = isinstance(model, (BertPreTrainedModel, XLNetPreTrainedModel))
         self.no_token_type_ids = isinstance(model, (DistilBertPreTrainedModel))
 
-    @classmethod
+    @staticmethod
     def from_pretrained(
-        cls, path: str, task: NLPTask, device: str = "cpu", batch_size: int = 16
+        path: str, name: str, device: str = "cpu", batch_size: int = 16, **kwargs
     ) -> "Predictor":
         args = torch.load(os.path.join(path, "training_args.bin"))
-        _, model_class, tokenizer_class = NLP_TASK_CLASSES[task][args.model_type]
+        predictor_class = Predictor.by_name(name)
+        _, model_class, tokenizer_class = NLP_TASK_CLASSES[predictor_class.task][args.model_type]
         tokenizer = tokenizer_class.from_pretrained(path, do_lower_case=args.do_lower_case)
         model = model_class.from_pretrained(path)
         converter = FeatureConverter.from_pretrained(path, tokenizer)
-        return cls(tokenizer, converter, model, device, batch_size)
+        return predictor_class(tokenizer, converter, model, device, batch_size, **kwargs)
 
     def __call__(self, documents: List[Document]) -> List[Document]:
         return self.predict_documents(documents)
 
     def predict_documents(self, documents: List[Document]) -> List[Document]:
         results = []  # type: List[Document]
-        for i in tqdm(
-            range(0, len(documents), self.batch_size), total=len(documents) // self.batch_size
-        ):
+        for i in range(0, len(documents), self.batch_size):
             batch_documents = documents[i : i + self.batch_size]
             predictions, label_ids, metadata = self._convert_and_predict(batch_documents)
             results.extend(self.combine(documents, predictions, label_ids, metadata))

@@ -39,6 +39,7 @@ class IETask(Enum):
 class NLPTask(Enum):
     SEQUENCE_CLASSIFICATION = "sequence_classification"
     TOKEN_CLASSIFICATION = "token_classification"
+    NONE = "none"
 
 
 NLP_TASK_CLASSES = {

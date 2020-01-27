@@ -3,7 +3,7 @@ import os
 from transformers import BertTokenizer
 
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import NerConverter
+from sherlock.feature_converters import TokenClassificationConverter
 from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
@@ -15,7 +15,9 @@ def test_create_converter():
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(reader.get_additional_tokens(task="ner"))
-    converter = NerConverter(tokenizer=tokenizer, labels=reader.get_labels(IETask.NER))
+    converter = TokenClassificationConverter(
+        tokenizer=tokenizer, labels=reader.get_labels(IETask.NER)
+    )
 
     assert converter.pad_token_label_id == -100
     assert len(converter.label_to_id_map) == len(reader.get_labels(IETask.NER)) == 17
@@ -29,7 +31,7 @@ def test_convert_documents_to_features():
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(reader.get_additional_tokens(IETask.NER))
-    converter = NerConverter(
+    converter = TokenClassificationConverter(
         tokenizer=tokenizer, labels=reader.get_labels(IETask.NER), log_num_input_features=1
     )
 
@@ -95,7 +97,7 @@ def test_convert_documents_to_features_truncate():
     max_length = 10
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(reader.get_additional_tokens(IETask.NER))
-    converter = NerConverter(
+    converter = TokenClassificationConverter(
         tokenizer=tokenizer, labels=reader.get_labels(IETask.NER), max_length=max_length
     )
 
@@ -137,7 +139,7 @@ def test_save_and_load(tmpdir):
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
     )
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    converter = NerConverter(
+    converter = TokenClassificationConverter(
         tokenizer=tokenizer,
         labels=reader.get_labels(IETask.NER),
         max_length=1,
@@ -147,7 +149,7 @@ def test_save_and_load(tmpdir):
     )
     converter.save(tmpdir)
 
-    loaded_converter = NerConverter.from_pretrained(tmpdir, tokenizer)
+    loaded_converter = TokenClassificationConverter.from_pretrained(tmpdir, tokenizer)
     assert loaded_converter.max_length == converter.max_length
     assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
     assert loaded_converter.pad_token_label_id == converter.pad_token_label_id
