@@ -4,6 +4,7 @@ from transformers import BertTokenizer
 
 from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.feature_converters import NerConverter
+from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
 
@@ -14,11 +15,11 @@ def test_create_converter():
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(reader.get_additional_tokens(task="ner"))
-    converter = NerConverter(tokenizer=tokenizer, labels=reader.get_labels(task="ner"))
+    converter = NerConverter(tokenizer=tokenizer, labels=reader.get_labels(IETask.NER))
 
     assert converter.pad_token_label_id == -100
-    assert len(converter.label_to_id_map) == len(reader.get_labels(task="ner")) == 17
-    assert len(converter.id_to_label_map) == len(reader.get_labels(task="ner"))
+    assert len(converter.label_to_id_map) == len(reader.get_labels(IETask.NER)) == 17
+    assert len(converter.id_to_label_map) == len(reader.get_labels(IETask.NER))
 
 
 def test_convert_documents_to_features():
@@ -27,9 +28,9 @@ def test_convert_documents_to_features():
     )
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="ner"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.NER))
     converter = NerConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(task="ner"), log_num_input_features=1
+        tokenizer=tokenizer, labels=reader.get_labels(IETask.NER), log_num_input_features=1
     )
 
     documents = reader.get_documents(split="train")
@@ -93,9 +94,9 @@ def test_convert_documents_to_features_truncate():
 
     max_length = 10
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="ner"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.NER))
     converter = NerConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(task="ner"), max_length=max_length
+        tokenizer=tokenizer, labels=reader.get_labels(IETask.NER), max_length=max_length
     )
 
     documents = reader.get_documents(split="train")
@@ -138,7 +139,7 @@ def test_save_and_load(tmpdir):
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     converter = NerConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(task="ner"),
+        labels=reader.get_labels(IETask.NER),
         max_length=1,
         pad_token_segment_id=2,
         pad_token_label_id=3,
