@@ -30,13 +30,13 @@ setup(
     install_requires=["transformers", "spacy", "seqeval"],
     extras_require=extras,
     entry_points={
-      "console_scripts": []
+        "console_scripts": []
     },
     python_requires='>=3.7.0',
     classifiers=[
-          "Intended Audience :: Science/Research",
-          "License :: OSI Approved :: MIT Software License",
-          "Programming Language :: Python :: 3",
-          "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT Software License",
+        "Programming Language :: Python :: 3",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
 )

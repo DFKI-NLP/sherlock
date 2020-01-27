@@ -2,41 +2,55 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.7.6
+      - image: circleci/python:3.7
 
     working_directory: ~/sherlock
 
     steps:
+      - restore_cache:
+          keys:
+            - source-v1-{{ .Branch }}-{{ .Revision }}
+            - source-v1-{{ .Branch }}-
+            - source-v1-
+
       - checkout
+
+      - save_cache:
+          key: source-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - .git
 
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+            - pip-cache-v1-{{ arch }}-{{ .Branch }}-
+            - pip-cache-v1-{{ arch }}-
+            - pip-cache-v1-
 
       - run:
-          name: install dependencies
+          name: Install sherlock
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            pip install --progress-bar off pytest pylint mypy
-            pip install --progress-bar off .
+            pip install .[torch,testing,quality] --upgrade --upgrade-strategy eager --progress-bar off
+            pip freeze > ~/pip_freeze.txt
+
       - save_cache:
+          key: pip-cache-v1-{{ arch }}-{{ .Branch }}-{{ checksum "~/pip_freeze.txt" }}
           paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
+            - ~/.cache/pip
+      
+      - run:
+          name: Run quality checks
+          command: |
+            . venv/bin/activate
+            make quality
 
       - run:
-          name: run tests
+          name: Run all tests
           command: |
             . venv/bin/activate
-            python -m pytest -v tests/
-      - run:
-          name: run mypy
-          command: |
-            . venv/bin/activate
-            mypy sherlock --ignore-missing-imports
+            make test
+      
       - store_artifacts:
           path: test-reports
           destination: test-reports
