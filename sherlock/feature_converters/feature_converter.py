@@ -4,6 +4,7 @@ import logging
 import os
 from typing import List, Optional, Union
 
+from registrable import Registrable
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
@@ -40,7 +41,7 @@ class InputFeatures(object):
         self.position_ids = position_ids
         self.head_mask = head_mask
         self.labels = labels
-        self.metadata = metadata
+        self.metadata = metadata or {}
 
     def __str__(self) -> str:
         return self.to_dict()
@@ -58,7 +59,7 @@ class InputFeatures(object):
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
 
-class FeatureConverter:
+class FeatureConverter(Registrable):
     def __init__(
         self, tokenizer: PreTrainedTokenizer, labels: List[str], max_length: int = 512
     ) -> None:
@@ -67,6 +68,14 @@ class FeatureConverter:
         self.max_length = max_length
         self.id_to_label_map = {i: l for i, l in enumerate(labels)}
         self.label_to_id_map = {l: i for i, l in enumerate(labels)}
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError("FeatureConvert must implement 'document_to_features'.")
+
+    @property
+    def persist_attributes(self) -> List[str]:
+        raise NotImplementedError("FeatureConvert must implement 'document_to_features'.")
 
     def document_to_features(
         self, document: Document, verbose: bool = False
@@ -79,8 +88,8 @@ class FeatureConverter:
             input_features.extend(self.document_to_features(document))
         return input_features
 
-    @classmethod
-    def from_pretrained(cls, path: str, tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
+    @staticmethod
+    def from_pretrained(path: str, tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
         vocab_file = os.path.join(path, "converter_label_vocab.txt")
         converter_config_file = os.path.join(path, "converter_config.json")
         with open(converter_config_file, "r", encoding="utf-8") as config_file:
@@ -88,10 +97,19 @@ class FeatureConverter:
         with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
-        return cls(**config)
+        converter_class = FeatureConverter.by_name(config.pop("name"))
+        return converter_class(**config)
 
     def save(self, save_directory: str) -> None:
-        raise NotImplementedError("FeatureConverter must implement 'save'.")
+        if not os.path.isdir(save_directory):
+            logger.error("Saving directory ({}) should be a directory".format(save_directory))
+        self.save_vocabulary(save_directory)
+        config = dict(
+            name=self.name, **{attr: getattr(self, attr) for attr in self.persist_attributes}
+        )
+        converter_config_file = os.path.join(save_directory, "converter_config.json")
+        with open(converter_config_file, "w", encoding="utf-8") as writer:
+            writer.write(json.dumps(config, ensure_ascii=False))
 
     def save_vocabulary(self, vocab_path: str) -> None:
         """Save the converters label vocabulary to a directory or file."""

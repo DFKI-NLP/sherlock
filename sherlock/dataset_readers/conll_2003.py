@@ -5,6 +5,7 @@ from seqeval.metrics.sequence_labeling import get_entities
 
 from sherlock.dataset_readers.dataset_reader import DatasetReader
 from sherlock.document import Document, Span, Token
+from sherlock.tasks import IETask
 
 
 class Conll2003DatasetReader(DatasetReader):
@@ -53,15 +54,18 @@ class Conll2003DatasetReader(DatasetReader):
     def get_available_splits(self) -> List[str]:
         return ["train", "dev", "test"]
 
-    def get_available_tasks(self) -> List[str]:
-        return ["ner"]
+    def get_available_tasks(self) -> List[IETask]:
+        return [IETask.NER]
 
     def get_documents(self, split: str) -> List[Document]:
         if split not in self.get_available_splits():
             raise ValueError("Selected split '%s' not available." % split)
         return self._create_documents(self._read_txt(split), split)
 
-    def get_labels(self, task: str) -> List[str]:
+    def get_labels(self, task: IETask) -> List[str]:
+        if task not in self.get_available_tasks():
+            raise ValueError("Selected task '%s' not available." % task)
+
         dataset = self._read_txt(split="train")
 
         unique_labels = set()  # type: Set[str]
@@ -75,7 +79,7 @@ class Conll2003DatasetReader(DatasetReader):
                 labels.append(label)
         return labels
 
-    def get_additional_tokens(self, task: str) -> List[str]:
+    def get_additional_tokens(self, task: IETask) -> List[str]:
         return []
 
     def _create_documents(self, dataset: List[Dict[str, Any]], split: str):

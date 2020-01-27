@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Set
 
 from sherlock.dataset_readers.dataset_reader import DatasetReader
 from sherlock.document import Document, Relation, Span, Token
+from sherlock.tasks import IETask
 
 
 class TacredDatasetReader(DatasetReader):
@@ -41,15 +42,15 @@ class TacredDatasetReader(DatasetReader):
     def get_available_splits(self) -> List[str]:
         return ["train", "dev", "test"]
 
-    def get_available_tasks(self) -> List[str]:
-        return ["ner", "binary_re"]
+    def get_available_tasks(self) -> List[IETask]:
+        return [IETask.NER, IETask.BINARY_RC]
 
     def get_documents(self, split: str) -> List[Document]:
         if split not in self.get_available_splits():
             raise ValueError("Selected split '%s' not available." % split)
         return self._create_documents(self._read_json(self.input_files[split]), split)
 
-    def get_labels(self, task: str) -> List[str]:
+    def get_labels(self, task: IETask) -> List[str]:
         if task not in self.get_available_tasks():
             raise ValueError("Selected task '%s' not available." % task)
 
@@ -57,22 +58,22 @@ class TacredDatasetReader(DatasetReader):
 
         unique_labels = set()  # type: Set[str]
         for example in dataset:
-            if task == "ner":
+            if task == IETask.NER:
                 ner = example["stanford_ner"] + [example["subj_type"], example["obj_type"]]
                 unique_labels.update(ner)
-            elif task == "binary_re":
+            elif task == IETask.BINARY_RC:
                 unique_labels.add(example["relation"])
             else:
                 raise Exception("This should not happen.")
 
         labels = []
-        if task == "ner" and self.tagging_scheme == "bio":
+        if task == IETask.NER and self.tagging_scheme == "bio":
             # Make sure the negative label is always at position 0
             labels = [self.negative_label_ner]
             for label in unique_labels:
                 if label != self.negative_label_ner:
                     labels.extend([prefix + label for prefix in ["B-", "I-"]])
-        elif task == "binary_re":
+        elif task == IETask.BINARY_RC:
             # Make sure the negative label is always at position 0
             labels = [self.negative_label_re]
             for label in unique_labels:
@@ -83,9 +84,9 @@ class TacredDatasetReader(DatasetReader):
 
         return labels
 
-    def get_additional_tokens(self, task: str) -> List[str]:
+    def get_additional_tokens(self, task: IETask) -> List[str]:
         additional_tokens = set()  # type: Set[str]
-        if task == "binary_re":
+        if task == IETask.BINARY_RC:
             dataset = self._read_json(self.input_files["train"])
             additional_tokens = set(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]"])
             for example in dataset:

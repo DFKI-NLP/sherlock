@@ -1,6 +1,7 @@
 from typing import List
 
 from sherlock import Document
+from sherlock.tasks import IETask
 
 
 class DatasetReader:
@@ -10,15 +11,14 @@ class DatasetReader:
     def get_documents(self, split: str) -> List[Document]:
         raise NotImplementedError("DatasetReader must implement 'get_train_documents'")
 
-    def get_labels(self, task: str) -> List[str]:
+    def get_labels(self, task: IETask) -> List[str]:
         raise NotImplementedError("DatasetReader must implement 'get_labels'")
 
-    def get_additional_tokens(self, task: str) -> List[str]:
+    def get_additional_tokens(self, task: IETask) -> List[str]:
         raise NotImplementedError("DatasetReader must implement 'get_additional_tokens'")
 
     def get_available_splits(self) -> List[str]:
         raise NotImplementedError("DatasetReader must implement 'get_available_splits'")
 
-    # TODO: use enum
-    def get_available_tasks(self) -> List[str]:
+    def get_available_tasks(self) -> List[IETask]:
         raise NotImplementedError("DatasetReader must implement 'get_available_tasks'")

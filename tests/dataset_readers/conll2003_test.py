@@ -1,6 +1,7 @@
 import os
 
 from sherlock.dataset_readers import Conll2003DatasetReader
+from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
 
@@ -46,7 +47,7 @@ def test_get_labels():
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="conll.txt"
     )
 
-    labels = reader.get_labels("ner")
+    labels = reader.get_labels(IETask.NER)
     assert list(sorted(labels)) == list(sorted(["O", "I-MISC", "I-PER", "I-ORG", "I-LOC"]))
 
 
@@ -55,4 +56,4 @@ def test_get_additional_tokens():
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="conll.txt"
     )
 
-    assert len(reader.get_additional_tokens("ner")) == 0
+    assert len(reader.get_additional_tokens(IETask.NER)) == 0

@@ -27,7 +27,7 @@ setup(
     url="https://github.com/ChristophAlt/sherlock",
     packages=find_packages(exclude=["*.tests", "*.tests.*",
                                     "tests.*", "tests"]),
-    install_requires=["transformers", "spacy", "seqeval"],
+    install_requires=["transformers", "spacy", "seqeval", "registrable"],
     extras_require=extras,
     entry_points={
         "console_scripts": []

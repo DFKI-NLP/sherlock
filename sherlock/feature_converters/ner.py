@@ -1,6 +1,4 @@
-import json
 import logging
-import os
 from typing import List
 
 from torch.nn import CrossEntropyLoss
@@ -16,6 +14,7 @@ from sherlock.feature_converters.feature_converter import (
 logger = logging.getLogger(__name__)
 
 
+@FeatureConverter.register("ner")
 class NerConverter(FeatureConverter):
     def __init__(
         self,
@@ -31,18 +30,13 @@ class NerConverter(FeatureConverter):
         self.pad_token_label_id = pad_token_label_id
         self.log_num_input_features = log_num_input_features
 
-    def save(self, save_directory: str) -> None:
-        if not os.path.isdir(save_directory):
-            logger.error("Saving directory ({}) should be a directory".format(save_directory))
-        self.save_vocabulary(save_directory)
-        config = dict(
-            max_length=self.max_length,
-            pad_token_segment_id=self.pad_token_segment_id,
-            pad_token_label_id=self.pad_token_label_id,
-        )
-        converter_config_file = os.path.join(save_directory, "converter_config.json")
-        with open(converter_config_file, "w", encoding="utf-8") as writer:
-            writer.write(json.dumps(config, ensure_ascii=False))
+    @property
+    def name(self) -> str:
+        return "ner"
+
+    @property
+    def persist_attributes(self) -> List[str]:
+        return ["max_length", "pad_token_segment_id", "pad_token_label_id"]
 
     def document_to_features(
         self, document: Document, verbose: bool = False

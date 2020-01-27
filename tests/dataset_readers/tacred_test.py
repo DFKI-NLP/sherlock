@@ -1,6 +1,7 @@
 import os
 
 from sherlock.dataset_readers import TacredDatasetReader
+from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
 
@@ -47,7 +48,7 @@ def test_get_labels_ner():
         ]
     ]
 
-    labels = reader.get_labels(task="ner")
+    labels = reader.get_labels(IETask.NER)
     assert sorted(labels) == sorted(expected_labels)
 
 
@@ -56,7 +57,7 @@ def test_get_additional_tokens_ner():
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
     )
 
-    labels = reader.get_additional_tokens(task="ner")
+    labels = reader.get_additional_tokens(IETask.NER)
     assert labels == []
 
 
@@ -65,7 +66,7 @@ def test_get_labels_re():
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
     )
 
-    labels = reader.get_labels(task="binary_re")
+    labels = reader.get_labels(IETask.BINARY_RC)
     assert sorted(labels) == sorted(["no_relation", "per:title", "per:city_of_death"])
 
 
@@ -74,7 +75,7 @@ def test_get_additional_tokens_re():
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
     )
 
-    additional_tokens = reader.get_additional_tokens(task="binary_re")
+    additional_tokens = reader.get_additional_tokens(IETask.BINARY_RC)
 
     assert sorted(additional_tokens) == sorted(
         [

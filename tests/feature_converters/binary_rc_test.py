@@ -4,6 +4,7 @@ from transformers import BertTokenizer
 
 from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.feature_converters import BinaryRcConverter
+from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
 
@@ -13,9 +14,9 @@ def test_convert_documents_to_features():
     )
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="binary_re"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
     converter = BinaryRcConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(task="binary_re"), log_num_input_features=1
+        tokenizer=tokenizer, labels=reader.get_labels(IETask.BINARY_RC), log_num_input_features=1
     )
 
     documents = reader.get_documents(split="train")
@@ -77,9 +78,9 @@ def test_convert_documents_to_features_truncate():
 
     max_length = 10
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="binary_re"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
     converter = BinaryRcConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(task="binary_re"), max_length=max_length
+        tokenizer=tokenizer, labels=reader.get_labels(IETask.BINARY_RC), max_length=max_length
     )
 
     documents = reader.get_documents(split="train")
@@ -116,10 +117,10 @@ def test_entity_handling_mark_entity():
     )
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="binary_re"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(task="binary_re"),
+        labels=reader.get_labels(IETask.BINARY_RC),
         entity_handling="mark_entity",
     )
 
@@ -172,10 +173,10 @@ def test_entity_handling_mark_entity_append_ner():
     )
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="binary_re"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(task="binary_re"),
+        labels=reader.get_labels(IETask.BINARY_RC),
         entity_handling="mark_entity_append_ner",
     )
 
@@ -232,10 +233,10 @@ def test_entity_handling_mask_entity():
     )
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="binary_re"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(task="binary_re"),
+        labels=reader.get_labels(IETask.BINARY_RC),
         entity_handling="mask_entity",
     )
 
@@ -283,10 +284,10 @@ def test_entity_handling_mask_entity_append_text():
     )
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="binary_re"))
+    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(task="binary_re"),
+        labels=reader.get_labels(IETask.BINARY_RC),
         entity_handling="mask_entity_append_text",
     )
 
@@ -340,7 +341,7 @@ def test_save_and_load(tmpdir):
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(task="binary_re"),
+        labels=reader.get_labels(IETask.BINARY_RC),
         max_length=1,
         pad_token_segment_id=2,
         log_num_input_features=3,
