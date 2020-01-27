@@ -71,11 +71,11 @@ class FeatureConverter(Registrable):
 
     @property
     def name(self) -> str:
-        raise NotImplementedError("FeatureConvert must implement 'document_to_features'.")
+        raise NotImplementedError("FeatureConvert must implement 'name'.")
 
     @property
     def persist_attributes(self) -> List[str]:
-        raise NotImplementedError("FeatureConvert must implement 'document_to_features'.")
+        raise NotImplementedError("FeatureConvert must implement 'persist_attributes'.")
 
     def document_to_features(
         self, document: Document, verbose: bool = False

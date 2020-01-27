@@ -53,6 +53,7 @@ from transformers import (
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.feature_converters import NerConverter
+from sherlock.tasks import IETask
 
 
 try:
@@ -644,7 +645,7 @@ def main():
 
     # dataset_reader = Conll2003DatasetReader(data_dir=args.data_dir)
     dataset_reader = TacredDatasetReader(data_dir=args.data_dir, tagging_scheme="bio")
-    labels = dataset_reader.get_labels(task="ner")
+    labels = dataset_reader.get_labels(task=IETask.NER)
     num_labels = len(labels)
 
     # Load pretrained model and tokenizer
@@ -674,7 +675,7 @@ def main():
         log_num_input_features=20,
     )
 
-    additional_tokens = dataset_reader.get_additional_tokens(task="ner")
+    additional_tokens = dataset_reader.get_additional_tokens(task=IETask.NER)
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
         model.resize_token_embeddings(len(tokenizer))

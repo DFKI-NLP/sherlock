@@ -53,8 +53,9 @@ from transformers import (
 
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import BinaryRelationClfConverter
+from sherlock.feature_converters import BinaryRcConverter
 from sherlock.metrics import compute_f1
+from sherlock.tasks import IETask
 
 
 try:
@@ -640,7 +641,7 @@ def main():
     set_seed(args)
 
     dataset_reader = TacredDatasetReader(data_dir=args.data_dir)
-    labels = dataset_reader.get_labels(task="binary_re")
+    labels = dataset_reader.get_labels(task=IETask.BINARY_RC)
     num_labels = len(labels)
 
     # Load pretrained model and tokenizer
@@ -661,7 +662,7 @@ def main():
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
 
-    converter = BinaryRelationClfConverter(
+    converter = BinaryRcConverter(
         tokenizer=tokenizer,
         labels=labels,
         max_length=args.max_seq_length,
@@ -670,7 +671,7 @@ def main():
         log_num_input_features=20,
     )
 
-    additional_tokens = dataset_reader.get_additional_tokens(task="binary_re")
+    additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
         model.resize_token_embeddings(len(tokenizer))
@@ -724,7 +725,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = BinaryRelationClfConverter.from_pretrained(args.output_dir, tokenizer)
+        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer)
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(
