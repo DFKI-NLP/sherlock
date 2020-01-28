@@ -5,13 +5,13 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from sherlock.document import Document, Relation
 from sherlock.feature_converters import FeatureConverter
-from sherlock.predictors.predictor import Predictor
+from sherlock.predictors import Predictor
+from sherlock.predictors.transformers.transformers_predictor import TransformersPredictor
 from sherlock.tasks import NLPTask
 
 
-@Predictor.register("binary_rc")
-class BinaryRcPredictor(Predictor):
-    name = "binary_rc"
+@Predictor.register("transformers_binary_rc")
+class TransformersBinaryRcPredictor(TransformersPredictor):
     task = NLPTask.SEQUENCE_CLASSIFICATION
 
     def __init__(

@@ -5,10 +5,7 @@ from typing import List, Optional, Tuple
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
-from sherlock.feature_converters.feature_converter import (
-    FeatureConverter,
-    InputFeatures,
-)
+from sherlock.feature_converters.feature_converter import FeatureConverter, InputFeatures
 
 
 logger = logging.getLogger(__name__)

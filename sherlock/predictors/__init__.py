@@ -1,6 +1,11 @@
-from .binary_rc import BinaryRcPredictor
 from .predictor import Predictor
-from .token_classification import TokenClassificationPredictor
+from .spacy import SpacyPredictor
+from .transformers import TransformersBinaryRcPredictor, TransformersTokenClfPredictor
 
 
-__all__ = ["Predictor", "BinaryRcPredictor", "TokenClassificationPredictor"]
+__all__ = [
+    "Predictor",
+    "TransformersBinaryRcPredictor",
+    "TransformersTokenClfPredictor",
+    "SpacyPredictor",
+]

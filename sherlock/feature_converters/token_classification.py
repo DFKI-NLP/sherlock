@@ -5,10 +5,7 @@ from torch.nn import CrossEntropyLoss
 from transformers import PreTrainedTokenizer, XLNetTokenizer
 
 from sherlock import Document
-from sherlock.feature_converters.feature_converter import (
-    FeatureConverter,
-    InputFeatures,
-)
+from sherlock.feature_converters.feature_converter import FeatureConverter, InputFeatures
 
 
 logger = logging.getLogger(__name__)
@@ -41,9 +38,9 @@ class TokenClassificationConverter(FeatureConverter):
     def document_to_features(
         self, document: Document, verbose: bool = False
     ) -> List[InputFeatures]:
-        tokens = []  # type: List[str]
-        labels = []  # type: List[str]
-        label_ids = []  # type: List[int]
+        tokens: List[str] = []
+        labels: List[str] = []
+        label_ids: List[int] = []
         for token in document.tokens:
             subword_tokens = self.tokenizer.tokenize(token.text)
             tokens.extend(subword_tokens)
