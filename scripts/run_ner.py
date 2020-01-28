@@ -52,7 +52,7 @@ from transformers import (
 
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import NerConverter
+from sherlock.feature_converters import TokenClassificationConverter
 from sherlock.tasks import IETask
 
 
@@ -666,7 +666,7 @@ def main():
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
 
-    converter = NerConverter(
+    converter = TokenClassificationConverter(
         tokenizer=tokenizer,
         labels=labels,
         max_length=args.max_seq_length,
@@ -729,7 +729,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = NerConverter.from_pretrained(args.output_dir, tokenizer)
+        converter = TokenClassificationConverter.from_pretrained(args.output_dir, tokenizer)
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(
@@ -756,7 +756,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = NerConverter.from_pretrained(args.output_dir, tokenizer)
+        converter = TokenClassificationConverter.from_pretrained(args.output_dir, tokenizer)
         model = model_class.from_pretrained(args.output_dir)
         model.to(args.device)
         result, predictions = evaluate(
