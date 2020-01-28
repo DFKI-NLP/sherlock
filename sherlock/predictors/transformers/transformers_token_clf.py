@@ -4,13 +4,13 @@ import numpy as np
 from seqeval.metrics.sequence_labeling import get_entities
 
 from sherlock.document import Document, Span
-from sherlock.predictors.predictor import Predictor
+from sherlock.predictors import Predictor
+from sherlock.predictors.transformers.transformers_predictor import TransformersPredictor
 from sherlock.tasks import NLPTask
 
 
-@Predictor.register("token_classification")
-class TokenClassificationPredictor(Predictor):
-    name = "token_classification"
+@Predictor.register("transformers_token_clf")
+class TransformersTokenClfPredictor(TransformersPredictor):
     task = NLPTask.TOKEN_CLASSIFICATION
 
     def combine(

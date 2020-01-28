@@ -56,7 +56,7 @@ class TacredDatasetReader(DatasetReader):
 
         dataset = self._read_json(self.input_files["train"])
 
-        unique_labels = set()  # type: Set[str]
+        unique_labels: Set[str] = set()
         for example in dataset:
             if task == IETask.NER:
                 ner = example["stanford_ner"] + [example["subj_type"], example["obj_type"]]
@@ -85,7 +85,7 @@ class TacredDatasetReader(DatasetReader):
         return labels
 
     def get_additional_tokens(self, task: IETask) -> List[str]:
-        additional_tokens = set()  # type: Set[str]
+        additional_tokens: Set[str] = set()
         if task == IETask.BINARY_RC:
             dataset = self._read_json(self.input_files["train"])
             additional_tokens = set(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]"])
