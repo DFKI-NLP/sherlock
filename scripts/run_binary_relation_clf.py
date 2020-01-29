@@ -421,6 +421,11 @@ def main():
     parser.add_argument(
         "--do_predict", action="store_true", help="Whether to run predictions on the test set."
     )
+    parser.add_argument(
+        "--add_inverse_relations",
+        action="store_true",
+        help="Whether to also add inverse relations to the document.",
+    )
 
     # Other parameters
     parser.add_argument(
@@ -640,7 +645,9 @@ def main():
     # Set seed
     set_seed(args)
 
-    dataset_reader = TacredDatasetReader(data_dir=args.data_dir)
+    dataset_reader = TacredDatasetReader(
+        data_dir=args.data_dir, add_inverse_relations=args.add_inverse_relations
+    )
     labels = dataset_reader.get_labels(task=IETask.BINARY_RC)
     num_labels = len(labels)
 

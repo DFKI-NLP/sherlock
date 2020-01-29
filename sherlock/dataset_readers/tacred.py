@@ -7,6 +7,23 @@ from sherlock.document import Document, Relation, Span, Token
 from sherlock.tasks import IETask
 
 
+INVERSE_RELATIONS = {
+    "per:alternate_names": "per:alternate_names",
+    "per:children": "per:parents",
+    "per:parents": "per:children",
+    "per:siblings": "per:siblings",
+    "per:spouse": "per:spouse",
+    "per:other_family": "per:other_family",
+    "org:alternate_names": "org:alternate_names",
+    "org:member_of": "org:members",
+    "org:members": "org:member_of",
+    "org:parents": "org:subsidiaries",
+    "org:subsidiaries": "org:parents",
+    # "org:top_members/employees": "per:employee_of",
+    # "per:employee_of": "org:top_members/employees",
+}
+
+
 class TacredDatasetReader(DatasetReader):
     """Dataset reader for the TACRED data set."""
 
@@ -20,6 +37,7 @@ class TacredDatasetReader(DatasetReader):
         negative_label_re: str = "no_relation",
         convert_ptb_tokens: bool = True,
         tagging_scheme: str = "bio",
+        add_inverse_relations: bool = False,
     ) -> None:
         super().__init__(data_dir)
         if tagging_scheme.lower() not in ["bio"]:
@@ -28,6 +46,7 @@ class TacredDatasetReader(DatasetReader):
         self.negative_label_re = negative_label_re
         self.convert_ptb_tokens = convert_ptb_tokens
         self.tagging_scheme = tagging_scheme.lower()
+        self.add_inverse_relations = add_inverse_relations
         self.input_files = {
             split: os.path.join(data_dir, filename)
             for split, filename in zip(["train", "dev", "test"], [train_file, dev_file, test_file])
@@ -98,7 +117,6 @@ class TacredDatasetReader(DatasetReader):
         return list(additional_tokens)
 
     def _create_documents(self, dataset: List[Dict[str, Any]], split: str):
-        """Creates documents for the dataset."""
         return [self._example_to_document(example) for example in dataset]
 
     def _example_to_document(self, example: Dict[str, Any]) -> Document:
@@ -149,7 +167,18 @@ class TacredDatasetReader(DatasetReader):
             Span(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
             Span(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
         ]
+
         doc.rels = [Relation(doc=doc, head_idx=0, tail_idx=1, label=example["relation"])]
+        if self.add_inverse_relations:
+            doc.rels.append(
+                Relation(
+                    doc=doc,
+                    head_idx=1,
+                    tail_idx=0,
+                    label=INVERSE_RELATIONS.get(example["relation"], self.negative_label_re),
+                )
+            )
+
         return doc
 
     @staticmethod

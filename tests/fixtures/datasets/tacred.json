@@ -344,7 +344,7 @@
     {
         "id": "e7798ae9c0adbcdc81e7",
         "docid": "APW_ENG_20090707.0488",
-        "relation": "per:city_of_death",
+        "relation": "per:children",
         "token": [
             "PARIS",
             "2009-07-07",

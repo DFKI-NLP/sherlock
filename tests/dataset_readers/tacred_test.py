@@ -67,7 +67,7 @@ def test_get_labels_re():
     )
 
     labels = reader.get_labels(IETask.BINARY_RC)
-    assert sorted(labels) == sorted(["no_relation", "per:title", "per:city_of_death"])
+    assert sorted(labels) == sorted(["no_relation", "per:title", "per:children"])
 
 
 def test_get_additional_tokens_re():
@@ -132,3 +132,20 @@ def test_convert_ptb_token():
 
     convert_doc = convert_reader._example_to_document(example)
     assert [t.text for t in convert_doc.tokens] == ["(", ")", "[", "]", "{", "}"]
+
+
+def test_add_inverse_relations():
+    reader = TacredDatasetReader(
+        data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
+        train_file="tacred.json",
+        add_inverse_relations=True,
+    )
+
+    documents = reader.get_documents(split="train")
+    assert len(documents) == 3
+
+    assert all([len(doc.rels) == 2 for doc in documents])
+
+    assert [rel.label for rel in documents[0].rels] == ["per:title", "no_relation"]
+    assert [rel.label for rel in documents[1].rels] == ["no_relation", "no_relation"]
+    assert [rel.label for rel in documents[2].rels] == ["per:children", "per:parents"]
