@@ -72,7 +72,7 @@ class Token:
         return cls(**tmp_dct)
 
     @classmethod
-    def from_spacy(cls, doc: Doc, token: SpacyToken):
+    def from_spacy(cls, doc: "Document", token: SpacyToken):
         return cls(
             doc=doc,
             start=token.idx,
