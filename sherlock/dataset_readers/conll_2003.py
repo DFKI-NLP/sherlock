@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Set
 from seqeval.metrics.sequence_labeling import get_entities
 
 from sherlock.dataset_readers.dataset_reader import DatasetReader
-from sherlock.document import Document, Span, Token
+from sherlock.document import Document, Mention, Span, Token
 from sherlock.tasks import IETask
 
 
@@ -68,7 +68,7 @@ class Conll2003DatasetReader(DatasetReader):
 
         dataset = self._read_txt(split="train")
 
-        unique_labels = set()  # type: Set[str]
+        unique_labels: Set[str] = set()
         for example in dataset:
             unique_labels.update(example["ner"])
 
@@ -105,5 +105,5 @@ class Conll2003DatasetReader(DatasetReader):
 
         for label, start, end in get_entities(ner):
             # end is inclusive, we want exclusive -> +1
-            doc.ments.append(Span(doc=doc, start=start, end=end + 1, label=label))
+            doc.ments.append(Mention(doc=doc, start=start, end=end + 1, label=label))
         return doc

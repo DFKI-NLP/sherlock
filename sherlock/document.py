@@ -86,7 +86,7 @@ class Token:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class Span:
     doc: "Document" = field(compare=False, repr=False)
     start: int
@@ -111,14 +111,33 @@ class Span:
         return cls(**tmp_dct)
 
 
-@dataclass
+@dataclass(frozen=True)
+class Mention:
+    doc: "Document" = field(compare=False, repr=False)
+    start: int
+    end: int
+    label: str
+
+    @classmethod
+    def from_spacy(cls, span):
+        return cls(start=span.start, end=span.end, label=span.label_)
+
+    def to_dict(self):
+        return dict(start=self.start, end=self.end, label=self.label)
+
+    @classmethod
+    def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Mention":
+        return cls(doc=doc, start=dct["start"], end=dct["end"], label=dct["label"])
+
+
+@dataclass(frozen=True)
 class Entity:
     doc: "Document" = field(compare=False, repr=False)
     mentions_indices: List[int]
     label: str
 
     @property
-    def mentions(self) -> List[Span]:
+    def mentions(self) -> List[Mention]:
         return [self.doc.ments[idx] for idx in self.mentions_indices]
 
     def to_dict(self):
@@ -129,7 +148,7 @@ class Entity:
         return cls(doc=doc, mentions_indices=dct["mentions_indices"], label=dct["label"])
 
 
-@dataclass
+@dataclass(frozen=True)
 class Relation:
     doc: "Document" = field(compare=False, repr=False)
     head_idx: int
@@ -137,11 +156,11 @@ class Relation:
     label: str
 
     @property
-    def head(self) -> Span:
+    def head(self) -> Mention:
         return self.doc.ments[self.head_idx]
 
     @property
-    def tail(self) -> Span:
+    def tail(self) -> Mention:
         return self.doc.ments[self.tail_idx]
 
     def to_dict(self):
@@ -158,7 +177,7 @@ class Document:
     text: str
     tokens: List[Token] = field(default_factory=list)
     sents: List[Span] = field(default_factory=list)
-    ments: List[Span] = field(default_factory=list)
+    ments: List[Mention] = field(default_factory=list)
     ents: List[Entity] = field(default_factory=list)
     rels: List[Relation] = field(default_factory=list)
 
@@ -189,7 +208,7 @@ class Document:
         doc = Document(guid=dct["guid"], text=dct["text"])
         doc.tokens = [Token.from_dict(doc, token) for token in dct["tokens"]]
         doc.sents = [Span.from_dict(doc, sent) for sent in dct["sents"]]
-        doc.ments = [Span.from_dict(doc, ment) for ment in dct["ments"]]
+        doc.ments = [Mention.from_dict(doc, ment) for ment in dct["ments"]]
         doc.ents = [Entity.from_dict(doc, ent) for ent in dct["ents"]]
         doc.rels = [Relation.from_dict(doc, rel) for rel in dct["rels"]]
         return doc

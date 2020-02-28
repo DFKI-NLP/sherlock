@@ -3,7 +3,7 @@ import os
 from typing import Any, Dict, List, Set
 
 from sherlock.dataset_readers.dataset_reader import DatasetReader
-from sherlock.document import Document, Relation, Span, Token
+from sherlock.document import Document, Mention, Relation, Span, Token
 from sherlock.tasks import IETask
 
 
@@ -164,8 +164,8 @@ class TacredDatasetReader(DatasetReader):
         #     doc.ments.append(Span(doc=doc, start=start, end=end + 1, label=label))
 
         doc.ments = [
-            Span(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
-            Span(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
+            Mention(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
+            Mention(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
         ]
 
         doc.rels = [Relation(doc=doc, head_idx=0, tail_idx=1, label=example["relation"])]
