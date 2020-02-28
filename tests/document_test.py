@@ -1,7 +1,7 @@
 import json
 import os
 
-from sherlock.document import Document, Entity, Relation, Span, Token
+from sherlock.document import Document, Entity, Mention, Relation, Span, Token
 from tests import FIXTURES_ROOT
 
 
@@ -42,8 +42,8 @@ def _doc_from_tacred(example):
 
     doc.sents = [Span(doc=doc, start=0, end=len(tokens))]
     doc.ments = [
-        Span(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
-        Span(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
+        Mention(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
+        Mention(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
     ]
     doc.ents = [
         Entity(doc=doc, mentions_indices=[0], label=" ".join(tokens[head_start:head_end])),

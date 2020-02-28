@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 import numpy as np
 from seqeval.metrics.sequence_labeling import get_entities
 
-from sherlock.document import Document, Span
+from sherlock.document import Document, Mention
 from sherlock.predictors import Predictor
 from sherlock.predictors.transformers.transformers_predictor import TransformersPredictor
 from sherlock.tasks import NLPTask
@@ -31,6 +31,6 @@ class TransformersTokenClfPredictor(TransformersPredictor):
         for doc, prediction in zip(documents, predictions):
             for label, start, end in get_entities(prediction):
                 # end is inclusive, we want exclusive -> +1
-                doc.ments.append(Span(doc=doc, start=start, end=end + 1, label=label))
+                doc.ments.append(Mention(doc=doc, start=start, end=end + 1, label=label))
 
         return documents

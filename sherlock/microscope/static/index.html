@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
+        <!-- <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/nlplab/brat@v1.3_Crunchy_Frog/style-vis.css"/> -->
+        <link rel="stylesheet" type="text/css" href="/css/style-vis.css"/>
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+        <script type="text/javascript" src="/js/brat/client/lib/head.load.min.js"></script>
+        <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    </head>
+    <body>
+        <div id="app">
+            <nav class="navbar" role="navigation" aria-label="main navigation">
+                <div class="navbar-brand">
+                  <a class="navbar-item" href="https://github.com/ChristophAlt/sherlock">
+                    Sherlock 🕵️
+                  </a>
+              
+                  <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbar">
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                  </a>
+                </div>
+              
+                <div id="navbar" class="navbar-menu">
+                  <div class="navbar-start">
+                    <a class="navbar-item">
+                      Documentation
+                    </a>
+              
+                    <div class="navbar-item has-dropdown is-hoverable">
+                      <a class="navbar-link">
+                        More
+                      </a>
+              
+                      <div class="navbar-dropdown">
+                        <a class="navbar-item">
+                          About
+                        </a>
+                        <a class="navbar-item">
+                          Contact
+                        </a>
+                        <hr class="navbar-divider">
+                        <a class="navbar-item">
+                          Report an issue
+                        </a>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+            </nav>
+
+            <div class="container">
+                <div class="section">
+                    <div class="field">
+                        <label class="label">Input</label>
+                        <div class="control">
+                            <textarea class="textarea" v-model="text"></textarea>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            <button class="button is-link" v-on:click="predict_text">
+                                <span>Analyze</span>
+                                <span class="icon">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="tabs is-boxed">
+                        <ul>
+                            <li v-for="(tabPane, index) in tabPanes" v-bind:class="{ 'is-active': selectedTab == index }" @click="selectedTab = index">
+                                <a>
+                                    <span class="icon is-small"><i v-bind:class=tabPane.icon aria-hidden="true"></i></span>
+                                    <span>{{tabPane.name}}</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div id="tab-content">
+                        <div v-bind:class="{ 'is-active': selectedTab == 0 }">
+                            <div id="brat_div"></div>
+                        </div>
+                        <div v-bind:class="{ 'is-active': selectedTab == 1 }">
+                            <pre>{{ jsonData | pretty }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            var bratLocation = '/js/brat';
+            head.js(
+                // External libraries
+                bratLocation + '/client/lib/jquery.min.js',
+                bratLocation + '/client/lib/jquery.svg.min.js',
+                bratLocation + '/client/lib/jquery.svgdom.min.js',
+                // brat helper modules
+                bratLocation + '/client/src/configuration.js',
+                bratLocation + '/client/src/util.js',
+                bratLocation + '/client/src/annotation_log.js',
+                bratLocation + '/client/lib/webfont.js',
+                // brat modules
+                bratLocation + '/client/src/dispatcher.js',
+                bratLocation + '/client/src/url_monitor.js',
+                bratLocation + '/client/src/visualizer.js'
+            );
+            var webFontURLs = [
+                '/css/fonts/Astloch-Bold.ttf',
+                '/css/fonts/PT_Sans-Caption-Web-Regular.ttf',
+                '/css/fonts/Liberation_Sans-Regular.ttf'
+            ];
+
+            head.ready(function() {
+                new Vue({
+                    el: '#app',
+                    data () {
+                        return {
+                            dispatcher: null,
+                            isLoading: true,
+                            text: "Siemens AG is a company headquartered in Munich and the largest industrial manufacturing company in Europe.",
+                            selectedTab: 0,
+                            collData: {},
+                            docData: {},
+                            jsonData: {},
+                            tabPanes: [
+                                {"name": "Visual", "icon": "fas fa-eye"},
+                                {"name": "JSON", "icon": "fas fa-code"}
+                            ]
+                        }
+                    },
+                    methods: {
+                        renderBrat: function() {
+                            this.dispatcher.post('collectionLoaded', [this.collData]);
+                            this.dispatcher.post('requestRenderData', [this.docData]);
+                        },
+                        predict_text: function() {
+                            this.isLoading = true;
+                            axios
+                            .post("http://localhost:8000/predict?format=json-brat", {"guid": 0, "text": this.text})
+                            .then(response => {
+                                this.collData = response.data.collData;
+                                this.docData = response.data.docData;
+                                this.jsonData = response.data.json;
+                                this.renderBrat();
+                                this.isLoading = false;
+                            });
+                        }
+                    },
+                    mounted () {
+                        this.dispatcher = Util.embed(
+                            // id of the div element where brat should embed the visualisations
+                            'brat_div',
+                            // object containing collection data
+                            this.collData,
+                            // object containing document data
+                            this.docData,
+                            // Array containing locations of the visualisation fonts
+                            webFontURLs
+                        );
+                        this.predict_text()
+                    }
+                })
+            });
+        </script>
+    </body>
+</html>
