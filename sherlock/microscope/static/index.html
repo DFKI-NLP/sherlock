@@ -144,7 +144,7 @@
                         predict_text: function() {
                             this.isLoading = true;
                             axios
-                            .post("http://localhost:8000/predict?format=json-brat", {"guid": 0, "text": this.text})
+                            .post("/predict?format=json-brat", {"guid": 0, "text": this.text})
                             .then(response => {
                                 this.collData = response.data.collData;
                                 this.docData = response.data.docData;
