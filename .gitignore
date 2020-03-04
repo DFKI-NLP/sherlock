@@ -53,3 +53,4 @@ Dockerfile~
 .pytest_cache/
 .coverage
 
+!sherlock/microscope/static/js/brat/client/lib
