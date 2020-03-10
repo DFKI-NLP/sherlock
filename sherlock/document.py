@@ -183,7 +183,7 @@ class Document:
 
     @property
     def is_tokenized(self) -> bool:
-        return len(self.tokens) == 0
+        return len(self.tokens) > 0
 
     @classmethod
     def from_spacy(cls, guid: str, doc: Doc) -> "Document":
