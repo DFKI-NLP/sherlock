@@ -94,8 +94,8 @@ class Span:
     label: Optional[str] = None
 
     @classmethod
-    def from_spacy(cls, span):
-        return cls(start=span.start, end=span.end, label=span.label_)
+    def from_spacy(cls, doc: "Document", span):
+        return cls(doc=doc, start=span.start, end=span.end, label=span.label_)
 
     def to_dict(self):
         dct = dict(start=self.start, end=self.end)
@@ -119,8 +119,8 @@ class Mention:
     label: str
 
     @classmethod
-    def from_spacy(cls, span):
-        return cls(start=span.start, end=span.end, label=span.label_)
+    def from_spacy(cls, doc: "Document",  span):
+        return cls(doc=doc, start=span.start, end=span.end, label=span.label_)
 
     def to_dict(self):
         return dict(start=self.start, end=self.end, label=self.label)
@@ -135,17 +135,18 @@ class Entity:
     doc: "Document" = field(compare=False, repr=False)
     mentions_indices: List[int]
     label: str
+    ref_ids: Dict[str,Any]
 
     @property
     def mentions(self) -> List[Mention]:
         return [self.doc.ments[idx] for idx in self.mentions_indices]
 
     def to_dict(self):
-        return dict(mentions_indices=self.mentions_indices, label=self.label)
+        return dict(mentions_indices=self.mentions_indices, label=self.label, ref_ids = self.ref_ids)
 
     @classmethod
     def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Entity":
-        return cls(doc=doc, mentions_indices=dct["mentions_indices"], label=dct["label"])
+        return cls(doc=doc, mentions_indices=dct["mentions_indices"], label=dct["label"], ref_ids=dct["ref_ids"])
 
 
 @dataclass(frozen=True)
