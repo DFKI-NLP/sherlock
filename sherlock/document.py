@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from spacy.tokens import Doc
 from spacy.tokens import Token as SpacyToken
@@ -172,6 +172,30 @@ class Relation:
         return cls(doc=doc, head_idx=dct["head_idx"], tail_idx=dct["tail_idx"], label=dct["label"])
 
 
+@dataclass(frozen=True)
+class Event:
+    doc: "Document" = field(compare=False, repr=False)
+    event_type: str
+    args: List[Tuple[str, int]]  # tuples of role and mention_idx
+    trigger_idx: Optional[int]
+
+    @classmethod
+    def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Event":
+        if "trigger_idx" in dct:
+            trigger_idx = dct["trigger_idx"]
+        else:
+            trigger_idx = None
+        return cls(doc=doc, event_type=dct["event_type"], args=dct["args"], trigger_idx=trigger_idx)
+
+    def to_dict(self):
+        dct = dict()
+        if self.trigger_idx is not None:
+            dct["trigger_idx"] = self.trigger_idx
+        dct["args"] = self.args
+        dct["event_type"] = self.event_type
+        return dct
+
+
 @dataclass
 class Document:
     guid: str
@@ -181,6 +205,7 @@ class Document:
     ments: List[Mention] = field(default_factory=list)
     ents: List[Entity] = field(default_factory=list)
     rels: List[Relation] = field(default_factory=list)
+    events: List[Event] = field(default_factory=list)
 
     @property
     def is_tokenized(self) -> bool:
@@ -194,7 +219,7 @@ class Document:
         return ret_doc
 
     def to_dict(self) -> Dict[str, Any]:
-        return dict(
+        dct = dict(
             guid=self.guid,
             text=self.text,
             tokens=[token.to_dict() for token in self.tokens],
@@ -203,6 +228,11 @@ class Document:
             ents=[ent.to_dict() for ent in self.ents],
             rels=[rel.to_dict() for rel in self.rels],
         )
+        # This is not optimal since explicitly setting events to an empty list
+        # is different from not setting any events at all
+        if len(self.events) > 0:
+            dct["events"] = [evt.to_dict() for evt in self.events]
+        return dct
 
     @classmethod
     def from_dict(cls, dct: Dict[str, Any]) -> "Document":
@@ -212,4 +242,6 @@ class Document:
         doc.ments = [Mention.from_dict(doc, ment) for ment in dct["ments"]]
         doc.ents = [Entity.from_dict(doc, ent) for ent in dct["ents"]]
         doc.rels = [Relation.from_dict(doc, rel) for rel in dct["rels"]]
+        if "events" in dct:
+            doc.events = [Event.from_dict(doc, evt) for evt in dct["events"]]
         return doc
