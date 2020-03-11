@@ -45,11 +45,6 @@ class EntityFishingPredictor(Predictor):
         return [self.predict_document(d) for d in documents]
 
     def predict_document(self, document: Document) -> Document:
-        if not document.text:
-            raise Exception(f"Document text must be set in doc [{document.to_dict()}]")
-        if not document.guid:
-            raise Exception(f"Document id must be set in doc [{document.to_dict()}]")
-
         params = {'text': document.text, 'language': {'lang': self.lang}}
 
         response = requests.post(url=self.service_url, data=json.dumps(params),
@@ -84,10 +79,9 @@ class EntityFishingPredictor(Predictor):
                 (mention_idx, doc_mention) = EntityFishingPredictor._find_matching_concept(doc, mention_text, start, end)
                 if doc_mention:
                     if wikidata_id not in doc_entities:
-                        doc_entities[wikidata_id] = Entity.from_dict(doc=doc,
-                                                                     dct={"mentions_indices": [mention_idx],
-                                                                          "label": doc_mention.label,
-                                                                          "ref_ids": {"wikidata": wikidata_id}})
+                        doc_entities[wikidata_id] = Entity(doc=doc, mentions_indices=[mention_idx],
+                                                           label=doc_mention.label,
+                                                           ref_ids={"wikidata": wikidata_id})
                     else:
                         doc_entities[wikidata_id].mentions_indices.append(mention_idx)
 
@@ -96,6 +90,8 @@ class EntityFishingPredictor(Predictor):
 
                     # housekeeping. sort mention indices
                     sorted_m_indices = sorted(doc_entities[wikidata_id].mentions_indices)
+                    # must clear/extend since dataclass is Frozen
+                    # (dataclasses.FrozenInstanceError: cannot assign to field 'mentions_indices')
                     doc_entities[wikidata_id].mentions_indices.clear()
                     doc_entities[wikidata_id].mentions_indices.extend(sorted_m_indices)
 
