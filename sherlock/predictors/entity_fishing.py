@@ -47,8 +47,7 @@ class EntityFishingPredictor(Predictor):
     def predict_document(self, document: Document) -> Document:
         params = {'text': document.text, 'language': {'lang': self.lang}}
 
-        response = requests.post(url=self.service_url, data=json.dumps(params),
-                                 headers={"Content-Type":"application/json;charset=utf-8"},
+        response = requests.post(url=self.service_url, json=params,
                                  timeout=(self.connect_timeout_ms, self.read_timeout_ms))
         if response.status_code == 200:
             data = response.json()
