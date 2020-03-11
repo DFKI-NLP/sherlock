@@ -281,27 +281,6 @@
             "label": "TITLE"
         }
     ],
-    "ents": [
-        {
-            "mentions_indices": [
-                0
-            ],
-            "label": "Douglas Flint",
-            "ref_ids": []
-        },
-        {
-            "mentions_indices": [
-                1
-            ],
-            "label": "chairman",
-            "ref_ids": []
-        }
-    ],
-    "rels": [
-        {
-            "head_idx": 0,
-            "tail_idx": 1,
-            "label": "per:title"
-        }
-    ]
+    "ents": [],
+    "rels": []
 }
