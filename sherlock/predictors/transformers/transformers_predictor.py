@@ -43,14 +43,19 @@ class TransformersPredictor(Predictor):
 
     @classmethod
     def from_pretrained(  # type: ignore
-        cls, path: str, device: str = "cpu", batch_size: int = 16, **kwargs
+        cls, path: str, **kwargs
     ) -> "Predictor":
         args = torch.load(os.path.join(path, "training_args.bin"))
         _, model_class, tokenizer_class = NLP_TASK_CLASSES[cls.task][args.model_type]
         tokenizer = tokenizer_class.from_pretrained(path, do_lower_case=args.do_lower_case)
         model = model_class.from_pretrained(path)
         converter = FeatureConverter.from_pretrained(path, tokenizer)
-        return cls(tokenizer, converter, model, device, batch_size, **kwargs)
+        return cls(
+            tokenizer,
+            converter,
+            model,
+            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size"]},
+        )
 
     def predict_documents(self, documents: List[Document]) -> List[Document]:
         results = []  # type: List[Document]
