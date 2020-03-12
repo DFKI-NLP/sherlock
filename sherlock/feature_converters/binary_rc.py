@@ -46,19 +46,33 @@ class BinaryRcConverter(FeatureConverter):
     def document_to_features(
         self, document: Document, verbose: bool = False
     ) -> List[InputFeatures]:
-        mention_combinations = []  # type: List[Tuple[int, int, Optional[str]]]
+        mention_combinations: List[Tuple[int, int, Optional[str], Optional[int]]] = []
         if document.rels:
             for relation in document.rels:
-                mention_combinations.append((relation.head_idx, relation.tail_idx, relation.label))
+                mention_combinations.append(
+                    (relation.head_idx, relation.tail_idx, relation.label, None)
+                )
         else:
-            for head_idx, tail_idx in itertools.product(range(len(document.ments)), repeat=2):
-                if head_idx == tail_idx:
-                    continue
-                mention_combinations.append((head_idx, tail_idx, None))
+            if document.sents:
+                for sent_idx, sent in enumerate(document.sents):
+                    sent_ments = [
+                        idx
+                        for idx, ment in enumerate(document.ments)
+                        if sent.start <= ment.start < sent.end
+                    ]
+                    for head_idx, tail_idx in itertools.product(sent_ments, repeat=2):
+                        if head_idx == tail_idx:
+                            continue
+                        mention_combinations.append((head_idx, tail_idx, None, sent_idx))
+            else:
+                for head_idx, tail_idx in itertools.product(range(len(document.ments)), repeat=2):
+                    if head_idx == tail_idx:
+                        continue
+                    mention_combinations.append((head_idx, tail_idx, None, None))
 
         input_features = []
-        for head_idx, tail_idx, label in mention_combinations:
-            tokens = self._handle_entities(document, head_idx, tail_idx)
+        for head_idx, tail_idx, label, sent_id in mention_combinations:
+            tokens = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
             inputs = self.tokenizer.encode_plus(
                 text=tokens,
@@ -114,7 +128,9 @@ class BinaryRcConverter(FeatureConverter):
 
         return input_features
 
-    def _handle_entities(self, document: Document, head_idx: int, tail_idx: int) -> List[str]:
+    def _handle_entities(
+        self, document: Document, head_idx: int, tail_idx: int, sent_idx: Optional[int] = None
+    ) -> List[str]:
         head_mention = document.ments[head_idx]
         tail_mention = document.ments[tail_idx]
 
@@ -123,9 +139,15 @@ class BinaryRcConverter(FeatureConverter):
 
         sep_token = self.tokenizer.sep_token
 
+        if sent_idx is None:
+            input_tokens = document.tokens
+        else:
+            sent = document.sents[sent_idx]
+            input_tokens = document.tokens[sent.start : sent.end]
+
         tokens = []
         if self.entity_handling.startswith("mark_entity"):
-            for i, token in enumerate(document.tokens):
+            for i, token in enumerate(input_tokens):
                 if i == head_mention.start:
                     tokens.append("[HEAD_START]")
                 if i == tail_mention.start:
@@ -140,7 +162,7 @@ class BinaryRcConverter(FeatureConverter):
         else:
             head_tokens = []
             tail_tokens = []
-            for i, token in enumerate(document.tokens):
+            for i, token in enumerate(input_tokens):
                 if i == head_mention.start:
                     tokens.append(ner_head)
                 if i == tail_mention.start:

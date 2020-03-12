@@ -124,14 +124,16 @@ def _get_pipeline(args: argparse.Namespace) -> List[Predictor]:
     pipeline_config = json.loads(_jsonnet.evaluate_file(args.pipeline_config))
     cuda_device = args.cuda_device if args.cuda_device >= 0 else "cpu"
     pipeline = []
-    for step in pipeline_config["pipeline"]:
-        model_path = step["model_path"]
-        joint_path = os.path.normpath(
-            os.path.join(os.path.dirname(args.pipeline_config), model_path)
-        )
-        if os.path.isdir(joint_path):
-            model_path = joint_path
-        pipeline.append(Predictor.by_name(step["name"]).from_pretrained(model_path, cuda_device))
+    for params in pipeline_config["pipeline"]:
+        # model_path = step["path"]
+        # joint_path = os.path.normpath(
+        #     os.path.join(os.path.dirname(args.pipeline_config), model_path)
+        # )
+        # if os.path.isdir(joint_path):
+        #     model_path = joint_path
+        params["device"] = cuda_device
+        predictor_name = params.pop("name")
+        pipeline.append(Predictor.by_name(predictor_name).from_pretrained(**params))
     return pipeline
 
 

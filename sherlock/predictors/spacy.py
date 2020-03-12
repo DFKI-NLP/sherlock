@@ -6,7 +6,7 @@ from spacy.cli.download import download as spacy_download
 from spacy.language import Language as SpacyModelType
 
 from sherlock import Document
-from sherlock.document import Token
+from sherlock.document import Span, Token
 from sherlock.predictors import Predictor
 
 
@@ -59,37 +59,46 @@ def _remove_spaces(tokens: List[spacy.tokens.Token]) -> List[spacy.tokens.Token]
 class SpacyPredictor(Predictor):
     def __init__(
         self,
-        language: str = "en_core_web_sm",
+        path: str = "en_core_web_sm",
         pos_tags: bool = False,
         parse: bool = False,
         ner: bool = False,
         split_on_spaces: bool = False,
     ) -> None:
-        self.spacy = get_spacy_model(language, pos_tags, parse, ner)
+        self.spacy = get_spacy_model(path, pos_tags, parse, ner)
+        self.has_sentencizer = parse
 
     @classmethod
     def from_pretrained(  # type: ignore
         cls,
-        language: str = "en_core_web_sm",
-        pos_tags: bool = False,
-        parse: bool = False,
-        ner: bool = False,
-        split_on_spaces: bool = False,
+        path: str,
+        **kwargs,
+        # path: str = "en_core_web_sm",
+        # pos_tags: bool = False,
+        # parse: bool = False,
+        # ner: bool = False,
+        # split_on_spaces: bool = False,
     ) -> "Predictor":  # type: ignore
-        return cls(language, pos_tags, parse, ner, split_on_spaces)
+        return cls(
+            path,
+            **{
+                k: v
+                for k, v in kwargs.items()
+                if k in ["pos_tags", "parse", "ner", "split_on_spaces"]
+            },
+        )
 
     def predict_documents(self, documents: List[Document]) -> List[Document]:
-        doc_tokens = [
-            _remove_spaces(tokens)
-            for tokens in self.spacy.pipe([doc.text for doc in documents], n_threads=-1)
-        ]
-
-        for document, tokens in zip(documents, doc_tokens):
-            document.tokens = [Token.from_spacy(document, token) for token in tokens]
+        spacy_docs = self.spacy.pipe([doc.text for doc in documents], n_threads=-1)
+        for doc, spacy_doc in zip(documents, spacy_docs):
+            doc.tokens = [Token.from_spacy(doc, token) for token in spacy_doc]
+            if self.has_sentencizer:
+                doc.sents = [Span(doc, sent.start, sent.end) for sent in spacy_doc.sents]
         return documents
 
     def predict_document(self, document: Document) -> Document:
-        document.tokens = [
-            Token.from_spacy(document, token) for token in _remove_spaces(self.spacy(document.text))
-        ]
+        spacy_doc = self.spacy(document.text)
+        document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
+        if self.has_sentencizer:
+            document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents]
         return document
