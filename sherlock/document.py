@@ -175,8 +175,27 @@ class Relation:
 class Event:
     doc: "Document" = field(compare=False, repr=False)
     event_type: str
-    args: List[Tuple[str, int]]  # tuples of role and mention_idx
+    arg_idxs: List[Tuple[str, int]]  # tuples of role and mention_idx
     trigger_idx: Optional[int]
+
+    @property
+    def args(self) -> List[Tuple[str, Mention]]:
+        return [(role, self.doc.ments[arg_idx]) for role, arg_idx in self.arg_idxs]
+
+    @property
+    def trigger(self) -> Optional[Mention]:
+        if self.trigger_idx is not None:
+            return self.doc.ments[self.trigger_idx]
+        else:
+            return None
+
+    def to_dict(self):
+        dct = dict()
+        if self.trigger_idx is not None:
+            dct["trigger_idx"] = self.trigger_idx
+        dct["arg_idxs"] = self.arg_idxs
+        dct["event_type"] = self.event_type
+        return dct
 
     @classmethod
     def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Event":
@@ -184,15 +203,10 @@ class Event:
             trigger_idx = dct["trigger_idx"]
         else:
             trigger_idx = None
-        return cls(doc=doc, event_type=dct["event_type"], args=dct["args"], trigger_idx=trigger_idx)
-
-    def to_dict(self):
-        dct = dict()
-        if self.trigger_idx is not None:
-            dct["trigger_idx"] = self.trigger_idx
-        dct["args"] = self.args
-        dct["event_type"] = self.event_type
-        return dct
+        return cls(doc=doc,
+                   event_type=dct["event_type"],
+                   arg_idxs=dct["arg_idxs"],
+                   trigger_idx=trigger_idx)
 
 
 @dataclass
