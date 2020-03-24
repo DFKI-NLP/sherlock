@@ -1,8 +1,11 @@
 from typing import Any, Dict, List, Tuple
 
 from sherlock import Document
-from sherlock.microscope.color_palettes import COLOR_PALETTE_ENTITY, COLOR_PALETTE_RELATION, \
-    COLOR_PALETTE_EVENT
+from sherlock.microscope.color_palettes import (
+    COLOR_PALETTE_ENTITY,
+    COLOR_PALETTE_EVENT,
+    COLOR_PALETTE_RELATION,
+)
 
 
 def entity_style(entities: List[Tuple[str, str, List[Tuple[int, int]]]]) -> List[Dict[str, Any]]:
