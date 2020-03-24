@@ -7,7 +7,7 @@
 """
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Optional
 
 import requests
 
@@ -117,7 +117,7 @@ class EntityFishingPredictor(Predictor):
     @staticmethod
     def _find_matching_concept(
         doc: Document, mention_text: str, start: int, end: int
-    ) -> (int, Mention):
+    ) -> Tuple[int, Optional[Mention]]:
         if doc.ments:
             for (idx, m) in enumerate(doc.ments):
                 char_start = doc.tokens[m.start].start
