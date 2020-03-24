@@ -87,8 +87,8 @@ def document_to_brat(doc: Document) -> Dict[str, Any]:
         start_char = doc.tokens[event.trigger.start].start
         end_char = doc.tokens[event.trigger.end - 1].end
         triggers.append((trigger_id, event.event_type, [(start_char, end_char)]))
-        brat_args = [(role, entity_ids[mention]) for role, mention in event.args]
-        events.append((f"E{events_count}", trigger_id, brat_args))
+        event_args = [(role, entity_ids[mention]) for role, mention in event.args]
+        events.append((f"E{events_count}", trigger_id, event_args))
         spans_count += 1
         events_count += 1
 
