@@ -79,13 +79,14 @@ class EntityFishingPredictor(Predictor):
                 mention_text: str = ef_entity["rawName"]
                 start = int(ef_entity["offsetStart"])
                 end = int(ef_entity["offsetEnd"])
-                # nerd_score = float(ef_entity["nerd_score"])
-                # nerd_selection_score = float(ef_entity["nerd_selection_score"])
                 wikidata_id: str = ef_entity["wikidataId"]
                 wikipedia_ext_ref: str = ef_entity[
                     "wikipediaExternalRef"
                 ] if "wikipediaExternalRef" in ef_entity else None
-                # ner_type: str = ef_entity["type"]
+
+                # NOTE: Further useful fields in ef_entity are
+                # "nerd_score", "nerd_selection_score", "type" (nerd_type).
+
                 (mention_idx, doc_mention) = EntityFishingPredictor._find_matching_concept(
                     doc, mention_text, start, end
                 )
