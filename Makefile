@@ -2,7 +2,7 @@
 
 quality:
 	black --check --line-length 100 --target-version py37 tests sherlock scripts
-	isort --check-only --recursive --verbose tests sherlock scripts
+	isort --check-only --recursive tests sherlock scripts
 	mypy sherlock --ignore-missing-imports
 	flake8 tests sherlock scripts
 
