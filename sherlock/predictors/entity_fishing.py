@@ -5,9 +5,8 @@
 @date: 11.03.20
 @author: leonhard.hennig@dfki.de
 """
-import json
 import logging
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
