@@ -17,7 +17,6 @@ import _jsonnet
 from flask import Flask, Response, jsonify, request, send_from_directory
 from flask_cors import CORS
 from gevent.pywsgi import WSGIServer
-
 from sherlock import Document
 from sherlock.microscope.conversion import document_to_brat
 from sherlock.predictors import Predictor

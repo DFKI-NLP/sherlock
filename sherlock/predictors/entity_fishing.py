@@ -5,15 +5,16 @@
 @date: 11.03.20
 @author: leonhard.hennig@dfki.de
 """
+import json
 import logging
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import requests
-import json
 
 from sherlock import Document
-from sherlock.document import Mention, Entity
+from sherlock.document import Entity, Mention
 from sherlock.predictors import Predictor
+
 
 logger = logging.getLogger(__name__)
 
