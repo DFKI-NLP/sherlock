@@ -119,7 +119,7 @@ class Mention:
     label: str
 
     @classmethod
-    def from_spacy(cls, doc: "Document",  span):
+    def from_spacy(cls, doc: "Document", span):
         return cls(doc=doc, start=span.start, end=span.end, label=span.label_)
 
     def to_dict(self):
@@ -135,18 +135,23 @@ class Entity:
     doc: "Document" = field(compare=False, repr=False)
     mentions_indices: List[int]
     label: str
-    ref_ids: Dict[str,Any]
+    ref_ids: Dict[str, Any]
 
     @property
     def mentions(self) -> List[Mention]:
         return [self.doc.ments[idx] for idx in self.mentions_indices]
 
     def to_dict(self):
-        return dict(mentions_indices=self.mentions_indices, label=self.label, ref_ids = self.ref_ids)
+        return dict(mentions_indices=self.mentions_indices, label=self.label, ref_ids=self.ref_ids)
 
     @classmethod
     def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Entity":
-        return cls(doc=doc, mentions_indices=dct["mentions_indices"], label=dct["label"], ref_ids=dct["ref_ids"])
+        return cls(
+            doc=doc,
+            mentions_indices=dct["mentions_indices"],
+            label=dct["label"],
+            ref_ids=dct["ref_ids"],
+        )
 
 
 @dataclass(frozen=True)
@@ -204,10 +209,9 @@ class Event:
             trigger_idx = dct["trigger_idx"]
         else:
             trigger_idx = None
-        return cls(doc=doc,
-                   event_type=dct["event_type"],
-                   arg_idxs=dct["arg_idxs"],
-                   trigger_idx=trigger_idx)
+        return cls(
+            doc=doc, event_type=dct["event_type"], arg_idxs=dct["arg_idxs"], trigger_idx=trigger_idx
+        )
 
 
 @dataclass
