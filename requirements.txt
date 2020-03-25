@@ -1,9 +1,0 @@
-# Project dependencies
-spacy
-transformers
-seqeval
-torch
-registrable
-
-# Testing
-pytest
