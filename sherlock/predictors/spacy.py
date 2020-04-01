@@ -106,5 +106,4 @@ class SpacyPredictor(Predictor):
         document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents]
-        print([t.text for t in document.tokens])
         return document
