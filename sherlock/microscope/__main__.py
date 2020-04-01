@@ -20,7 +20,7 @@ from gevent.pywsgi import WSGIServer
 
 from sherlock import Document
 from sherlock.microscope.conversion import document_to_brat
-from sherlock.predictors import Predictor
+from sherlock.predictors.predictor import Predictor
 
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name

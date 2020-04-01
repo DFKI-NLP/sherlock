@@ -5,7 +5,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from sherlock.document import Document, Relation
 from sherlock.feature_converters import FeatureConverter
-from sherlock.predictors import Predictor
+from sherlock.predictors.predictor import Predictor
 from sherlock.predictors.transformers.transformers_predictor import TransformersPredictor
 from sherlock.tasks import NLPTask
 

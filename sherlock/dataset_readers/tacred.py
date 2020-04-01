@@ -1,6 +1,7 @@
 import json
+import logging
 import os
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 from sherlock.dataset_readers.dataset_reader import DatasetReader
 from sherlock.document import Document, Mention, Relation, Span, Token
@@ -22,6 +23,8 @@ INVERSE_RELATIONS = {
     # "org:top_members/employees": "per:employee_of",
     # "per:employee_of": "org:top_members/employees",
 }
+
+logger = logging.getLogger(__name__)
 
 
 class TacredDatasetReader(DatasetReader):
@@ -116,13 +119,28 @@ class TacredDatasetReader(DatasetReader):
 
         return list(additional_tokens)
 
-    def _create_documents(self, dataset: List[Dict[str, Any]], split: str):
-        return [self._example_to_document(example) for example in dataset]
+    def _create_documents(self, dataset: List[Dict[str, Any]], split: str) -> List[Document]:
+        documents: List[Document] = []
+        for example in dataset:
+            document = self._example_to_document(example)
+            if document is None:
+                logger.info(f"Skipped document with id: {example['id']}")
+                continue
 
-    def _example_to_document(self, example: Dict[str, Any]) -> Document:
+            documents.append(document)
+        return documents
+
+    def _example_to_document(self, example: Dict[str, Any]) -> Optional[Document]:
         tokens = example["token"]
         if self.convert_ptb_tokens:
             tokens = [self._convert_token(token) for token in tokens]
+        text = " ".join(tokens)
+
+        head_start, head_end = example["subj_start"], example["subj_end"] + 1
+        tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
+
+        if head_end > len(tokens) or tail_end > len(tokens):
+            return None
 
         ent_type = example["stanford_ner"]
         if ent_type and self.tagging_scheme == "bio":
@@ -131,10 +149,6 @@ class TacredDatasetReader(DatasetReader):
         pos = example["stanford_pos"]
         dep = example["stanford_deprel"]
         dep_head = example["stanford_head"]
-
-        head_start, head_end = example["subj_start"], example["subj_end"] + 1
-        tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
-        text = " ".join(tokens)
 
         doc = Document(guid=example["id"], text=text)
 

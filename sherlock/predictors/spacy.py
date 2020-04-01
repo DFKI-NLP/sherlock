@@ -7,7 +7,7 @@ from spacy.language import Language as SpacyModelType
 
 from sherlock import Document
 from sherlock.document import Span, Token
-from sherlock.predictors import Predictor
+from sherlock.predictors.predictor import Predictor
 
 
 logger = logging.getLogger(__name__)

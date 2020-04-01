@@ -4,7 +4,7 @@ import numpy as np
 from seqeval.metrics.sequence_labeling import get_entities
 
 from sherlock.document import Document, Mention
-from sherlock.predictors import Predictor
+from sherlock.predictors.predictor import Predictor
 from sherlock.predictors.transformers.transformers_predictor import TransformersPredictor
 from sherlock.tasks import NLPTask
 

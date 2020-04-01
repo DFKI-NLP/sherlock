@@ -15,7 +15,7 @@ from transformers import (
 from sherlock import Document
 from sherlock.dataset import TensorDictDataset
 from sherlock.feature_converters import FeatureConverter
-from sherlock.predictors import Predictor
+from sherlock.predictors.predictor import Predictor
 from sherlock.tasks import NLP_TASK_CLASSES, NLPTask
 
 
