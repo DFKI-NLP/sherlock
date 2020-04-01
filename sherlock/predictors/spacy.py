@@ -1,6 +1,6 @@
 import logging
-from typing import Dict, List, Tuple
 import re
+from typing import Dict, List, Tuple
 
 import spacy
 from spacy.cli.download import download as spacy_download
