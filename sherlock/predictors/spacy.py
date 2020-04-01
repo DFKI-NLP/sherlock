@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, List, Tuple
+import re
 
 import spacy
 from spacy.cli.download import download as spacy_download
@@ -55,6 +56,10 @@ def _remove_spaces(tokens: List[spacy.tokens.Token]) -> List[spacy.tokens.Token]
     return [token for token in tokens if not token.is_space]
 
 
+def _replace_ws(text: str) -> str:
+    return re.sub(r"[\t\n\r\f\v]", "_", text)
+
+
 @Predictor.register("spacy")
 class SpacyPredictor(Predictor):
     def __init__(
@@ -89,7 +94,7 @@ class SpacyPredictor(Predictor):
         )
 
     def predict_documents(self, documents: List[Document]) -> List[Document]:
-        spacy_docs = self.spacy.pipe([doc.text for doc in documents], n_threads=-1)
+        spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
             doc.tokens = [Token.from_spacy(doc, token) for token in spacy_doc]
             if self.has_sentencizer:
@@ -97,8 +102,9 @@ class SpacyPredictor(Predictor):
         return documents
 
     def predict_document(self, document: Document) -> Document:
-        spacy_doc = self.spacy(document.text)
+        spacy_doc = self.spacy(_replace_ws(document.text))
         document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents]
+        print([t.text for t in document.tokens])
         return document
