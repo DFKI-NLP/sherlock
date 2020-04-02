@@ -45,7 +45,7 @@ setup(
     package_data={
         # Include the static files of microscrope into the package.
         # https://setuptools.readthedocs.io/en/latest/setuptools.html#including-data-files
-        "sherlock": ["microscope/static/*"],
+        "sherlock": ["microscope/static/**"],
     },
     entry_points={
         "console_scripts": []
