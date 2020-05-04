@@ -43,6 +43,8 @@ class TokenClassificationConverter(FeatureConverter):
         label_ids: List[int] = []
         for token in document.tokens:
             subword_tokens = self.tokenizer.tokenize(token.text)
+            if len(subword_tokens) == 0:
+                continue  # Skip whitespace tokens
             tokens.extend(subword_tokens)
             label = token.ent_type
             if label is None:
