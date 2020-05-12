@@ -165,7 +165,12 @@
                             // Array containing locations of the visualisation fonts
                             webFontURLs
                         );
-                        this.predict_text()
+                        // Process custom text passed via url parameter
+                        let queryParam = new URL(window.location.href).searchParams.get("q");
+                        if (queryParam != null) {
+                            this.text = queryParam;
+                        }
+                        this.predict_text();
                     }
                 })
             });
