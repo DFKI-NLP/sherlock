@@ -9,6 +9,10 @@
         <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
         <script type="text/javascript" src="/js/brat/client/lib/head.load.min.js"></script>
         <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+        <script src="https://unpkg.com/vue-select@3.0.0"></script>
+        <link rel="stylesheet" href="https://unpkg.com/vue-select@3.0.0/dist/vue-select.css">
+        <!-- Example texts -->
+        <script type="text/javascript" src="/js/example-texts.js"></script>
     </head>
     <body>
         <div id="app">
@@ -57,7 +61,13 @@
             <div class="container">
                 <div class="section">
                     <div class="field">
-                        <label class="label">Input</label>
+                        <label class="label">Select an example</label>
+                        <div class="control">
+                            <v-select :options="exampleTexts" @input="setExampleText"></v-select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">or write custom input</label>
                         <div class="control">
                             <textarea class="textarea" v-model="text"></textarea>
                         </div>
@@ -118,6 +128,7 @@
                 '/css/fonts/Liberation_Sans-Regular.ttf'
             ];
 
+            Vue.component('v-select', VueSelect.VueSelect);
             head.ready(function() {
                 new Vue({
                     el: '#app',
@@ -133,13 +144,20 @@
                             tabPanes: [
                                 {"name": "Visual", "icon": "fas fa-eye"},
                                 {"name": "JSON", "icon": "fas fa-code"}
-                            ]
+                            ],
+                            exampleTexts: MICROSCOPE_EXAMPLE_TEXTS,
                         }
                     },
                     methods: {
                         renderBrat: function() {
                             this.dispatcher.post('collectionLoaded', [this.collData]);
                             this.dispatcher.post('requestRenderData', [this.docData]);
+                        },
+                        setExampleText: function(selectedExample) {
+                            if (selectedExample != null) {
+                                this.text = selectedExample;
+                                this.predict_text();
+                            }
                         },
                         predict_text: function() {
                             this.isLoading = true;
