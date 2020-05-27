@@ -205,10 +205,7 @@ def main(args):
     parser.add_argument("--port", type=int, default=8000, help="port to serve the demo on")
     parser.add_argument("--rest-only", action="store_true")
     parser.add_argument(
-        "--examples-file",
-        type=str,
-        default=None,
-        help="change the default example texts",
+        "--examples-file", type=str, default=None, help="change the default example texts",
     )
 
     args = parser.parse_args(args)
@@ -232,10 +229,7 @@ def main(args):
         examples_file = str(Path(args.examples_file).resolve())
 
     app = make_app(
-        pipeline=pipeline,
-        examples_file=examples_file,
-        static_dir=static_dir,
-        title=args.title,
+        pipeline=pipeline, examples_file=examples_file, static_dir=static_dir, title=args.title,
     )
     CORS(app)
 
