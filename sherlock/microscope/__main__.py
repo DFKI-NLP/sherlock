@@ -14,13 +14,14 @@ import sys
 from typing import List, Optional
 
 import _jsonnet
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory, send_file
 from flask_cors import CORS
 from gevent.pywsgi import WSGIServer
 
 from sherlock import Document
 from sherlock.microscope.conversion import document_to_brat
 from sherlock.predictors.predictor import Predictor
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -43,7 +44,10 @@ class ServerError(Exception):
 
 
 def make_app(
-    pipeline: List[Predictor], static_dir: Optional[str] = None, title: str = "Sherlock Demo",
+    pipeline: List[Predictor],
+    examples_file: str,
+    static_dir: Optional[str] = None,
+    title: str = "Sherlock Demo",
 ) -> Flask:
     """
     Creates a Flask app that serves up the provided pipeline
@@ -71,6 +75,10 @@ def make_app(
             return send_from_directory(static_dir, "index.html")
         else:
             raise ServerError("static_dir not specified", 404)
+
+    @app.route("/examples")
+    def get_examples() -> Response:  # pylint: disable=unused-variable
+        return send_file(examples_file)
 
     @app.route("/predict", methods=["POST", "OPTIONS"])
     def predict() -> Response:  # pylint: disable=unused-variable
@@ -196,6 +204,12 @@ def main(args):
     )
     parser.add_argument("--port", type=int, default=8000, help="port to serve the demo on")
     parser.add_argument("--rest-only", action="store_true")
+    parser.add_argument(
+        "--examples-file",
+        type=str,
+        default=None,
+        help="change the default example texts",
+    )
 
     args = parser.parse_args(args)
 
@@ -212,7 +226,17 @@ def main(args):
         else:
             static_dir = args.static_dir
 
-    app = make_app(pipeline=pipeline, static_dir=static_dir, title=args.title)
+    if args.examples_file is None:
+        examples_file = "static/js/example-texts.js"
+    else:
+        examples_file = str(Path(args.examples_file).resolve())
+
+    app = make_app(
+        pipeline=pipeline,
+        examples_file=examples_file,
+        static_dir=static_dir,
+        title=args.title,
+    )
     CORS(app)
 
     http_server = WSGIServer(("0.0.0.0", args.port), app)

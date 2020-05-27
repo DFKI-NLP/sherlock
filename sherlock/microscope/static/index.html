@@ -12,11 +12,12 @@
         <script src="https://unpkg.com/vue-select@3.0.0"></script>
         <link rel="stylesheet" href="https://unpkg.com/vue-select@3.0.0/dist/vue-select.css">
         <!-- Example texts -->
-        <script type="text/javascript" src="/js/example-texts.js"></script>
+        <script type="text/javascript" src="/examples"></script>
     </head>
     <body>
         <div id="app">
             <nav class="navbar" role="navigation" aria-label="main navigation">
+            <div class="container">
                 <div class="navbar-brand">
                   <a class="navbar-item" href="https://github.com/ChristophAlt/sherlock">
                     Sherlock 🕵️
@@ -56,6 +57,7 @@
 
                   </div>
                 </div>
+            </div>
             </nav>
 
             <div class="container">
@@ -145,7 +147,9 @@
                                 {"name": "Visual", "icon": "fas fa-eye"},
                                 {"name": "JSON", "icon": "fas fa-code"}
                             ],
-                            exampleTexts: MICROSCOPE_EXAMPLE_TEXTS,
+                            exampleTexts: MICROSCOPE_EXAMPLE_TEXTS.map(
+                                text => ({label: text.substring(0, 100) + ' ...', text: text})
+                            ),
                         }
                     },
                     methods: {
@@ -155,7 +159,7 @@
                         },
                         setExampleText: function(selectedExample) {
                             if (selectedExample != null) {
-                                this.text = selectedExample;
+                                this.text = selectedExample.text;
                                 this.predict_text();
                             }
                         },
