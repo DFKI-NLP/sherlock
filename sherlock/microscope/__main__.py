@@ -11,17 +11,17 @@ import logging
 import os
 import pkgutil
 import sys
+from pathlib import Path
 from typing import List, Optional
 
 import _jsonnet
-from flask import Flask, Response, jsonify, request, send_from_directory, send_file
+from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 from flask_cors import CORS
 from gevent.pywsgi import WSGIServer
 
 from sherlock import Document
 from sherlock.microscope.conversion import document_to_brat
 from sherlock.predictors.predictor import Predictor
-from pathlib import Path
 
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
