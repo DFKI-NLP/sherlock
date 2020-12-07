@@ -54,7 +54,7 @@ class TransformersPredictor(Predictor):
             tokenizer,
             converter,
             model,
-            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size"]},
+            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "add_logits"]},
         )
 
     def predict_documents(self, documents: List[Document]) -> List[Document]:
