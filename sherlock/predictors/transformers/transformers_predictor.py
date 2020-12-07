@@ -108,7 +108,6 @@ class TransformersPredictor(Predictor):
                 outputs = self.model(**batch)
 
             logits = outputs[1] if "labels" in batch else outputs[0]
-            logits = torch.nn.functional.softmax(logits, dim=-1)
             if predictions is None:
                 predictions = logits.detach().cpu().numpy()
                 if "labels" in batch:
