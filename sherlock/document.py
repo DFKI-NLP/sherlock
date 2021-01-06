@@ -171,20 +171,20 @@ class Relation:
         return self.doc.ments[self.tail_idx]
 
     def to_dict(self):
-        mention_dict = dict(head_idx=self.head_idx,
-                            tail_idx=self.tail_idx,
-                            label=self.label)
+        mention_dict = dict(head_idx=self.head_idx, tail_idx=self.tail_idx, label=self.label)
         if self.logits is not None:
             mention_dict["logits"] = self.logits
         return mention_dict
 
     @classmethod
     def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Relation":
-        return cls(doc=doc,
-                   head_idx=dct["head_idx"],
-                   tail_idx=dct["tail_idx"],
-                   label=dct["label"],
-                   logits=dct.get("logits", None))
+        return cls(
+            doc=doc,
+            head_idx=dct["head_idx"],
+            tail_idx=dct["tail_idx"],
+            label=dct["label"],
+            logits=dct.get("logits", None),
+        )
 
 
 @dataclass(frozen=True)
