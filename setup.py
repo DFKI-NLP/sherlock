@@ -10,7 +10,7 @@ extras["serving"] = ["pydantic", "uvicorn", "fastapi"]
 extras["all"] = extras["serving"] + ["torch"]
 
 extras["testing"] = ["pytest", "pytest-xdist"]
-extras["quality"] = ["black", "isort>=4.3.21", "flake8", "mypy"]
+extras["quality"] = ["black==19.10b0", "isort>=4.3.21,<5.0.0", "flake8~=3.8", "mypy"]
 extras["docs"] = ["recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme"]
 extras["dev"] = extras["testing"] + extras["quality"] + ["torch"]
 
