@@ -6,22 +6,20 @@ python -m sherlock.microscope.server \
 """
 import argparse
 import importlib
-import json
 import logging
 import os
 import pkgutil
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
-import _jsonnet
 from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 from flask_cors import CORS
 from gevent.pywsgi import WSGIServer
 
 from sherlock import Document
 from sherlock.microscope.conversion import document_to_brat
-from sherlock.predictors.predictor import Predictor
+from sherlock.pipeline import Pipeline
 
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -44,7 +42,7 @@ class ServerError(Exception):
 
 
 def make_app(
-    pipeline: List[Predictor],
+    pipeline: Pipeline,
     examples_file: str,
     static_dir: Optional[str] = None,
     title: str = "Sherlock Demo",
@@ -94,8 +92,7 @@ def make_app(
         logger.info("data: %s", data)
 
         doc = Document(data.get("guid", 0), data["text"])
-        for processor in pipeline:
-            processor.predict_document(doc)
+        pipeline.predict_document(doc)
 
         logger.info("document: %s", doc)
 
@@ -128,23 +125,6 @@ def make_app(
             raise ServerError("static_dir not specified", 404)
 
     return app
-
-
-def _get_pipeline(args: argparse.Namespace) -> List[Predictor]:
-    pipeline_config = json.loads(_jsonnet.evaluate_file(args.pipeline_config))
-    cuda_device = args.cuda_device if args.cuda_device >= 0 else "cpu"
-    pipeline = []
-    for params in pipeline_config["pipeline"]:
-        # model_path = step["path"]
-        # joint_path = os.path.normpath(
-        #     os.path.join(os.path.dirname(args.pipeline_config), model_path)
-        # )
-        # if os.path.isdir(joint_path):
-        #     model_path = joint_path
-        params["device"] = cuda_device
-        predictor_name = params.pop("name")
-        pipeline.append(Predictor.by_name(predictor_name).from_pretrained(**params))
-    return pipeline
 
 
 def _import_submodules(package_name: str) -> None:
@@ -214,7 +194,7 @@ def main(args):
     for package_name in getattr(args, "include_package", ()):
         _import_submodules(package_name)
 
-    pipeline = _get_pipeline(args)
+    pipeline = Pipeline.from_file(args.pipeline_config, args.cuda_device)
 
     static_dir = None
     if not args.rest_only:
