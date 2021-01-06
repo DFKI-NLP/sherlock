@@ -48,14 +48,13 @@ class TransformersBinaryRcPredictor(TransformersPredictor):
                 if self.ignore_no_relation and predicted_label == "no_relation":
                     continue
 
+                named_logits: Optional[Dict[str, float]] = None
                 if self.add_logits:
                     logits = predictions[prediction_idx, :].tolist()
                     named_logits = {
                         self.converter.id_to_label_map[logit_idx]: logit
                         for logit_idx, logit in enumerate(logits)
                     }
-                else:
-                    named_logits = None
 
                 meta = metadata[prediction_idx]
                 doc = docs_by_guid[meta["guid"]]
