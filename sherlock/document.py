@@ -234,6 +234,7 @@ class Document:
     ents: List[Entity] = field(default_factory=list)
     rels: List[Relation] = field(default_factory=list)
     events: List[Event] = field(default_factory=list)
+    provenance: Optional[List[Any]] = None
 
     @property
     def is_tokenized(self) -> bool:
@@ -260,6 +261,8 @@ class Document:
         # is different from not setting any events at all
         if len(self.events) > 0:
             dct["events"] = [evt.to_dict() for evt in self.events]
+        if self.provenance is not None:
+            dct["provenance"] = self.provenance
         return dct
 
     @classmethod
@@ -272,4 +275,6 @@ class Document:
         doc.rels = [Relation.from_dict(doc, rel) for rel in dct["rels"]]
         if "events" in dct:
             doc.events = [Event.from_dict(doc, evt) for evt in dct["events"]]
+        if "provenance" in dct:
+            doc.provenance = dct["provenance"]
         return doc

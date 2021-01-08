@@ -5,23 +5,19 @@ python -m sherlock.microscope.server \
 ```
 """
 import argparse
-import importlib
-import json
 import logging
 import os
-import pkgutil
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
-import _jsonnet
 from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 from flask_cors import CORS
 from gevent.pywsgi import WSGIServer
 
 from sherlock import Document
 from sherlock.microscope.conversion import document_to_brat
-from sherlock.predictors.predictor import Predictor
+from sherlock.pipeline import Pipeline
 
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -44,7 +40,7 @@ class ServerError(Exception):
 
 
 def make_app(
-    pipeline: List[Predictor],
+    pipeline: Pipeline,
     examples_file: str,
     static_dir: Optional[str] = None,
     title: str = "Sherlock Demo",
@@ -94,8 +90,7 @@ def make_app(
         logger.info("data: %s", data)
 
         doc = Document(data.get("guid", 0), data["text"])
-        for processor in pipeline:
-            processor.predict_document(doc)
+        pipeline.predict_document(doc)
 
         logger.info("document: %s", doc)
 
@@ -130,51 +125,6 @@ def make_app(
     return app
 
 
-def _get_pipeline(args: argparse.Namespace) -> List[Predictor]:
-    pipeline_config = json.loads(_jsonnet.evaluate_file(args.pipeline_config))
-    cuda_device = args.cuda_device if args.cuda_device >= 0 else "cpu"
-    pipeline = []
-    for params in pipeline_config["pipeline"]:
-        # model_path = step["path"]
-        # joint_path = os.path.normpath(
-        #     os.path.join(os.path.dirname(args.pipeline_config), model_path)
-        # )
-        # if os.path.isdir(joint_path):
-        #     model_path = joint_path
-        params["device"] = cuda_device
-        predictor_name = params.pop("name")
-        pipeline.append(Predictor.by_name(predictor_name).from_pretrained(**params))
-    return pipeline
-
-
-def _import_submodules(package_name: str) -> None:
-    """
-    Import all submodules under the given package.
-    Primarily useful to have custom classes get loaded and registered.
-    """
-    # Code taken from https://github.com/allenai/allennlp/blob/v0.9.0/allennlp/common/util.py#L308
-    importlib.invalidate_caches()
-
-    # For some reason, python doesn't always add this by default to your path, but you pretty much
-    # always want it when using `--include-package`.  And if it's already there, adding it again at
-    # the end won't hurt anything.
-    sys.path.append(".")
-
-    # Import at top level
-    module = importlib.import_module(package_name)
-    path = getattr(module, "__path__", [])
-    path_string = "" if not path else path[0]
-
-    # walk_packages only finds immediate children, so need to recurse.
-    for module_finder, name, _ in pkgutil.walk_packages(path):
-        # Sometimes when you import third-party libraries that are on your path,
-        # `pkgutil.walk_packages` returns those too, so we need to skip them.
-        if path_string and module_finder.path != path_string:
-            continue
-        subpackage = f"{package_name}.{name}"
-        _import_submodules(subpackage)
-
-
 def main(args):
     parser = argparse.ArgumentParser(description="Serve up a simple model")
 
@@ -182,13 +132,6 @@ def main(args):
         "--pipeline-config", type=str, required=True, help="path to the pipeline configuration file"
     )
     parser.add_argument("--cuda-device", type=int, default=-1, help="id of GPU to use (if any)")
-    parser.add_argument(
-        "--include-package",
-        type=str,
-        action="append",
-        default=[],
-        help="additional packages to include",
-    )
     parser.add_argument(
         "-o",
         "--overrides",
@@ -210,11 +153,7 @@ def main(args):
 
     args = parser.parse_args(args)
 
-    # Import any additional modules needed (to register custom classes)
-    for package_name in getattr(args, "include_package", ()):
-        _import_submodules(package_name)
-
-    pipeline = _get_pipeline(args)
+    pipeline = Pipeline.from_file(args.pipeline_config, args.cuda_device)
 
     static_dir = None
     if not args.rest_only:
