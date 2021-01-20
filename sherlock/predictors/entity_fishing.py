@@ -32,6 +32,7 @@ class EntityFishingPredictor(Predictor):
         lang: str = "en",
         connect_timeout_ms: int = 5000,
         read_timeout_ms: int = 5000,
+        **kwargs,
     ) -> "Predictor":  # type: ignore
         return cls(service_url, lang, connect_timeout_ms, read_timeout_ms)
 
