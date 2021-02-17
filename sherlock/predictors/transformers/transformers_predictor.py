@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -68,15 +68,15 @@ class TransformersPredictor(Predictor):
     def combine(
         self,
         documents: List[Document],
-        predictions: np.array,
-        label_ids: np.array,
+        predictions: Optional[np.ndarray],
+        label_ids: Optional[np.ndarray],
         metadata: List[Dict[str, Any]],
     ) -> List[Document]:
         raise NotImplementedError("Predictor must implement 'combine'.")
 
     def _convert_and_predict(
         self, documents: List[Document]
-    ) -> Tuple[np.array, np.array, List[Dict[str, Any]]]:
+    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], List[Dict[str, Any]]]:
         input_features = self.converter.documents_to_features(documents)
 
         tensor_dicts = []
@@ -94,8 +94,8 @@ class TransformersPredictor(Predictor):
         eval_sampler = SequentialSampler(eval_dataset)
         eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=self.batch_size)
 
-        predictions = None
-        label_ids = None
+        pred_list = []
+        label_ids_list = []
         for batch in eval_dataloader:
             self.model.eval()
             batch = {k: t.to(self.device) for k, t in batch.items()}
@@ -108,12 +108,10 @@ class TransformersPredictor(Predictor):
                 outputs = self.model(**batch)
 
             logits = outputs[1] if "labels" in batch else outputs[0]
-            if predictions is None:
-                predictions = logits.detach().cpu().numpy()
-                if "labels" in batch:
-                    label_ids = batch["labels"].detach().cpu().numpy()
-            else:
-                predictions = np.append(predictions, logits.detach().cpu().numpy(), axis=0)
-                if "labels" in batch:
-                    label_ids = np.append(label_ids, batch["labels"].detach().cpu().numpy(), axis=0)
+            pred_list.append(logits.detach().cpu().numpy())
+            if "labels" in batch:
+                label_ids_list.append(batch["labels"].detach().cpu().numpy())
+
+        predictions = np.concatenate(pred_list, axis=0) if len(pred_list) > 0 else None
+        label_ids = np.concatenate(label_ids_list, axis=0) if len(label_ids_list) > 0 else None
         return predictions, label_ids, [f.metadata for f in input_features]

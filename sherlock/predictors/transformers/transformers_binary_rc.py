@@ -31,8 +31,8 @@ class TransformersBinaryRcPredictor(TransformersPredictor):
     def combine(
         self,
         documents: List[Document],
-        predictions: Optional[np.array],
-        label_ids: Optional[np.array],
+        predictions: Optional[np.ndarray],
+        label_ids: Optional[np.ndarray],
         metadata: List[Dict[str, Any]],
     ) -> List[Document]:
         docs_by_guid = {doc.guid: doc for doc in documents}
