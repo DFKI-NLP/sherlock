@@ -99,6 +99,8 @@ class SpacyPredictor(Predictor):
             doc.tokens = [Token.from_spacy(doc, token) for token in spacy_doc]
             if self.has_sentencizer:
                 doc.sents = [Span(doc, sent.start, sent.end) for sent in spacy_doc.sents]
+            for mention in spacy_doc.ents:
+                doc.ments.append(Span.from_spacy(spacy_doc, mention))
         return documents
 
     def predict_document(self, document: Document) -> Document:
@@ -106,4 +108,6 @@ class SpacyPredictor(Predictor):
         document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents]
+        for mention in spacy_doc.ents:
+            document.ments.append(Span.from_spacy(spacy_doc, mention))
         return document
