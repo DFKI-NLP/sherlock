@@ -46,6 +46,10 @@ class Token:
     def text(self) -> str:
         return self.doc.text[self.start : self.end]
 
+    @property
+    def idx(self) -> int:
+        return self.doc.tokens.index(self)
+
     def whitespace(self) -> bool:
         return False if self.start == 0 else self.doc.text[self.start - 1] == " "
 
@@ -125,6 +129,18 @@ class Mention:
     def to_dict(self):
         return dict(start=self.start, end=self.end, label=self.label)
 
+    @property
+    def idx(self) -> int:
+        return self.doc.ments.index(self)
+
+    @property
+    def tokens(self) -> List[Token]:
+        return self.doc.tokens[self.start : self.end]
+
+    @property
+    def text(self) -> str:
+        return self.doc.text[self.tokens[0].start : self.tokens[-1].end]
+
     @classmethod
     def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Mention":
         return cls(doc=doc, start=dct["start"], end=dct["end"], label=dct["label"])
@@ -136,6 +152,10 @@ class Entity:
     mentions_indices: List[int]
     label: str
     ref_ids: Dict[str, Any]
+
+    @property
+    def idx(self) -> int:
+        return self.doc.ents.index(self)
 
     @property
     def mentions(self) -> List[Mention]:
@@ -161,6 +181,10 @@ class Relation:
     tail_idx: int
     label: str
     logits: Optional[Dict[str, float]] = None
+
+    @property
+    def idx(self) -> int:
+        return self.doc.rels.index(self)
 
     @property
     def head(self) -> Mention:
@@ -193,6 +217,10 @@ class Event:
     event_type: str
     arg_idxs: List[Tuple[str, int]]  # tuples of role and mention_idx
     trigger_idx: Optional[int]
+
+    @property
+    def idx(self) -> int:
+        return self.doc.events.index(self)
 
     @property
     def args(self) -> List[Tuple[str, Mention]]:
