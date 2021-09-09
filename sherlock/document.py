@@ -263,6 +263,8 @@ class Document:
     rels: List[Relation] = field(default_factory=list)
     events: List[Event] = field(default_factory=list)
     provenance: Optional[List[Any]] = None
+    paragraphs: Optional[List[Span]] = None
+    title: Optional[str] = None
 
     @property
     def is_tokenized(self) -> bool:
@@ -291,6 +293,10 @@ class Document:
             dct["events"] = [evt.to_dict() for evt in self.events]
         if self.provenance is not None:
             dct["provenance"] = self.provenance
+        if self.paragraphs is not None:
+            dct["paragraphs"] = [par.to_dict() for par in self.paragraphs]
+        if self.title is not None:
+            dct["title"] = self.title
         return dct
 
     @classmethod
@@ -305,4 +311,8 @@ class Document:
             doc.events = [Event.from_dict(doc, evt) for evt in dct["events"]]
         if "provenance" in dct:
             doc.provenance = dct["provenance"]
+        if "paragraphs" in dct:
+            doc.paragraphs = [Span.from_dict(doc, par) for par in dct["paragraphs"]]
+        if "title" in dct:
+            doc.title = dct["title"]
         return doc
