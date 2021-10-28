@@ -30,6 +30,8 @@ class Token:
         The dependency relation head for this token.
     ent_type : ``str``, optional
         The entity type (i.e., the NER tag) for this token.
+    ent_dist: ``dict``, optional
+        The distribution of entity types predicted by different models for this token.
     """
 
     doc: "Document" = field(compare=False, repr=False)
@@ -41,6 +43,7 @@ class Token:
     dep: Optional[str] = None
     dep_head: Optional[int] = None
     ent_type: Optional[str] = None
+    ent_dist: Optional[dict] = None
 
     @property
     def text(self) -> str:
@@ -59,7 +62,7 @@ class Token:
     def to_dict(self) -> Dict[str, Any]:
         dct = dict(start=self.start, end=self.end)
 
-        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type"]:
+        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type", "ent_dist"]:
             attr_val = getattr(self, attr)
             if attr_val is not None:
                 dct[attr] = attr_val
@@ -69,7 +72,7 @@ class Token:
     def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Token":
         tmp_dct = dict(doc=doc, start=dct["start"], end=dct["end"])
 
-        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type"]:
+        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type", "ent_dist"]:
             attr_val = dct.get(attr)
             if attr_val is not None:
                 tmp_dct[attr] = attr_val
@@ -87,6 +90,7 @@ class Token:
             dep=token.dep_,
             dep_head=token.head.i,
             ent_type=token.ent_type_ or None,
+            ent_dist=None
         )
 
 
