@@ -34,6 +34,7 @@ setup(
         "seqeval",
         "torch",
         "registrable",
+        "tensorboardX",
 
         # Microscope
         "jsonnet",
