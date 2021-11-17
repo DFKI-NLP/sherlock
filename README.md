@@ -79,3 +79,13 @@ For example, to train a RC model on the TACRED dataset:
   --entity_handling mark_entity_append_ner \
   --output_dir <OUTPUT DIR>
 ```
+
+# Installation issues
+
+* Using `python==3.9` the installation of `tokenizers` needed for `transformers`
+  may fails. Install Rust manually:
+  `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+  [link1](https://www.rust-lang.org/tools/install),
+  [link2](https://github.com/huggingface/transformers/issues/2831#issuecomment-600141935)
+* If you are not using `conda>=4.10` the installation of `jsonnet` may fail.
+  Install it manually: `conda install -c conda-forge jsonnet`
