@@ -30,7 +30,7 @@ setup(
     install_requires=[
         # core
         "spacy",
-        "transformers==2.7.0",
+        "transformers==4.12",
         "seqeval",
         "torch",
         "registrable",
