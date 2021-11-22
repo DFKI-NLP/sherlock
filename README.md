@@ -10,12 +10,15 @@
 <p>State-of-the-art Information Extraction
 </h3>
 
+Tested with Python 3.7.
+
 Download and install Sherlock:
 ```bash
 git clone git@github.com:DFKI-NLP/sherlock.git
 cd sherlock
 pip install .
 ```
+
 
 # Named-entity recognition
 
