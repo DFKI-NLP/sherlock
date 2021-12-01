@@ -31,7 +31,7 @@ class Token:
     ent_type : ``str``, optional
         The entity type (i.e., the NER tag) for this token.
     ent_dist: ``dict``, optional
-        The distribution of entity types predicted by different models for this token.
+        The distribution of entity types annotated by different models for this token.
     """
 
     doc: "Document" = field(compare=False, repr=False)
@@ -96,6 +96,25 @@ class Token:
 
 @dataclass(frozen=True)
 class Span:
+    """
+    Representation for an arbitrary Span within a Document.
+
+    A Span is a consecutive sequence of Tokens.
+    Saves parent Document, start index, end index and
+    a label belonging to the Span.
+
+    Attributes
+    ----------
+    doc : ``Document``
+        Document identifier the Span belongs to
+    start : ``int``
+        Start index (inclusive)
+    end : ``int``
+        End index (exclusive)
+    label : ``str``, optional
+        Saves all sentences within text
+    """
+
     doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
@@ -121,6 +140,26 @@ class Span:
 
 @dataclass(frozen=True)
 class Mention:
+    """
+    Representation for Mentions of Entities within a Document.
+
+    A Mention is a small group of consecutive Tokens associated to
+    an Entity or label (e.g. "Rio de Janeiro").
+    Saves parent Document, start index, end index and label where
+    a certain Entity is mentioned.
+
+    Attributes
+    ----------
+    doc : ``Document``
+        Document identifier the Entity belongs to
+    start : ``int``
+        Start index (inclusive)
+    end : ``int``
+        End index (exclusive)
+    label : ``str``
+        Saves all sentences within text
+    """
+
     doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
@@ -152,6 +191,26 @@ class Mention:
 
 @dataclass(frozen=True)
 class Entity:
+    """
+    Representation for an Entity class within a Document.
+
+    An Entity is an abstract Category for (groups of) Tokens,
+    e.g. Verb, Name.
+    Saves the identity of an Entity with its label and references,
+    tracks all Mentions of Entity within the Document.
+
+    Attributes
+    ----------
+    doc : ``Document``
+        Document identifier the Entity belongs to
+    mentions_indices : ``List[int]``
+        List of indices of Mentions of this Entitiy within the Document
+    label : ``str``
+        Label belonging to Entity
+    ref_ids : ``Dict[str, Any]``
+        I have no idea
+    """
+
     doc: "Document" = field(compare=False, repr=False)
     mentions_indices: List[int]
     label: str
@@ -180,6 +239,32 @@ class Entity:
 
 @dataclass(frozen=True)
 class Relation:
+    """
+    Representation for a certain Relation within a Document.
+
+    A Relation is a specific instantiation of a relationship between
+    two Mentioned Entities within the Document.
+    Saves a specific Relation with its label, its head and tail Entity.
+    TODO: this is not consistent with Entity:
+          Entity has an abstract class (Entity) and its mentions
+          separate, whereas every Relation is counted for itself.
+
+    TODO: logits: actual label or only index of transformer label?
+
+    Attributes
+    ----------
+    doc : ``Document``
+        Document identifier the Entity belongs to
+    head_idx : ``int``
+        Index of Mention which is head Entity of the Relation
+    tail_idx : ``int``
+        Index of Mention which is tail Entity of the Relation
+    label : ``str``
+        label belonging to Relation
+    logits : ``Dict[str, float]``, optional
+        Dictionary containing every label and its predicted logit.
+    """
+
     doc: "Document" = field(compare=False, repr=False)
     head_idx: int
     tail_idx: int
@@ -217,6 +302,26 @@ class Relation:
 
 @dataclass(frozen=True)
 class Event:
+    """
+    Representation for Events within a Document.
+
+    Saves a single Event.
+    TODO: this is not consistent with Entity:
+          Entity has an abstract class (Entity) and its mentions
+          separate, whereas every Relation is counted for itself.
+
+    Attributes
+    ----------
+    doc : ``Document``
+        Document identifier the Entity belongs to
+    event_type : ``str``
+        ???
+    arg_idx : ``List[Tuple[str, int]]``
+        ???
+    trigger_idx : ``int``, optional
+        ???
+    """
+
     doc: "Document" = field(compare=False, repr=False)
     event_type: str
     arg_idxs: List[Tuple[str, int]]  # tuples of role and mention_idx
@@ -258,6 +363,44 @@ class Event:
 
 @dataclass
 class Document:
+    """
+    Representation for a Document
+
+    Main holder for raw text, Token,  Entity, Relation, Mention,
+    and Event representations.
+
+    Also saves title, sentences, paragraphs, provenance and
+    tokenization status.
+
+    TODO: provenance?
+
+    Attributes
+    ----------
+    guid : ``str``
+        Document identifier
+    text : ``str``
+        Raw string representation of text in Document.
+    tokens : ``List(Token)``
+        List of all Tokens within text.
+    sents : ``List(Span)``
+        List of all sentences within text as Span.
+    ments : ``List[Mention]``
+        List of all Mentions. Entities and Relations reference this
+        list with indices.
+    ents : ``List[Entity]``
+        List of different Entities in Document. (Not their Mentions!)
+    rels : ``List[Relation]``
+        List of all Relations in Document. (All instances, not types.)
+    events : ``List[Event]``, optional
+        List of Events in Document.
+    provenance : ``List[Any]``, optional
+        ???
+    paragraphs : ``List[Span]``, optional
+        List of Spans representing Paragraphs.
+    title : ``str``, optional
+        Document title.
+    """
+
     guid: str
     text: str
     tokens: List[Token] = field(default_factory=list)

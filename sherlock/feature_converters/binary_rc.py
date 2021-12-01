@@ -46,13 +46,22 @@ class BinaryRcConverter(FeatureConverter):
     def document_to_features(
         self, document: Document, verbose: bool = False
     ) -> List[InputFeatures]:
+        """
+        Converts Document to List of InputFeatures usable to train
+        """
+
+        # List of Tuples head_idx, tail_idx, relation_label, sentence_idx
         mention_combinations: List[Tuple[int, int, Optional[str], Optional[int]]] = []
+
+        # If relations are present, use them
         if document.rels:
             for relation in document.rels:
                 mention_combinations.append(
                     (relation.head_idx, relation.tail_idx, relation.label, None)
                 )
         else:
+            # No relations -> create combinations between Mentions within
+            # sentences
             if document.sents:
                 for sent_idx, sent in enumerate(document.sents):
                     sent_ments = [
@@ -65,6 +74,7 @@ class BinaryRcConverter(FeatureConverter):
                             continue
                         mention_combinations.append((head_idx, tail_idx, None, sent_idx))
             else:
+                # No sentences -> create combinations between all Mentions
                 for head_idx, tail_idx in itertools.product(range(len(document.ments)), repeat=2):
                     if head_idx == tail_idx:
                         continue
@@ -94,7 +104,7 @@ class BinaryRcConverter(FeatureConverter):
             features = InputFeatures(
                 input_ids=inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
-                token_type_ids=inputs["token_type_ids"],
+                token_type_ids=inputs.get("token_type_ids"),
                 labels=label_id,
                 metadata=metadata,
             )
@@ -128,6 +138,8 @@ class BinaryRcConverter(FeatureConverter):
 
         return input_features
 
+    # Tokenize given Document/Sentence, handle head and tail entity
+    # according to entity_handling strategy
     def _handle_entities(
         self, document: Document, head_idx: int, tail_idx: int, sent_idx: Optional[int] = None
     ) -> List[str]:
@@ -139,6 +151,7 @@ class BinaryRcConverter(FeatureConverter):
 
         sep_token = self.tokenizer.sep_token
 
+        # Limit search space for known sentence id
         if sent_idx is None:
             input_tokens = document.tokens
         else:
@@ -160,6 +173,8 @@ class BinaryRcConverter(FeatureConverter):
             if self.entity_handling == "mark_entity_append_ner":
                 tokens = tokens + [sep_token, ner_head, sep_token, ner_tail]
         else:
+            # self.entity_handling.startswith("mask_entity") case
+            # Collect head_tokens, tail_tokens and other tokens separately
             head_tokens = []
             tail_tokens = []
             for i, token in enumerate(input_tokens):
