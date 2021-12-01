@@ -104,7 +104,7 @@ class BinaryRcConverter(FeatureConverter):
             features = InputFeatures(
                 input_ids=inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
-                token_type_ids=inputs["token_type_ids"],
+                token_type_ids=inputs.get("token_type_ids"),
                 labels=label_id,
                 metadata=metadata,
             )

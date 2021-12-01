@@ -146,6 +146,7 @@ class FeatureConverter(Registrable):
         logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
         logger.info("input_ids: %s", " ".join([str(x) for x in features.input_ids]))
         logger.info("attention_mask: %s", " ".join([str(x) for x in features.attention_mask]))
-        logger.info("token_type_ids: %s", " ".join([str(x) for x in features.token_type_ids]))
+        if features.token_type_ids is not None:
+            logger.info("token_type_ids: %s", " ".join([str(x) for x in features.token_type_ids]))
         if labels:
             logger.info("labels: %s (ids = %s)", labels, features.labels)
