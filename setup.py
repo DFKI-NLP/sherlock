@@ -35,6 +35,7 @@ setup(
         "torch",
         "registrable",
         "tensorboardX",
+        "pytest",
 
         # code formatting
         "black",
