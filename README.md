@@ -74,6 +74,13 @@ For example, to train a RC model on the TACRED dataset:
   --output_dir <OUTPUT DIR>
 ```
 
+# Automatic Tests
+
+There are some automatic tests implemented with `pytest`.
+
+Run them in the root directory with `python -m pytest tests/`.
+
+
 # Installation issues
 
 * Using `python==3.9` the installation of `tokenizers` needed for `transformers`
