@@ -244,13 +244,12 @@ class Relation:
 
     A Relation is a specific instantiation of a relationship between
     two Mentioned Entities within the Document.
-    Saves a specific Relation with its label and logits,
-    and its head and tail Entity.
+    Saves a specific Relation with its label, its head and tail Entity.
     TODO: this is not consistent with Entity:
           Entity has an abstract class (Entity) and its mentions
           separate, whereas every Relation is counted for itself.
 
-    TODO: Exact Representation of logits?
+    TODO: logits: actual label or only index of transformer label?
 
     Attributes
     ----------
@@ -263,7 +262,7 @@ class Relation:
     label : ``str``
         label belonging to Relation
     logits : ``Dict[str, float]``, optional
-        I have no idea
+        Dictionary containing every label and its predicted logit.
     """
 
     doc: "Document" = field(compare=False, repr=False)
@@ -307,7 +306,9 @@ class Event:
     Representation for Events within a Document.
 
     Saves a single Event.
-    TODO: What is an event? Arguments?
+    TODO: this is not consistent with Entity:
+          Entity has an abstract class (Entity) and its mentions
+          separate, whereas every Relation is counted for itself.
 
     Attributes
     ----------
