@@ -60,6 +60,10 @@ class InputFeatures(object):
 
 
 class FeatureConverter(Registrable):
+    """
+    Converts Document into Representation usable for Model Training.
+    """
+
     def __init__(
         self, tokenizer: PreTrainedTokenizer, labels: List[str], max_length: int = 512
     ) -> None:
