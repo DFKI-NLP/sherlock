@@ -35,6 +35,7 @@ setup(
         "torch",
         "registrable",
         "tensorboardX",
+        "pytest",
 
         # Microscope
         "jsonnet",
