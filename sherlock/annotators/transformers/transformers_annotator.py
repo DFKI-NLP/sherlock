@@ -15,11 +15,11 @@ from transformers import (
 from sherlock import Document
 from sherlock.dataset import TensorDictDataset
 from sherlock.feature_converters import FeatureConverter
-from sherlock.predictors.predictor import Predictor
+from sherlock.annotators.annotator import Annotator
 from sherlock.tasks import NLP_TASK_CLASSES, NLPTask
 
 
-class TransformersPredictor(Predictor):
+class TransformersAnnotator(Annotator):
     name = ""
     task = NLPTask.NONE
 
@@ -44,7 +44,7 @@ class TransformersPredictor(Predictor):
     @classmethod
     def from_pretrained(  # type: ignore
         cls, path: str, **kwargs
-    ) -> "Predictor":
+    ) -> "Annotator":
         args = torch.load(os.path.join(path, "training_args.bin"))
         _, model_class, tokenizer_class = NLP_TASK_CLASSES[cls.task][args.model_type]
         tokenizer = tokenizer_class.from_pretrained(path, do_lower_case=args.do_lower_case)
@@ -57,24 +57,24 @@ class TransformersPredictor(Predictor):
             **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "add_logits"]},
         )
 
-    def predict_documents(self, documents: List[Document]) -> List[Document]:
+    def annotate_documents(self, documents: List[Document]) -> List[Document]:
         results = []  # type: List[Document]
         for i in range(0, len(documents), self.batch_size):
             batch_documents = documents[i : i + self.batch_size]
-            predictions, label_ids, metadata = self._convert_and_predict(batch_documents)
-            results.extend(self.combine(documents, predictions, label_ids, metadata))
+            annotations, label_ids, metadata = self._convert_and_annotate(batch_documents)
+            results.extend(self.combine(documents, annotations, label_ids, metadata))
         return results
 
     def combine(
         self,
         documents: List[Document],
-        predictions: Optional[np.ndarray],
+        annotations: Optional[np.ndarray],
         label_ids: Optional[np.ndarray],
         metadata: List[Dict[str, Any]],
     ) -> List[Document]:
-        raise NotImplementedError("Predictor must implement 'combine'.")
+        raise NotImplementedError("Annotator must implement 'combine'.")
 
-    def _convert_and_predict(
+    def _convert_and_annotate(
         self, documents: List[Document]
     ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], List[Dict[str, Any]]]:
         input_features = self.converter.documents_to_features(documents)
@@ -94,7 +94,7 @@ class TransformersPredictor(Predictor):
         eval_sampler = SequentialSampler(eval_dataset)
         eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=self.batch_size)
 
-        pred_list = []
+        annot_list = []
         label_ids_list = []
         for batch in eval_dataloader:
             self.model.eval()
@@ -108,10 +108,10 @@ class TransformersPredictor(Predictor):
                 outputs = self.model(**batch)
 
             logits = outputs[1] if "labels" in batch else outputs[0]
-            pred_list.append(logits.detach().cpu().numpy())
+            annot_list.append(logits.detach().cpu().numpy())
             if "labels" in batch:
                 label_ids_list.append(batch["labels"].detach().cpu().numpy())
 
-        predictions = np.concatenate(pred_list, axis=0) if len(pred_list) > 0 else None
+        annotations = np.concatenate(annot_list, axis=0) if len(annot_list) > 0 else None
         label_ids = np.concatenate(label_ids_list, axis=0) if len(label_ids_list) > 0 else None
-        return predictions, label_ids, [f.metadata for f in input_features]
+        return annotations, label_ids, [f.metadata for f in input_features]
