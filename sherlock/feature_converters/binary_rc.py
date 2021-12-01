@@ -47,7 +47,7 @@ class BinaryRcConverter(FeatureConverter):
         self, document: Document, verbose: bool = False
     ) -> List[InputFeatures]:
         """
-
+        Converts Document to List of InputFeatures usable to train
         """
 
         # List of Tuples head_idx, tail_idx, relation_label, sentence_idx
@@ -139,6 +139,7 @@ class BinaryRcConverter(FeatureConverter):
         return input_features
 
     # Tokenize given Document/Sentence, handle head and tail entity
+    # according to entity_handling strategy
     def _handle_entities(
         self, document: Document, head_idx: int, tail_idx: int, sent_idx: Optional[int] = None
     ) -> List[str]:
