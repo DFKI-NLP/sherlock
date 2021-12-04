@@ -57,7 +57,7 @@ class TransformersAnnotator(Annotator):
             **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "add_logits"]},
         )
 
-    def annotate_documents(self, documents: List[Document]) -> List[Document]:
+    def process_documents(self, documents: List[Document]) -> List[Document]:
         results = []  # type: List[Document]
         for i in range(0, len(documents), self.batch_size):
             batch_documents = documents[i : i + self.batch_size]

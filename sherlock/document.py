@@ -31,7 +31,7 @@ class Token:
     ent_type : ``str``, optional
         The entity type (i.e., the NER tag) for this token.
     ent_dist: ``dict``, optional
-        The distribution of entity types annotated by different models for this token.
+        The distribution of entity types processed by different models for this token.
     """
 
     doc: "Document" = field(compare=False, repr=False)

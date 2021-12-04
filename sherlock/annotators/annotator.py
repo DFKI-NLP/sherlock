@@ -16,9 +16,4 @@ class Annotator(Registrable, DocumentProcessor):
     def from_pretrained(cls, path: str, **kwargs) -> "Annotator":
         raise NotImplementedError("Annotator must implement 'from_pretrained'.")
 
-    def annotate_documents(self, documents: List[Document]) -> List[Document]:
-        return NotImplementedError("Annotator must implement 'annotate_documents'.")
-
-    def annotate_document(self, document: Document) -> Document:
-        return self.annotate_documents([document])[0]
 
