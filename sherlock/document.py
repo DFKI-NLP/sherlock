@@ -194,10 +194,10 @@ class Entity:
     """
     Representation for an Entity class within a Document.
 
-    An Entity is an abstract Category for (groups of) Tokens,
-    e.g. Verb, Name.
-    Saves the identity of an Entity with its label and references,
-    tracks all Mentions of Entity within the Document.
+    An entity describes a unique, real-world concept, such as a
+    Person, that is referred to by a group of Mentions within this
+    document as well as a list of reference ids in external knowledge
+    bases, such as Wikidata or Freebase.
 
     Attributes
     ----------
@@ -243,7 +243,7 @@ class Relation:
     Representation for a certain Relation within a Document.
 
     A Relation is a specific instantiation of a relationship between
-    two Mentioned Entities within the Document.
+    a head Mention and a tail Mention within the Document.
     Saves a specific Relation with its label, its head and tail Entity.
     TODO: this is not consistent with Entity:
           Entity has an abstract class (Entity) and its mentions
