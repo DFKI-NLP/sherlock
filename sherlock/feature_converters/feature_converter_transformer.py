@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 from typing import List
 
@@ -11,7 +10,7 @@ from sherlock.feature_converters.feature_converter import FeatureConverter
 class FeatureConverterTransformer(FeatureConverter):
     """
     Abstract class for FeatureConverters to convert Documents into
-    representation usable for model training.
+    representation usable for (huggingface) transformers.
     """
 
     def __init__(
