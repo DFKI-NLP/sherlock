@@ -76,9 +76,9 @@ def make_app(
     def get_examples() -> Response:  # pylint: disable=unused-variable
         return send_file(examples_file)
 
-    @app.route("/predict", methods=["POST", "OPTIONS"])
-    def predict() -> Response:  # pylint: disable=unused-variable
-        """make a prediction using the specified pipeline and return the results"""
+    @app.route("/process", methods=["POST", "OPTIONS"])
+    def process() -> Response:  # pylint: disable=unused-variable
+        """make a annotation using the specified pipeline and return the results"""
         if request.method == "OPTIONS":
             return Response(response="", status=200)
 
@@ -90,7 +90,7 @@ def make_app(
         logger.info("data: %s", data)
 
         doc = Document(data.get("guid", 0), data["text"])
-        pipeline.predict_document(doc)
+        pipeline.process_document(doc)
 
         logger.info("document: %s", doc)
 
@@ -107,9 +107,9 @@ def make_app(
         logger.info("result: %s", result_data)
         return jsonify(result_data)
 
-    # @app.route('/predict_batch', methods=['POST', 'OPTIONS'])
-    # def predict_batch() -> Response:  # pylint: disable=unused-variable
-    #     """make a prediction using the specified model and return the results"""
+    # @app.route('/annotate_batch', methods=['POST', 'OPTIONS'])
+    # def annotate_batch() -> Response:  # pylint: disable=unused-variable
+    #     """make a annotation using the specified model and return the results"""
     #     if request.method == "OPTIONS":
     #         return Response(response="", status=200)
 

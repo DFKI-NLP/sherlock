@@ -5,13 +5,13 @@ from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from sherlock.document import Document, Relation
 from sherlock.feature_converters import FeatureConverter
-from sherlock.predictors.predictor import Predictor
-from sherlock.predictors.transformers.transformers_predictor import TransformersPredictor
+from sherlock.annotators.annotator import Annotator
+from sherlock.annotators.transformers.transformers_annotator import TransformersAnnotator
 from sherlock.tasks import NLPTask
 
 
-@Predictor.register("transformers_binary_rc")
-class TransformersBinaryRcPredictor(TransformersPredictor):
+@Annotator.register("transformers_binary_rc")
+class TransformersBinaryRcAnnotator(TransformersAnnotator):
     task = NLPTask.SEQUENCE_CLASSIFICATION
 
     def __init__(
@@ -31,39 +31,39 @@ class TransformersBinaryRcPredictor(TransformersPredictor):
     def combine(
         self,
         documents: List[Document],
-        predictions: Optional[np.ndarray],
+        annotations: Optional[np.ndarray],
         label_ids: Optional[np.ndarray],
         metadata: List[Dict[str, Any]],
     ) -> List[Document]:
         docs_by_guid = {doc.guid: doc for doc in documents}
 
-        # predictions can be None, e.g. if less than two entity mentions were found in the document
-        if predictions is not None:
-            predicted_label_idxs = np.argmax(predictions, axis=1)
+        # annotations can be None, e.g. if less than two entity mentions were found in the document
+        if annotations is not None:
+            annotated_label_idxs = np.argmax(annotations, axis=1)
 
-            for prediction_idx in range(len(predictions)):
-                predicted_label_idx = predicted_label_idxs[prediction_idx]
-                predicted_label = self.converter.id_to_label_map[predicted_label_idx]
+            for annotation_idx in range(len(annotations)):
+                annotated_label_idx = annotated_label_idxs[annotation_idx]
+                annotated_label = self.converter.id_to_label_map[annotated_label_idx]
 
-                if self.ignore_no_relation and predicted_label == "no_relation":
+                if self.ignore_no_relation and annotated_label == "no_relation":
                     continue
 
                 named_logits: Optional[Dict[str, float]] = None
                 if self.add_logits:
-                    logits = predictions[prediction_idx, :].tolist()
+                    logits = annotations[annotation_idx, :].tolist()
                     named_logits = {
                         self.converter.id_to_label_map[logit_idx]: logit
                         for logit_idx, logit in enumerate(logits)
                     }
 
-                meta = metadata[prediction_idx]
+                meta = metadata[annotation_idx]
                 doc = docs_by_guid[meta["guid"]]
                 doc.rels.append(
                     Relation(
                         doc=doc,
                         head_idx=meta["head_idx"],
                         tail_idx=meta["tail_idx"],
-                        label=predicted_label,
+                        label=annotated_label,
                         logits=named_logits,
                     )
                 )

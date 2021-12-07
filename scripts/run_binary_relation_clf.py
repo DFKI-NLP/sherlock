@@ -177,11 +177,6 @@ def train(args, dataset_reader, converter, model, tokenizer):
         for step, batch in enumerate(epoch_iterator):
             model.train()
             batch = {k: t.to(args.device) for k, t in batch.items()}
-            if args.model_type not in ["bert", "xlnet"]:
-                batch["token_type_ids"] = None
-
-            if args.model_type == "distilbert":
-                del batch["token_type_ids"]
 
             outputs = model(**batch)
             loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
@@ -358,8 +353,9 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         tensor_dict = {
             "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
-            "token_type_ids": torch.tensor(features.token_type_ids, dtype=torch.long),
         }
+        if features.token_type_ids is not None:
+            tensor_dict["token_type_ids"] = torch.tensor(features.token_type_ids, dtype=torch.long)
         if features.labels is not None:
             tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
         tensor_dicts.append(tensor_dict)
