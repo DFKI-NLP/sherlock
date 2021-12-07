@@ -5,8 +5,9 @@ from typing import List, Optional, Tuple
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
-from sherlock.feature_converters.feature_converter import InputFeatures, FeatureConverter
+from sherlock.feature_converters.feature_converter import FeatureConverter
 from sherlock.feature_converters.feature_converter_transformer import FeatureConverterTransformer
+from sherlock.feature_converters.input_features import InputFeatures, InputFeaturesTransformer
 
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class BinaryRcConverter(FeatureConverterTransformer):
         labels: List[str],
         max_length: int = 512,
         entity_handling: str = "mark_entity",
-        pad_token_segment_id: int = 0,
+        pad_token_segment_id: int = 0,      # TODO: Remove? Never used.
         log_num_input_features: int = -1,
     ) -> None:
         super().__init__(tokenizer, labels, max_length)
@@ -102,7 +103,7 @@ class BinaryRcConverter(FeatureConverterTransformer):
 
             label_id = self.label_to_id_map[label] if label is not None else None
 
-            features = InputFeatures(
+            features = InputFeaturesTransformer(
                 input_ids=inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
                 token_type_ids=inputs.get("token_type_ids"),
