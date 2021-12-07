@@ -6,13 +6,14 @@ from transformers import PreTrainedTokenizer, XLNetTokenizer
 
 from sherlock import Document
 from sherlock.feature_converters.feature_converter import FeatureConverter, InputFeatures
+from sherlock.feature_converters.feature_converter_transformer import FeatureConverterTransformer
 
 
 logger = logging.getLogger(__name__)
 
 
 @FeatureConverter.register("token_classification")
-class TokenClassificationConverter(FeatureConverter):
+class TokenClassificationConverter(FeatureConverterTransformer):
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,

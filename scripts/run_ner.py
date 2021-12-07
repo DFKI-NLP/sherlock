@@ -52,7 +52,7 @@ from transformers import (
 
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import TokenClassificationConverter
+from sherlock.feature_converters import FeatureConverter
 from sherlock.tasks import IETask
 
 
@@ -659,6 +659,7 @@ def main():
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
 
+    TokenClassificationConverter = FeatureConverter.by_name("token_classification")
     converter = TokenClassificationConverter(
         tokenizer=tokenizer,
         labels=labels,
