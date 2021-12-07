@@ -124,20 +124,3 @@ class FeatureConverter(Registrable):
                     index = label_index
                 writer.write(label + "\n")
                 index += 1
-
-    def _log_input_features(
-        self,
-        tokens: List[str],
-        document: Document,
-        features: InputFeatures,
-        labels: Optional[Union[str, List[str]]] = None,
-    ) -> None:
-        logger.info("*** Example ***")
-        logger.info("guid: %s", document.guid)
-        logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
-        logger.info("input_ids: %s", " ".join([str(x) for x in features.input_ids]))
-        logger.info("attention_mask: %s", " ".join([str(x) for x in features.attention_mask]))
-        if features.token_type_ids is not None:
-            logger.info("token_type_ids: %s", " ".join([str(x) for x in features.token_type_ids]))
-        if labels:
-            logger.info("labels: %s (ids = %s)", labels, features.labels)
