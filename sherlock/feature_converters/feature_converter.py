@@ -31,6 +31,7 @@ class FeatureConverter(Registrable):
 
     @property
     def persist_attributes(self) -> List[str]:
+        """All attributes that are saved alongside FeatureConverter"""
         raise NotImplementedError("FeatureConvert must implement 'persist_attributes'.")
 
     def document_to_features(
@@ -61,6 +62,7 @@ class FeatureConverter(Registrable):
 
     def save_vocabulary(self, vocab_path: str) -> None:
         """Save the converters label vocabulary to a directory or file."""
+        # TODO: maybe rename this to save_label_vocabulary
         index = 0
         if os.path.isdir(vocab_path):
             vocab_file = os.path.join(vocab_path, "converter_label_vocab.txt")

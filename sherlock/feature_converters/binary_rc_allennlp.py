@@ -20,7 +20,7 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
     def __init__(
         self,
         tokenizer: Tokenizer,
-        tokenIndexer: TokenIndexer,
+        token_indexer: TokenIndexer,
         vocab: Vocabulary,
         labels: List[str],
         max_length: int=512,
@@ -28,7 +28,7 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
         log_num_input_features: int=-1,
         sep_token: str=None,
     ) -> None:
-        super().__init__(tokenizer, tokenIndexer, vocab, labels, max_length)
+        super().__init__(tokenizer, token_indexer, vocab, labels, max_length)
         if entity_handling not in [
             "mark_entity",
             "mark_entity_append_ner",
@@ -68,7 +68,7 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
 
     @property
     def name(self) -> str:
-        return "binary_rc"
+        return "binary_rc_allennlp"
 
     @property
     def persist_attributes(self) -> List[str]:
@@ -121,7 +121,7 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
                 tail_idx=tail_idx,
             )
 
-            input_ids = self.tokenIndexer.tokens_to_indices(tokens, self.vocab)
+            input_ids = self.token_indexer.tokens_to_indices(tokens, self.vocab)
             label_id = self.label_to_id_map[label] if label is not None else None
 
             features = InputFeaturesAllennlp(
