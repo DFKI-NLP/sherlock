@@ -5,14 +5,15 @@ from typing import List, Optional, Tuple
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
-from sherlock.feature_converters.feature_converter import FeatureConverter, InputFeatures
+from sherlock.feature_converters.feature_converter import InputFeatures, FeatureConverter
+from sherlock.feature_converters.feature_converter_transformer import FeatureConverterTransformer
 
 
 logger = logging.getLogger(__name__)
 
 
 @FeatureConverter.register("binary_rc")
-class BinaryRcConverter(FeatureConverter):
+class BinaryRcConverter(FeatureConverterTransformer):
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,

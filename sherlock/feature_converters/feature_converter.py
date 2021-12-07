@@ -65,9 +65,8 @@ class FeatureConverter(Registrable):
     """
 
     def __init__(
-        self, tokenizer: PreTrainedTokenizer, labels: List[str], max_length: int = 512
+        self, labels: List[str], max_length: int = 512
     ) -> None:
-        self.tokenizer = tokenizer
         self.labels = labels
         self.max_length = max_length
         self.id_to_label_map = {i: l for i, l in enumerate(labels)}
@@ -93,16 +92,8 @@ class FeatureConverter(Registrable):
         return input_features
 
     @staticmethod
-    def from_pretrained(path: str, tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
-        vocab_file = os.path.join(path, "converter_label_vocab.txt")
-        converter_config_file = os.path.join(path, "converter_config.json")
-        with open(converter_config_file, "r", encoding="utf-8") as config_file:
-            config = json.load(config_file)
-        with open(vocab_file, "r", encoding="utf-8") as reader:
-            config["labels"] = [line.strip() for line in reader.readlines()]
-        config["tokenizer"] = tokenizer
-        converter_class = FeatureConverter.by_name(config.pop("name"))
-        return converter_class(**config)
+    def from_pretrained(path: str, *args, **kwargs) -> "FeatureConverter":
+        return NotImplementedError("FeatureConverter must implement 'from_pretrained'.")
 
     def save(self, save_directory: str) -> None:
         if not os.path.isdir(save_directory):

@@ -53,7 +53,7 @@ from transformers import (
 
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import BinaryRcConverter
+from sherlock.feature_converters import FeatureConverter
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
 
@@ -656,6 +656,8 @@ def main():
     model = model_class.from_pretrained(
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
+
+    BinaryRcConverter = FeatureConverter.by_name("binary_rc")
 
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
