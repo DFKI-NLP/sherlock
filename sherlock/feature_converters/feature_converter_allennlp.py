@@ -3,6 +3,8 @@ import os
 from typing import List
 
 from allennlp.data.tokenizers import Tokenizer
+from allennlp.data.token_indexers import TokenIndexer
+from allennlp.data.vocabulary import Vocabulary
 
 from sherlock.feature_converters.feature_converter import FeatureConverter
 
@@ -16,11 +18,15 @@ class FeatureConverterAllennlp(FeatureConverter):
     def __init__(
         self,
         tokenizer: Tokenizer,
+        tokenIndexer: TokenIndexer,
+        vocab: Vocabulary,
         labels: List[str],
         max_length: int = 512,
     ) -> None:
         super().__init__(labels, max_length)
         self.tokenizer = tokenizer
+        self.tokenIndexer = tokenIndexer
+        self.vocab = vocab
 
     @staticmethod
     def from_pretrained(path: str, tokenizer: Tokenizer) -> "FeatureConverter":

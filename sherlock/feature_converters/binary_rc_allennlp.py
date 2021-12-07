@@ -4,6 +4,8 @@ from typing import List, Optional, Tuple
 
 from allennlp.data.tokenizers import Token
 from allennlp.data.tokenizers import Tokenizer, PreTrainedTransformerTokenizer
+from allennlp.data.token_indexers import TokenIndexer
+from allennlp.data.vocabulary import Vocabulary
 from sherlock.feature_converters.feature_converter import InputFeatures, FeatureConverter
 from sherlock.feature_converters.feature_converter_allennlp import FeatureConverterAllennlp
 
@@ -18,13 +20,15 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
     def __init__(
         self,
         tokenizer: Tokenizer,
+        tokenIndexer: TokenIndexer,
+        vocab: Vocabulary,
         labels: List[str],
         max_length: int=512,
         entity_handling: str="mark_entity",
         log_num_input_features: int=-1,
         sep_token: str=None,
     ) -> None:
-        super().__init__(tokenizer, labels, max_length)
+        super().__init__(tokenizer, tokenIndexer, vocab, labels, max_length)
         if entity_handling not in [
             "mark_entity",
             "mark_entity_append_ner",
@@ -48,7 +52,7 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
                 self.sep_token = sep_token
         else:
             if sep_token is None:
-                # Option 1: people need to give the sep_token:
+                # Option 1: people need to give the sep_token: TODO: decide
                 return NotImplementedError(
                     "FeatureConverterAllennlp for non-transformers must specify sep_token")
                 # Option 2: set sep_token for people
@@ -117,10 +121,12 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
                 tail_idx=tail_idx,
             )
 
+            input_ids = self.tokenIndexer.tokens_to_indices(tokens, self.vocab)
             label_id = self.label_to_id_map[label] if label is not None else None
 
             features = InputFeaturesAllennlp(
                 tokens=tokens,
+                input_ids=input_ids,
                 labels=label_id,
                 metadata=metadata,
             )
