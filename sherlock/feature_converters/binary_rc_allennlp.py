@@ -2,6 +2,8 @@ import itertools
 import logging
 from typing import List, Optional, Tuple
 
+from allennlp.data.fields import TextField, LabelField
+from allennlp.data.instance import Instance
 from allennlp.data.tokenizers import Token
 from allennlp.data.tokenizers import Tokenizer, PreTrainedTransformerTokenizer
 from allennlp.data.token_indexers import TokenIndexer
@@ -115,19 +117,23 @@ class BinaryRcConverterAllennlp(FeatureConverterAllennlp):
         for head_idx, tail_idx, label, sent_id in mention_combinations:
             tokens = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
+            text_field = TextField(tokens, self.token_indexer)
+            fields = {"text": text_field}
+            if label is not None:
+                label_id = self.label_to_id_map[label]
+                label_field = LabelField(label)
+                fields["label"] = label_field
+            instance = Instance(fields)
+            instance.index_fields(self.vocab)
+
             metadata = dict(
                 guid=document.guid,
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )
 
-            input_ids = self.token_indexer.tokens_to_indices(tokens, self.vocab)
-            label_id = self.label_to_id_map[label] if label is not None else None
-
             features = InputFeaturesAllennlp(
-                tokens=tokens,
-                input_ids=input_ids,
-                labels=label_id,
+                instance=instance,
                 metadata=metadata,
             )
             input_features.append(features)

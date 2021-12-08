@@ -1,9 +1,8 @@
 import copy
 import json
-from typing import List, Dict, Union
-from allennlp.data.token_indexers.token_indexer import IndexedTokenList
+from typing import List, Dict, Union, Optional
 
-from allennlp.data.tokenizers.token_class import Token
+from allennlp.data.instance import Instance
 
 
 class InputFeatures(object):
@@ -13,13 +12,9 @@ class InputFeatures(object):
 
     def __init__(
         self,
-        input_ids: Union[IndexedTokenList,any],
-        labels: Union[int, List[int]]=None,
-        metadata: Dict[str, any]=None,
+        metadata: Optional[Dict[str, any]]=None,
     ) -> None:
 
-        self.input_ids = input_ids
-        self.labels = labels
         self.metadata = metadata or {}
 
     def __str__(self) -> str:
@@ -61,10 +56,12 @@ class InputFeaturesTransformer(InputFeatures):
         position_ids=None,
         head_mask=None,
         labels: Union[int, List[int]]=None,
-        metadata: Dict[str, any]=None,
+        metadata: Optional[Dict[str, any]]=None,
     ) -> None:
 
-        super().__init__(input_ids, labels, metadata)
+        super().__init__(metadata)
+        self.input_ids = input_ids
+        self.labels = labels
         self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
         self.position_ids = position_ids
@@ -83,10 +80,9 @@ class InputFeaturesAllennlp(InputFeatures):
 
     def __init__(
         self,
-        tokens: List[Token],
-        input_ids: IndexedTokenList,
-        labels: Union[int, List[int]]=None,
-        metadata: Dict[str, any]=None,
+        instance: List[Instance],
+        metadata: Optional[Dict[str, any]]=None,
     ) -> None:
-        super().__init__(input_ids, labels, metadata)
-        self.tokens = tokens
+
+        super().__init__(metadata)
+        self.instance = instance
