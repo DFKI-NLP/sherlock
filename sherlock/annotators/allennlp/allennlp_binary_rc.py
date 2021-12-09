@@ -24,7 +24,7 @@ class AllenNLPBinaryRcAnnotator(AllenNLPAnnotator):
 
     def __init__(
         self,
-        tokenizer: Tokenizer,
+        tokenizer: Tokenizer,   # TODO: remove
         converter: FeatureConverter,
         model: Model,
         device: str = "cpu",

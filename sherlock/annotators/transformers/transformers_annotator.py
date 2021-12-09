@@ -25,7 +25,7 @@ class TransformersAnnotator(Annotator):
 
     def __init__(
         self,
-        tokenizer: PreTrainedTokenizer,
+        tokenizer: PreTrainedTokenizer, # TODO: remove
         converter: FeatureConverter,
         model: PreTrainedModel,
         device: str = "cpu",
@@ -45,6 +45,7 @@ class TransformersAnnotator(Annotator):
     def from_pretrained(  # type: ignore
         cls, path: str, **kwargs
     ) -> "Annotator":
+        # TODO: not very consistent, some of the stuff comes from args, some from kwargs
         args = torch.load(os.path.join(path, "training_args.bin"))
         _, model_class, tokenizer_class = NLP_TASK_CLASSES[cls.task][args.model_type]
         tokenizer = tokenizer_class.from_pretrained(path, do_lower_case=args.do_lower_case)

@@ -5,11 +5,19 @@
 @date: 08.12.21
 @author: leonhard.hennig@dfki.de
 """
+import os
+import json
 from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import torch
-import json
-from torch.utils.data import DataLoader, SequentialSampler
+# from torch.utils.data import DataLoader, SequentialSampler
+from allennlp.data.tokenizers import Tokenizer
+from allennlp.data.token_indexers import TokenIndexer
+from allennlp.data.data_loaders import SimpleDataLoader
+from allennlp.models.model import Model
+from allennlp.models.archival import load_archive
+from allennlp.common.file_utils import cached_path
 
 from sherlock import Document
 from sherlock.dataset import InstancesDataset
@@ -17,10 +25,6 @@ from sherlock.feature_converters import FeatureConverter
 from sherlock.annotators.annotator import Annotator
 from sherlock.tasks import NLP_TASK_CLASSES, NLPTask
 
-from allennlp.data.tokenizers import Tokenizer, PreTrainedTransformerTokenizer
-from allennlp.models.model import Model
-from allennlp.models.archival import load_archive
-from allennlp.common.file_utils import cached_path
 
 
 class AllenNLPAnnotator(Annotator):
@@ -44,14 +48,30 @@ class AllenNLPAnnotator(Annotator):
 
     @classmethod
     def from_pretrained(  # type: ignore
-            cls, path: str, **kwargs
+            cls, path: str, tokenizer: Tokenizer, token_indexer: TokenIndexer, **kwargs,
     ) -> "Annotator":
+        args = torch.load(os.path.join(path, "training_args.bin"))
+
+        # Load FeatureConverter
+        # Option 1: always choose same dir
+        converter = FeatureConverter.from_pretrained(
+            path, tokenizer, token_indexer)
+        # Option 2: choose from dir given in args (preferred)
+        # would need some adaptation in from_pretrained, also means we can get
+        # rid of tokenizer and token_indexer arguments
+        # converter = FeatureConverter.from_pretrained(path)
+
         #_, model_class, tokenizer_class = NLP_TASK_CLASSES[cls.task][args.model_type]
         #archive = load_archive(archive_file=cached_path(path),
         #                       cuda_device=kwargs.get("device", "cpu"),
         #                       overrides=kwargs.get("config_overrides", json.dumps({})))
-        #model = model_class.from_archive(archive=archive, predictor_name=predictor_name)
-        pass # todo
+        model = Model.from_archive(archive=path)
+        return cls(
+            tokenizer,
+            converter,
+            model,
+            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size"]},
+        )
 
     def process_documents(self, documents: List[Document]) -> List[Document]:
         results = []  # type: List[Document]
@@ -70,35 +90,31 @@ class AllenNLPAnnotator(Annotator):
     ) -> List[Document]:
         raise NotImplementedError("Annotator must implement 'combine'.")
 
-    # todo test. this method is currently just copied from transformers_annotator.py, with the minor modification
-    # of reading "Instance"s from the inputfeatures as input to the dataloader
+    # TODO: test.
     def _convert_and_annotate(
             self, documents: List[Document]
     ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], List[Dict[str, Any]]]:
         input_features = self.converter.documents_to_features(documents)
         instances = [f.instance for f in input_features]
 
-        eval_dataset = InstancesDataset(instances)
-        eval_sampler = SequentialSampler(eval_dataset)
-        eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=self.batch_size)
+        # eval_dataset = InstancesDataset(instances)
+        # eval_sampler = SequentialSampler(eval_dataset)
+        # eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=self.batch_size)
+        eval_dataloader = SimpleDataLoader(instances, self.batch_size)
 
         annot_list = []
         label_ids_list = []
         for batch in eval_dataloader:
-            outputs = self.model.forward_on_instances(batch)
+            # Device handling:
+            # This does not work, would need a function that checks if
+            # something is a tensor and depending on that moves it around
+            # if even needed
+            # batch = {k: t.to(self.device) for k, t in batch.items()}
+            self.model.eval()
+            with torch.no_grad():
+                outputs = self.model(**batch)
 
-            #self.model.eval()
-            #batch = {k: t.to(self.device) for k, t in batch.items()}
-            #if self.unused_token_type_ids:
-            #    batch["token_type_ids"] = None
-            #if self.no_token_type_ids:
-            #    del batch["token_type_ids"]
-
-            #with torch.no_grad():
-            #    outputs = self.model(**batch) # allennlp way: self.model.forward_on_instances()
-
-            # todo: not sure if this works with forward_on_instances(). probably not
-            logits = outputs[1] if "labels" in batch else outputs[0]
+            logits = outputs["probs"]
             annot_list.append(logits.detach().cpu().numpy())
             if "labels" in batch:
                 label_ids_list.append(batch["labels"].detach().cpu().numpy())
