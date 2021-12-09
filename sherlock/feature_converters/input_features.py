@@ -80,7 +80,7 @@ class InputFeaturesAllennlp(InputFeatures):
 
     def __init__(
         self,
-        instance: List[Instance],
+        instance: List[Instance], # Todo why is this a list, shouldn't it be just a single Instance (to be equivalent to TransformersInputFeatures)?
         metadata: Optional[Dict[str, any]]=None,
     ) -> None:
 
