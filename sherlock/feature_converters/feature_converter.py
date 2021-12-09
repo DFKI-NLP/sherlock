@@ -12,7 +12,8 @@ from allennlp.data.token_indexers import TokenIndexer
 from allennlp.data.vocabulary import Vocabulary
 
 from sherlock import Document
-from sherlock.feature_converters.input_features import InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformer
+from sherlock.feature_converters.input_features import (
+    InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformers)
 
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ class FeatureConverter(Registrable):
 
     def document_to_features_transformers(
         self, document: Document, verbose: bool=False
-    ) -> List[InputFeaturesTransformer]:
+    ) -> List[InputFeaturesTransformers]:
         raise NotImplementedError(
             "FeatureConverter does not implement 'document_to_features_transformers'.")
 

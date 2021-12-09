@@ -43,8 +43,7 @@ class InputFeatures(object):
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
 
-# TODO: rename to Transformers
-class InputFeaturesTransformer(InputFeatures):
+class InputFeaturesTransformers(InputFeatures):
     """
     A single set of InputFeatures for Transformers
     Parameters

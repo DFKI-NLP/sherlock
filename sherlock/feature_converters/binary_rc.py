@@ -11,7 +11,7 @@ from transformers import PreTrainedTokenizer
 from sherlock import Document
 from sherlock.feature_converters.feature_converter import FeatureConverter
 from sherlock.feature_converters.input_features import (
-    InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformer)
+    InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformers)
 
 
 logger = logging.getLogger(__name__)
@@ -106,7 +106,7 @@ class BinaryRcConverter(FeatureConverter):
 
     def document_to_features_transformers(
         self, document: Document, verbose: bool = False
-    ) -> List[InputFeaturesTransformer]:
+    ) -> List[InputFeaturesTransformers]:
 
         assert isinstance(self.tokenizer, PreTrainedTokenizer),\
             "FeatureConverter initiliazed with wrong Tokenizer class"
@@ -135,7 +135,7 @@ class BinaryRcConverter(FeatureConverter):
 
             label_id = self.label_to_id_map[label] if label is not None else None
 
-            features = InputFeaturesTransformer(
+            features = InputFeaturesTransformers(
                 input_ids=inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
                 token_type_ids=inputs.get("token_type_ids"),
