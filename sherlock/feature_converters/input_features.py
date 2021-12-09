@@ -1,62 +1,85 @@
 import copy
 import json
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Any
 
 from allennlp.data.instance import Instance
 
 
 class InputFeatures(object):
     """
-    A single set of features
+    A single set of features.
+
+    Parameters
+    ----------
+    metadata : ``Dict[str, Any]``, optional (default=`{}`)
+        Dictionary mapping metadata keys to their values. Can
+        be anything task specific, is used differently
+        depending on the Annotator in use.
     """
 
     def __init__(
         self,
-        metadata: Optional[Dict[str, any]]=None,
+        metadata: Optional[Dict[str, Any]]=None,
     ) -> None:
 
         self.metadata = metadata or {}
 
+
     def __str__(self) -> str:
         return self.to_dict()
+
 
     def __repr__(self) -> str:
         return str(self.to_dict())
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         """Serializes this instance to a Python dictionary."""
         output = copy.deepcopy(self.__dict__)
         return output
 
-    def to_json_string(self):
+
+    def to_json_string(self) -> str:
         """Serializes this instance to a JSON string."""
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
 
-
-class InputFeaturesTransformer(InputFeatures):
+class InputFeaturesTransformers(InputFeatures):
     """
-    A single set of features of data.
-    Args:
-        input_ids: Indices of input sequence tokens in the vocabulary.
-        attention_mask: Mask to avoid performing attention on padding token indices.
-            Mask values selected in ``[0, 1]``:
-            Usually  ``1`` for tokens that are NOT MASKED, ``0`` for MASKED (padded) tokens.
-            (TODO: allennlp indicates otherwise: https://github.com/allenai/allennlp/blob/c557d512edb6200dca15139316475c5b42432660/allennlp/data/tokenizers/pretrained_transformer_tokenizer.py#L263)
-        token_type_ids: Segment token indices to indicate first and second portions of the inputs.
-        label: Label corresponding to the input
+    A single set of InputFeatures for Transformers
+    Parameters
+    ----------
+    input_ids : ``List[int]``
+        Indices of input sequence tokens in the vocabulary.
+    attention_mask : ``List[int]``, optional (default=`None`)
+        Mask to avoid performing attention on padding token indices.
+        Mask values selected in ``[0, 1]``:
+        Usually  ``1`` for tokens that are NOT MASKED, ``0`` for
+        MASKED (padded) tokens.
+    token_type_ids : ``List[int]``, optional (default=`None`)
+        Segment token indices to indicate first and second portions of the inputs.
+    position_ids : ``List[int]``, optional (default=`None`)
+        Identifiers for each token at which position it is, if None
+        they are automatically created as absolute positional embeddings.
+    head_mask : ``List[int]``, optional (default=`None`)
+        Mask to nullify selected heads of the self-attention modules.
+        Mask values selected in ``[0,1]``
+    label : ``int | List[int]``, optional (default=`None`)
+        Labels corresponding to the input, can be a list or a single label.
+    metadata : ``Dict[str, Any]``, optional (default=`{}`)
+        Dictionary mapping metadata keys to their values. Can
+        be anything task specific, is used differently
+        depending on the Annotator in use.
     """
 
-    # TODO: types!
     def __init__(
         self,
-        input_ids,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        labels: Union[int, List[int]]=None,
-        metadata: Optional[Dict[str, any]]=None,
+        input_ids: List[int],
+        attention_mask: Optional[List[int]]=None,
+        token_type_ids: Optional[List[int]]=None,
+        position_ids: Optional[List[int]]=None,
+        head_mask: Optional[List[int]]=None,
+        labels: Optional[Union[int, List[int]]]=None,
+        metadata: Optional[Dict[str, Any]]=None,
     ) -> None:
 
         super().__init__(metadata)
@@ -72,16 +95,21 @@ class InputFeaturesTransformer(InputFeatures):
 class InputFeaturesAllennlp(InputFeatures):
     """
     A single set of features of data.
-    Args:
-        tokens: Indices of input sequence tokens in the vocabulary.
-        labels: single integer or list of integers indicating labels
-        metadata: Metadata about the InputFeatures.
+    Parameters
+    ----------
+    instance: ``allennlp.data.instance.Instance``
+        allennlp Instance object containing all relevant fields to
+        run predictions from a model.
+    metadata: ``Dict[str,Any]``, optional (default=`{}`)
+        Dictionary mapping metadata keys to their values. Can
+        be anything task specific, is used differently
+        depending on the Annotator in use.
     """
 
     def __init__(
         self,
-        instance: List[Instance], # Todo why is this a list, shouldn't it be just a single Instance (to be equivalent to TransformersInputFeatures)?
-        metadata: Optional[Dict[str, any]]=None,
+        instance: Instance,
+        metadata: Optional[Dict[str,Any]]=None,
     ) -> None:
 
         super().__init__(metadata)
