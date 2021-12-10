@@ -24,7 +24,6 @@ class AllenNLPBinaryRcAnnotator(AllenNLPAnnotator):
 
     def __init__(
         self,
-        tokenizer: Tokenizer,   # TODO: remove
         converter: FeatureConverter,
         model: Model,
         device: str = "cpu",
@@ -32,7 +31,7 @@ class AllenNLPBinaryRcAnnotator(AllenNLPAnnotator):
         ignore_no_relation: bool = True,
         add_logits: bool = False,
     ) -> None:
-        super().__init__(tokenizer, converter, model, device, batch_size)
+        super().__init__(converter, model, device, batch_size)
         self.ignore_no_relation = ignore_no_relation
         self.add_logits = add_logits
 

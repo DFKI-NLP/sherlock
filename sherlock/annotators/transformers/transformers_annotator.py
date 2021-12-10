@@ -55,7 +55,7 @@ class TransformersAnnotator(Annotator):
             tokenizer,
             converter,
             model,
-            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "add_logits"]},
+            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "ignore_no_relation", "add_logits"]},
         )
 
     def process_documents(self, documents: List[Document]) -> List[Document]:
