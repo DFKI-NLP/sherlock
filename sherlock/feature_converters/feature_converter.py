@@ -52,10 +52,12 @@ class FeatureConverter(Registrable):
 
         if framework == "transformers":
             logger.info("Initializing Transformers FeatureConverter")
-            self._init_feature_converter_transformer(**kwargs)
+            self._init_feature_converter_transformer(
+                **{k: v for k, v in kwargs.items() if k in ["tokenizer"]}
+            )
         elif framework == "allennlp":
             logger.info("Initializing AllenNLP FeatureConverter")
-            self._init_feature_converter_allennlp(**kwargs)
+            self._init_feature_converter_allennlp(**{k: v for k, v in kwargs.items() if k in ["tokenizer", "token_indexer", "vocabulary"]})
         else:
             raise NotImplementedError(f"Framework not supported: {framework}")
 
@@ -76,13 +78,13 @@ class FeatureConverter(Registrable):
 
     @property
     def name(self) -> str:
-        raise NotImplementedError("FeatureConvert must implement 'name'.")
+        raise NotImplementedError("FeatureConverter must implement 'name'.")
 
 
     @property
     def persist_attributes(self) -> List[str]:
         """All attributes that are saved alongside FeatureConverter"""
-        raise NotImplementedError("FeatureConvert must implement 'persist_attributes'.")
+        raise NotImplementedError("FeatureConverter must implement 'persist_attributes'.")
 
 
     def document_to_features_transformers(
@@ -121,7 +123,7 @@ class FeatureConverter(Registrable):
     def _from_pretrained_transformers(
         path: str, config: Dict[str,any], tokenizer: PreTrainedTokenizer
     ) -> "FeatureConverter":
-        vocab_file = os.path.join(path, "converter_label_vocab.txt")
+        vocab_file = os.path.join(os.path.join(path, "vocabulary"), "converter_label_vocab.txt")
         with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
@@ -139,11 +141,11 @@ class FeatureConverter(Registrable):
         # TODO: Alternatively it would be better to save the token_indexer and
         # tokenizer name in the config, then load it here
         # TODO: NEEDS TO BE TESTED
-        vocab_file = os.path.join(path, "converter_label_vocab.txt")
-        with open(vocab_file, "r", encoding="utf-8") as reader:
+        labels_file = os.path.join(os.path.join(path, "vocabulary"), "labels.txt")
+        with open(labels_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
-        config["vocab"] = Vocabulary.from_files(str) # todo fix
+        config["vocabulary"] = Vocabulary.from_files(os.path.join(path, "vocabulary"))
         config["token_indexer"] = token_indexer
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
@@ -165,39 +167,37 @@ class FeatureConverter(Registrable):
         elif framework == "allennlp":
             return FeatureConverter._from_pretrained_allennlp(path, config, **kwargs)
 
-
     def _save_vocabulary_allennlp(self, vocab_path: str) -> None:
-        self.vocab.save_to_files(vocab_path) # todo why is this different from Transformers? I'd rather get rid of 'vocab' member
-
+        self.vocabulary.save_to_files(vocab_path)
 
     def save_vocabulary(self, vocab_path: str) -> None:
         """Save the converters label vocabulary to a directory or file."""
         # TODO: maybe rename this to save_label_vocabulary
-        index = 0
-        if os.path.isdir(vocab_path):
+        if not os.path.isdir(vocab_path):
+            logger.error("Vocabulary saving directory ({}) should be a directory".format(vocab_path))
+        if self.framework == "transformers":
+            index = 0
+            os.makedirs(vocab_path, exist_ok=True)
             vocab_file = os.path.join(vocab_path, "converter_label_vocab.txt")
-        else:
-            vocab_file = vocab_path
-        with open(vocab_file, "w", encoding="utf-8") as writer:
-            for label, label_index in self.label_to_id_map.items():
-                if index != label_index:
-                    logger.warning(
-                        "Saving vocabulary to %s: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!",
-                        vocab_file,
-                    )
-                    index = label_index
-                writer.write(label + "\n")
-                index += 1
+            with open(vocab_file, "w", encoding="utf-8") as writer:
+                for label, label_index in self.label_to_id_map.items():
+                    if index != label_index:
+                        logger.warning(
+                            "Saving vocabulary to %s: vocabulary indices are not consecutive."
+                            " Please check that the vocabulary is not corrupted!",
+                            vocab_file,
+                        )
+                        index = label_index
+                    writer.write(label + "\n")
+                    index += 1
 
-        if self.framework == "allennlp":
-            self._save_vocabulary_allennlp(vocab_path) # todo why is this different from Transformers? I'd rather get rid of 'vocab' member
-
+        elif self.framework == "allennlp":
+            self._save_vocabulary_allennlp(vocab_path)
 
     def save(self, save_directory: str) -> None:
         if not os.path.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
-        self.save_vocabulary(save_directory)
+        self.save_vocabulary(os.path.join(save_directory, "vocabulary"))
         config = dict(
             name=self.name,
             framework=self.framework,

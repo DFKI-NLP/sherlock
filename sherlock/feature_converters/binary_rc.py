@@ -29,14 +29,14 @@ class BinaryRcConverter(FeatureConverter):
     max_length
     framework
     entity_handling
-    pad_token_segmend_id    # TODO: probably move into `transformers` kwargs
+    pad_token_segment_id    # TODO: probably move into `transformers` kwargs
     log_num_input_features
     kwargs : ``Dict[str, any]``
         framwork specific keywords.
         `transformers`:
             tokenizer  : `PreTrainedTokenizer`
         `allennlp`:
-            tokenizer : ``Toknizer``
+            tokenizer : ``Tokenizer``
             token_indexer : ``TokenIndexer``
             vocabulary : ``Vocabulary``
             sep_token : ``str``, optional (default=`None`)
@@ -68,7 +68,17 @@ class BinaryRcConverter(FeatureConverter):
         self.pad_token_segment_id = pad_token_segment_id
         self.log_num_input_features = log_num_input_features
 
-        if framework == "allennlp":
+        if framework == "transformers":
+            sep_token = kwargs.get("sep_token")
+            if sep_token is None:
+                self.sep_token = self.tokenizer.sep_token
+            else:
+                # Overriding native sep_token <- undefined behavior
+                if sep_token != self.tokenizer.sep_token:
+                    logger.warn("Overwriting transformer sep_token leads to undefined behavior!")
+                self.sep_token = sep_token
+
+        elif framework == "allennlp":
             sep_token = kwargs.get("sep_token")
             if isinstance(self.tokenizer, PretrainedTransformerTokenizer):
                 if sep_token is None:
@@ -90,17 +100,15 @@ class BinaryRcConverter(FeatureConverter):
                 else:
                     self.sep_token = sep_token
 
-
     @property
     def name(self) -> str:
         return "binary_rc"
 
-
     @property
     def persist_attributes(self) -> List[str]:
         if self.framework == "transformers":
-            return ["max_length", "entity_handling", "pad_token_segment_id"]
-        elif self.framework == "transformers":
+            return ["max_length", "entity_handling", "pad_token_segment_id", "sep_token"]
+        elif self.framework == "allennlp":
             return ["max_length", "entity_handling", "pad_token_segment_id", "sep_token"]
 
     def document_to_features_transformers(
@@ -121,6 +129,7 @@ class BinaryRcConverter(FeatureConverter):
                 text=tokens,
                 add_special_tokens=True,
                 max_length=self.max_length,
+                truncation=True,
                 pad_to_max_length=True,
                 return_overflowing_tokens=True,
             )
@@ -169,7 +178,7 @@ class BinaryRcConverter(FeatureConverter):
             tokens = self.tokenizer.tokenize(input_string)
             # todo - head or tail may have been truncated, check!
             # see https://github.com/DFKI-NLP/RelEx/blob/master/relex/dataset_readers/tacred.py#text_to_instance()
-            # for a similar issue
+            # for example handling of this
             text_tokens_field = TextField(tokens[: self.max_length],
                                           {"tokens": self.token_indexer})
             truncated = MetadataField({"truncated": len(tokens) > self.max_length})
