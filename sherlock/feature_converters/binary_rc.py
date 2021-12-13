@@ -136,7 +136,7 @@ class BinaryRcConverter(FeatureConverter):
 
             metadata = dict(
                 guid=document.guid,
-                truncated="overflowing_tokens" in inputs,
+                truncated="overflowing_tokens" in inputs and len(inputs["overflowing_tokens"]) > 0,
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )
@@ -254,7 +254,7 @@ class BinaryRcConverter(FeatureConverter):
         num_shown_input_features = 0
         for doc_idx, document in enumerate(documents):
             if doc_idx % 10000 == 0:
-                logger.info("Writing document %d of %d" % (doc_idx, len(documents)))
+                logger.info("Converting document %d of %d to features" % (doc_idx, len(documents)))
 
             verbose = num_shown_input_features < self.log_num_input_features
             doc_input_features = self.document_to_features(document, verbose)
