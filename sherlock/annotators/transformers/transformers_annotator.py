@@ -50,7 +50,7 @@ class TransformersAnnotator(Annotator):
         _, model_class, tokenizer_class = NLP_TASK_CLASSES[cls.task][args.model_type]
         tokenizer = tokenizer_class.from_pretrained(path, do_lower_case=args.do_lower_case)
         model = model_class.from_pretrained(path)
-        converter = FeatureConverter.from_pretrained(path, tokenizer)
+        converter = FeatureConverter.from_pretrained(path, tokenizer=tokenizer)
         return cls(
             tokenizer,
             converter,
