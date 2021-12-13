@@ -88,7 +88,6 @@ class InputFeaturesTransformers(InputFeatures):
         self.head_mask = head_mask
 
 
-
 class InputFeaturesAllennlp(InputFeatures):
     """
     A single set of features of data.
