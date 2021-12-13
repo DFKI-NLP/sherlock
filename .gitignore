@@ -54,3 +54,4 @@ Dockerfile~
 .coverage
 
 !sherlock/microscope/static/js/brat/client/lib
+/experiments/
