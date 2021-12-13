@@ -5,7 +5,6 @@ from allennlp.common import Params
 from allennlp.data import Vocabulary
 from allennlp.data.token_indexers import PretrainedTransformerIndexer
 from allennlp.data.tokenizers import PretrainedTransformerTokenizer
-from transformers import BertTokenizer
 
 from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.feature_converters import BinaryRcConverter
@@ -199,6 +198,7 @@ def test_entity_handling_mark_entity():
     tokens = [i.text for i in features.instance["text"].tokens]
     assert tokens == expected_tokens
 
+
 def test_entity_handling_mark_entity_append_ner():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
@@ -269,6 +269,7 @@ def test_entity_handling_mark_entity_append_ner():
     tokens = [i.text for i in features.instance["text"].tokens]
     assert tokens == expected_tokens
 
+
 def test_entity_handling_mask_entity():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
@@ -329,6 +330,7 @@ def test_entity_handling_mask_entity():
 
     tokens = [i.text for i in features.instance["text"].tokens]
     assert tokens == expected_tokens
+
 
 def test_entity_handling_mask_entity_append_text():
     reader = TacredDatasetReader(
@@ -395,6 +397,7 @@ def test_entity_handling_mask_entity_append_text():
 
     tokens = [i.text for i in features.instance["text"].tokens]
     assert tokens == expected_tokens
+
 
 def test_save_and_load(tmpdir):
     reader = TacredDatasetReader(
