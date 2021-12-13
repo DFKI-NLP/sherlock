@@ -24,10 +24,8 @@ class InputFeatures(object):
 
         self.metadata = metadata or {}
 
-
     def __str__(self) -> str:
-        return self.to_dict()
-
+        return str(self.to_dict())
 
     def __repr__(self) -> str:
         return str(self.to_dict())
@@ -36,7 +34,6 @@ class InputFeatures(object):
         """Serializes this instance to a Python dictionary."""
         output = copy.deepcopy(self.__dict__)
         return output
-
 
     def to_json_string(self) -> str:
         """Serializes this instance to a JSON string."""
@@ -63,7 +60,7 @@ class InputFeaturesTransformers(InputFeatures):
     head_mask : ``List[int]``, optional (default=`None`)
         Mask to nullify selected heads of the self-attention modules.
         Mask values selected in ``[0,1]``
-    label : ``int | List[int]``, optional (default=`None`)
+    labels : ``int | List[int]``, optional (default=`None`)
         Labels corresponding to the input, can be a list or a single label.
     metadata : ``Dict[str, Any]``, optional (default=`{}`)
         Dictionary mapping metadata keys to their values. Can
@@ -74,12 +71,12 @@ class InputFeaturesTransformers(InputFeatures):
     def __init__(
         self,
         input_ids: List[int],
-        attention_mask: Optional[List[int]]=None,
-        token_type_ids: Optional[List[int]]=None,
-        position_ids: Optional[List[int]]=None,
-        head_mask: Optional[List[int]]=None,
-        labels: Optional[Union[int, List[int]]]=None,
-        metadata: Optional[Dict[str, Any]]=None,
+        attention_mask: Optional[List[int]] = None,
+        token_type_ids: Optional[List[int]] = None,
+        position_ids: Optional[List[int]] = None,
+        head_mask: Optional[List[int]] = None,
+        labels: Optional[Union[int, List[int]]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
 
         super().__init__(metadata)
@@ -100,6 +97,8 @@ class InputFeaturesAllennlp(InputFeatures):
     instance: ``allennlp.data.instance.Instance``
         allennlp Instance object containing all relevant fields to
         run predictions from a model.
+    labels : ``int | List[int]``, optional (default=`None`)
+        Labels corresponding to the input, can be a list or a single label.
     metadata: ``Dict[str,Any]``, optional (default=`{}`)
         Dictionary mapping metadata keys to their values. Can
         be anything task specific, is used differently
@@ -109,8 +108,10 @@ class InputFeaturesAllennlp(InputFeatures):
     def __init__(
         self,
         instance: Instance,
-        metadata: Optional[Dict[str,Any]]=None,
+        labels: Optional[Union[int, List[int]]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
 
         super().__init__(metadata)
         self.instance = instance
+        self.labels = labels

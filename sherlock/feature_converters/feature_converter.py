@@ -143,7 +143,7 @@ class FeatureConverter(Registrable):
         with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
-        config["vocab"] = Vocabulary.from_files(str)
+        config["vocab"] = Vocabulary.from_files(str) # todo fix
         config["token_indexer"] = token_indexer
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
@@ -161,13 +161,13 @@ class FeatureConverter(Registrable):
 
         # 2. Call framework specific constructor
         if framework == "transformers":
-            return FeatureConverter._from_pretrained_transformers(str, config, **kwargs)
+            return FeatureConverter._from_pretrained_transformers(path, config, **kwargs)
         elif framework == "allennlp":
-            return FeatureConverter._from_pretrained_allennlp(str, config, **kwargs)
+            return FeatureConverter._from_pretrained_allennlp(path, config, **kwargs)
 
 
     def _save_vocabulary_allennlp(self, vocab_path: str) -> None:
-        self.vocab.save_to_files(vocab_path)
+        self.vocab.save_to_files(vocab_path) # todo why is this different from Transformers? I'd rather get rid of 'vocab' member
 
 
     def save_vocabulary(self, vocab_path: str) -> None:
@@ -191,7 +191,7 @@ class FeatureConverter(Registrable):
                 index += 1
 
         if self.framework == "allennlp":
-            self._save_vocabulary_allennlp(vocab_path)
+            self._save_vocabulary_allennlp(vocab_path) # todo why is this different from Transformers? I'd rather get rid of 'vocab' member
 
 
     def save(self, save_directory: str) -> None:

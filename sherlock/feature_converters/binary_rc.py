@@ -2,7 +2,7 @@ import itertools
 import logging
 from typing import List, Optional, Tuple
 
-from allennlp.data.fields import TextField, LabelField
+from allennlp.data.fields import TextField, LabelField, MetadataField
 from allennlp.data.instance import Instance
 from allennlp.data.tokenizers import Tokenizer, PretrainedTransformerTokenizer
 from allennlp.data.token_indexers import TokenIndexer
@@ -48,11 +48,11 @@ class BinaryRcConverter(FeatureConverter):
     def __init__(
         self,
         labels: List[str],
-        max_length: int=512,
-        framework: str="transformers",
-        entity_handling: str="mark_entity",
-        pad_token_segment_id: int=0,      # TODO: Remove? Never used.
-        log_num_input_features: int=-1,
+        max_length: int = 512,
+        framework: str = "transformers",
+        entity_handling: str = "mark_entity",
+        pad_token_segment_id: int = 0,      # TODO: Remove? Never used.
+        log_num_input_features: int = -1,
         **kwargs,
     ) -> None:
         super().__init__(labels, max_length, framework, **kwargs)
@@ -103,13 +103,12 @@ class BinaryRcConverter(FeatureConverter):
         elif self.framework == "transformers":
             return ["max_length", "entity_handling", "pad_token_segment_id", "sep_token"]
 
-
     def document_to_features_transformers(
         self, document: Document, verbose: bool = False
     ) -> List[InputFeaturesTransformers]:
 
         assert isinstance(self.tokenizer, PreTrainedTokenizer),\
-            "FeatureConverter initiliazed with wrong Tokenizer class"
+            "FeatureConverter initialized with wrong Tokenizer class"
 
         mention_combinations = self._create_mention_combinations(document)
 
@@ -149,43 +148,53 @@ class BinaryRcConverter(FeatureConverter):
 
         return input_features
 
-
     def document_to_features_allennlp(
         self, document: Document, verbose: bool=False
     ) -> List[InputFeaturesAllennlp]:
 
         assert isinstance(self.tokenizer, Tokenizer),\
-            "FeatureConverter initiliazed with wrong Tokenizer class"
+            "FeatureConverter initialized with wrong Tokenizer class"
         assert isinstance(self.token_indexer, TokenIndexer),\
-            "FeatureConverter initiliazed with wrong TokenIndexer class"
+            "FeatureConverter initialized with wrong TokenIndexer class"
 
         mention_combinations = self._create_mention_combinations(document)
 
         if verbose:
-            logger.warn("Logging function for allennlp FeatureConverter not implemented yet")
+            logger.warn("Logging function for Allennlp FeatureConverter not implemented yet")
 
         input_features = []
         for head_idx, tail_idx, label, sent_id in mention_combinations:
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
-            tokens = self.tokenizer.tokenize(input_string)
 
-            text_field = TextField(tokens, self.token_indexer)
-            fields = {"text": text_field}
+            tokens = self.tokenizer.tokenize(input_string)
+            # todo - head or tail may have been truncated, check!
+            # see https://github.com/DFKI-NLP/RelEx/blob/master/relex/dataset_readers/tacred.py#text_to_instance()
+            # for a similar issue
+            text_tokens_field = TextField(tokens[: self.max_length],
+                                          {"tokens": self.token_indexer})
+            truncated = MetadataField({"truncated": len(tokens) > self.max_length})
+
+            fields = {"text": text_tokens_field, "metadata": truncated}
+
             if label is not None:
                 label_id = self.label_to_id_map[label]
-                label_field = LabelField(label_id)
+                label_field = LabelField(label_id, skip_indexing=True)
                 fields["label"] = label_field
+            #if instance_id is not None:
+            #    fields["metadata"]["id"] = instance_id
             instance = Instance(fields)
-            instance.index_fields(self.vocabulary)
+
 
             metadata = dict(
                 guid=document.guid,
+                truncated=instance["metadata"]["truncated"],
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )
-
+            label_id = self.label_to_id_map[label] if label is not None else None
             features = InputFeaturesAllennlp(
                 instance=instance,
+                labels=label_id,
                 metadata=metadata,
             )
             input_features.append(features)
@@ -268,7 +277,7 @@ class BinaryRcConverter(FeatureConverter):
         ner_head = "[HEAD=%s]" % head_mention.label
         ner_tail = "[TAIL=%s]" % tail_mention.label
 
-        sep_token = self.tokenizer.sep_token
+        sep_token = self.sep_token
 
         # Limit search space for known sentence id
         if sent_idx is None:

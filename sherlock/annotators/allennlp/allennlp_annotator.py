@@ -60,12 +60,15 @@ class AllenNLPAnnotator(Annotator):
         # would need some adaptation in from_pretrained, also means we can get
         # rid of tokenizer and token_indexer arguments
         # converter = FeatureConverter.from_pretrained(path)
+        #_, model_class, tokenizer_class, token_indexer_class = ALLENNLP_TASK_CLASSES[cls.task][args.model_type]
+        #params = Params.from_file(os.path.join(path, "config.json"))
+        #weights_file = os.path.join(path, "weights.th")
+        #model = Model.load(params, path, weights_file)
+        #tokenizer = Tokenizer.from_params(params)  # or tokenizer_class.from_params() ?
+        #token_indexer = TokenIndexer.from_params(params)  # or token_indexer_class.from_params() ?
+        # vocab = model.vocab  # Vocabulary is loaded in Model.load()
 
-        #_, model_class, tokenizer_class = NLP_TASK_CLASSES[cls.task][args.model_type]
-        #archive = load_archive(archive_file=cached_path(path),
-        #                       cuda_device=kwargs.get("device", "cpu"),
-        #                       overrides=kwargs.get("config_overrides", json.dumps({})))
-        model = Model.from_archive(archive=path)
+        model = Model.from_archive(path)
         return cls(
             tokenizer,
             converter,
