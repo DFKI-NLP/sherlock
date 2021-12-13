@@ -660,9 +660,9 @@ def main():
     BinaryRcConverter = FeatureConverter.by_name("binary_rc")
 
     converter = BinaryRcConverter(
-        tokenizer=tokenizer,
         labels=labels,
         max_length=args.max_seq_length,
+        tokenizer=tokenizer,
         entity_handling=args.entity_handling,
         pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
         log_num_input_features=20,
@@ -710,11 +710,11 @@ def main():
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
         # Load a trained model and vocabulary that you have fine-tuned
-        model = model_class.from_pretrained(args.output_dir)
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
-        )
-        model.to(args.device)
+        #model = model_class.from_pretrained(args.output_dir)  # todo why do we do this here during training?
+        #tokenizer = tokenizer_class.from_pretrained(  # todo why do we do this here during training?
+        #    args.output_dir, do_lower_case=args.do_lower_case
+        #)
+        #model.to(args.device) # todo why do we do this here during training?
 
     # Evaluation
     results = {}
@@ -722,7 +722,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer)
+        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer=tokenizer)
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(
