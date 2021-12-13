@@ -114,7 +114,7 @@ class FeatureConverter(Registrable):
     def _from_pretrained_transformers(
         path: str, config: Dict[str,any], tokenizer: PreTrainedTokenizer
     ) -> "FeatureConverter":
-        vocab_file = os.path.join(os.path.join(path, "vocabulary"), "converter_label_vocab.txt")
+        vocab_file = os.path.join(path, "converter_label_vocab.txt")
         with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
@@ -130,12 +130,11 @@ class FeatureConverter(Registrable):
     ) -> "FeatureConverter":
         # TODO: Alternatively it would be better to save the token_indexer and
         # tokenizer name in the config, then load it here
-        # TODO: NEEDS TO BE TESTED
-        labels_file = os.path.join(os.path.join(path, "vocabulary"), "labels.txt")
-        with open(labels_file, "r", encoding="utf-8") as reader:
+        vocab_file = os.path.join(path, "converter_label_vocab.txt")
+        with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
-        config["vocabulary"] = Vocabulary.from_files(os.path.join(path, "vocabulary"))
+        config["vocabulary"] = Vocabulary.from_files(os.path.join(path, "allennlp_vocabulary"))
         config["token_indexer"] = token_indexer
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
@@ -157,37 +156,39 @@ class FeatureConverter(Registrable):
         elif framework == "allennlp":
             return FeatureConverter._from_pretrained_allennlp(path, config, **kwargs)
 
-    def _save_vocabulary_allennlp(self, vocab_path: str) -> None:
-        self.vocabulary.save_to_files(vocab_path)
+    #def _save_vocabulary_allennlp(self, vocab_path: str) -> None:
+    #    self.vocabulary.save_to_files(vocab_path)
 
     def save_vocabulary(self, vocab_path: str) -> None:
         """Save the converters label vocabulary to a directory or file."""
         # TODO: maybe rename this to save_label_vocabulary
-        if not os.path.isdir(vocab_path):
-            logger.error("Vocabulary saving directory ({}) should be a directory".format(vocab_path))
-        if self.framework == "transformers":
-            index = 0
-            os.makedirs(vocab_path, exist_ok=True)
+        index = 0
+        if os.path.isdir(vocab_path):
             vocab_file = os.path.join(vocab_path, "converter_label_vocab.txt")
-            with open(vocab_file, "w", encoding="utf-8") as writer:
-                for label, label_index in self.label_to_id_map.items():
-                    if index != label_index:
-                        logger.warning(
-                            "Saving vocabulary to %s: vocabulary indices are not consecutive."
-                            " Please check that the vocabulary is not corrupted!",
-                            vocab_file,
-                        )
-                        index = label_index
-                    writer.write(label + "\n")
-                    index += 1
+        else:
+            vocab_file = vocab_path
+        with open(vocab_file, "w", encoding="utf-8") as writer:
+            for label, label_index in self.label_to_id_map.items():
+                if index != label_index:
+                    logger.warning(
+                        "Saving vocabulary to %s: vocabulary indices are not consecutive."
+                        " Please check that the vocabulary is not corrupted!",
+                        vocab_file,
+                    )
+                    index = label_index
+                writer.write(label + "\n")
+                index += 1
 
-        elif self.framework == "allennlp":
-            self._save_vocabulary_allennlp(vocab_path)
+        if self.framework == "allennlp":
+            if os.path.isdir(vocab_path):
+                self.vocabulary.save_to_files(os.path.join(vocab_path, "allennlp_vocabulary"))
+            else:
+                self.vocabulary.save_to_files(os.path.join(os.path.dirname(vocab_path), "allennlp_vocabulary"))
 
     def save(self, save_directory: str) -> None:
         if not os.path.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
-        self.save_vocabulary(os.path.join(save_directory, "vocabulary"))
+        self.save_vocabulary(save_directory)
         config = dict(
             name=self.name,
             framework=self.framework,
