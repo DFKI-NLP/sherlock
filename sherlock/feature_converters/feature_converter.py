@@ -207,9 +207,8 @@ class FeatureConverter(Registrable):
         with open(converter_config_file, "w", encoding="utf-8") as writer:
             writer.write(json.dumps(config, ensure_ascii=False))
 
-
+    @staticmethod
     def _log_input_features_transformers(
-        self,
         tokens: List[str],
         document: Document,
         features: InputFeatures,
@@ -225,6 +224,19 @@ class FeatureConverter(Registrable):
         if labels:
             logger.info("labels: %s (ids = %s)", labels, features.labels)
 
+    @staticmethod
+    def _log_input_features_allennlp(
+            tokens: List[str],
+            document: Document,
+            features: InputFeatures,
+            labels: Optional[Union[str, List[str]]] = None,
+    ) -> None:
+        logger.info("*** Example ***")
+        logger.info("guid: %s", document.guid)
+        logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
+        logger.info("input_tokens: %s", " ".join([x.text for x in features.instance["text"].tokens]))
+        if labels:
+            logger.info("labels: %s (ids = %s)", labels, features.labels)
 
     def _log_input_features(
         self,
@@ -234,5 +246,4 @@ class FeatureConverter(Registrable):
         if self.framework == "transformers":
             self._log_input_features_transformers(*args, **kwargs)
         elif self.framework == "allennlp":
-            # TODO: implement!
-            raise NotImplementedError("not implemented yet")
+            self._log_input_features_allennlp(*args, **kwargs)
