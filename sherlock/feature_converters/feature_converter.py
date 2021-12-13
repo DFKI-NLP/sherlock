@@ -15,8 +15,8 @@ from sherlock import Document
 from sherlock.feature_converters.input_features import (
     InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformers)
 
-
 logger = logging.getLogger(__name__)
+
 
 class FeatureConverter(Registrable):
     """
@@ -36,7 +36,6 @@ class FeatureConverter(Registrable):
         `allennlp`: {"tokenizer": Tokenizer, "token_indexer": TokenIndexer
             "vocabulary": Vocabulary}
     """
-
     def __init__(
         self,
         labels: List[str],
@@ -57,16 +56,15 @@ class FeatureConverter(Registrable):
             )
         elif framework == "allennlp":
             logger.info("Initializing AllenNLP FeatureConverter")
-            self._init_feature_converter_allennlp(**{k: v for k, v in kwargs.items() if k in ["tokenizer", "token_indexer", "vocabulary"]})
+            self._init_feature_converter_allennlp(**{k: v for k, v in kwargs.items()
+                                                     if k in ["tokenizer", "token_indexer", "vocabulary"]})
         else:
             raise NotImplementedError(f"Framework not supported: {framework}")
-
 
     def _init_feature_converter_transformer(
         self, tokenizer: PreTrainedTokenizer
     ) -> None:
         self.tokenizer = tokenizer
-
 
     def _init_feature_converter_allennlp(
         self, tokenizer: Tokenizer, token_indexer: TokenIndexer, vocabulary: Vocabulary
@@ -75,17 +73,14 @@ class FeatureConverter(Registrable):
         self.token_indexer = token_indexer
         self.vocabulary = vocabulary
 
-
     @property
     def name(self) -> str:
         raise NotImplementedError("FeatureConverter must implement 'name'.")
-
 
     @property
     def persist_attributes(self) -> List[str]:
         """All attributes that are saved alongside FeatureConverter"""
         raise NotImplementedError("FeatureConverter must implement 'persist_attributes'.")
-
 
     def document_to_features_transformers(
         self, document: Document, verbose: bool=False
@@ -93,13 +88,11 @@ class FeatureConverter(Registrable):
         raise NotImplementedError(
             "FeatureConverter does not implement 'document_to_features_transformers'.")
 
-
     def document_to_features_allennlp(
         self, document: Document, verbose: bool=False
     ) -> List[InputFeaturesAllennlp]:
         raise NotImplementedError(
             "FeatureConverter does not implement 'document_to_features_allennlp'.")
-
 
     def document_to_features(
         self, document: Document, verbose: bool=False
@@ -109,7 +102,6 @@ class FeatureConverter(Registrable):
         elif self.framework == "allennlp":
             return self.document_to_features_allennlp(document, verbose)
 
-
     def documents_to_features(
         self, documents: List[Document], verbose: bool=False
     ) -> List[List[InputFeatures]]:
@@ -117,7 +109,6 @@ class FeatureConverter(Registrable):
         for document in documents:
             input_features.extend(self.document_to_features(document), verbose)
         return input_features
-
 
     @staticmethod
     def _from_pretrained_transformers(
@@ -129,7 +120,6 @@ class FeatureConverter(Registrable):
         config["tokenizer"] = tokenizer
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
-
 
     @staticmethod
     def _from_pretrained_allennlp(
