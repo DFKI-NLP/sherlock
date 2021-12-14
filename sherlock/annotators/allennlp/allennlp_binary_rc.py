@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 from allennlp.models.model import Model
-from allennlp.data.tokenizers import Tokenizer
 
 from sherlock.document import Document, Relation
 from sherlock.feature_converters import FeatureConverter

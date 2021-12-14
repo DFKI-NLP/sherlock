@@ -25,14 +25,12 @@ class TransformersAnnotator(Annotator):
 
     def __init__(
         self,
-        tokenizer: PreTrainedTokenizer, # TODO: remove
         converter: FeatureConverter,
         model: PreTrainedModel,
         device: str = "cpu",
         batch_size: int = 16,
         **kwargs,
     ) -> None:
-        self.tokenizer = tokenizer
         self.converter = converter
         self.model = model.to(device)
         self.device = device
@@ -52,7 +50,6 @@ class TransformersAnnotator(Annotator):
         model = model_class.from_pretrained(path)
         converter = FeatureConverter.from_pretrained(path, tokenizer=tokenizer)
         return cls(
-            tokenizer,
             converter,
             model,
             **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "ignore_no_relation", "add_logits"]},

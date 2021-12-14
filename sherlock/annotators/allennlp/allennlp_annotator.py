@@ -33,14 +33,12 @@ class AllenNLPAnnotator(Annotator):
 
     def __init__(
         self,
-        tokenizer: Tokenizer,
         converter: FeatureConverter,
         model: Model, # fix
         device: str = "cpu",
         batch_size: int = 16,
         **kwargs,
     ) -> None:
-        self.tokenizer = tokenizer
         self.converter = converter
         self.model = model.to(device) # taken from transformers_annotator.py, but not sure if this actually works acc. to doc of torch.nn.Module (https://pytorch.org/docs/stable/generated/torch.nn.Module.html)
         self.device = device
@@ -70,7 +68,6 @@ class AllenNLPAnnotator(Annotator):
 
         model = Model.from_archive(path)
         return cls(
-            tokenizer,
             converter,
             model,
             **{k: v for k, v in kwargs.items() if k in ["device", "batch_size"]},

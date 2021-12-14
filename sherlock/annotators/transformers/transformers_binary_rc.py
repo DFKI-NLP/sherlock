@@ -16,7 +16,6 @@ class TransformersBinaryRcAnnotator(TransformersAnnotator):
 
     def __init__(
         self,
-        tokenizer: PreTrainedTokenizer,
         converter: FeatureConverter,
         model: PreTrainedModel,
         device: str = "cpu",
@@ -24,7 +23,7 @@ class TransformersBinaryRcAnnotator(TransformersAnnotator):
         ignore_no_relation: bool = True,
         add_logits: bool = False,
     ) -> None:
-        super().__init__(tokenizer, converter, model, device, batch_size)
+        super().__init__(converter, model, device, batch_size)
         self.ignore_no_relation = ignore_no_relation
         self.add_logits = add_logits
 
