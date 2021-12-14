@@ -66,14 +66,6 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-ALL_MODELS = sum(
-    (
-        tuple(conf.pretrained_config_archive_map.keys())
-        for conf in (BertConfig, RobertaConfig, XLNetConfig, XLMConfig)
-    ),
-    (),
-)
-
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
     "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
