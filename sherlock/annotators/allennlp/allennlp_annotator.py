@@ -15,6 +15,7 @@ import torch
 from allennlp.data.tokenizers import Tokenizer
 from allennlp.data.token_indexers import TokenIndexer
 from allennlp.data.data_loaders import SimpleDataLoader
+from allennlp.data import Vocabulary
 from allennlp.models.model import Model
 from allennlp.models.archival import load_archive
 from allennlp.common.file_utils import cached_path
@@ -35,12 +36,14 @@ class AllenNLPAnnotator(Annotator):
         self,
         converter: FeatureConverter,
         model: Model, # fix
-        device: str = "cpu",
-        batch_size: int = 16,
+        vocabulary: Vocabulary,
+        device: str="cpu",
+        batch_size: int=16,
         **kwargs,
     ) -> None:
         self.converter = converter
         self.model = model.to(device) # taken from transformers_annotator.py, but not sure if this actually works acc. to doc of torch.nn.Module (https://pytorch.org/docs/stable/generated/torch.nn.Module.html)
+        self.vocabulary = vocabulary
         self.device = device
         self.batch_size = batch_size
 
@@ -65,11 +68,12 @@ class AllenNLPAnnotator(Annotator):
         #tokenizer = Tokenizer.from_params(params)  # or tokenizer_class.from_params() ?
         #token_indexer = TokenIndexer.from_params(params)  # or token_indexer_class.from_params() ?
         # vocab = model.vocab  # Vocabulary is loaded in Model.load()
-
+        vocabulary = Vocabulary.from_files(os.path.join(path, "allennlp_vocabulary"))
         model = Model.from_archive(path)
         return cls(
             converter,
             model,
+            vocabulary,
             **{k: v for k, v in kwargs.items() if k in ["device", "batch_size"]},
         )
 
@@ -101,6 +105,8 @@ class AllenNLPAnnotator(Annotator):
         # eval_sampler = SequentialSampler(eval_dataset)
         # eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=self.batch_size)
         eval_dataloader = SimpleDataLoader(instances, self.batch_size)
+
+        eval_dataloader.index_with(self.vocabulary)
 
         annot_list = []
         label_ids_list = []

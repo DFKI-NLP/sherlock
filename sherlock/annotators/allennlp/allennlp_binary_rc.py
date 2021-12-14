@@ -8,8 +8,8 @@
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-
 from allennlp.models.model import Model
+from allennlp.data import Vocabulary
 
 from sherlock.document import Document, Relation
 from sherlock.feature_converters import FeatureConverter
@@ -25,12 +25,13 @@ class AllenNLPBinaryRcAnnotator(AllenNLPAnnotator):
         self,
         converter: FeatureConverter,
         model: Model,
-        device: str = "cpu",
-        batch_size: int = 16,
-        ignore_no_relation: bool = True,
+        vocabulary: Vocabulary,
+        device: str="cpu",
+        batch_size: int=16,
+        ignore_no_relation: bool=True,
         add_logits: bool = False,
     ) -> None:
-        super().__init__(converter, model, device, batch_size)
+        super().__init__(converter, model, vocabulary, device, batch_size)
         self.ignore_no_relation = ignore_no_relation
         self.add_logits = add_logits
 

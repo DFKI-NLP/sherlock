@@ -38,7 +38,6 @@ class BinaryRcConverter(FeatureConverter):
         `allennlp`:
             tokenizer : ``Tokenizer``
             token_indexer : ``TokenIndexer``
-            vocabulary : ``Vocabulary``
             sep_token : ``str``, optional (default=`None`)
                 model-specific separator token used to separate
                 relations at the end of sentence. Is automatically

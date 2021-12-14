@@ -2,14 +2,11 @@ import json
 import logging
 import os
 from typing import List, Optional, Dict, Union
-from allennlp.data.token_indexers.token_indexer import TokenIndexer
-from allennlp.data.vocabulary import Vocabulary
 
 from registrable import Registrable
 from transformers import PreTrainedTokenizer
 from allennlp.data.tokenizers import Tokenizer
 from allennlp.data.token_indexers import TokenIndexer
-from allennlp.data.vocabulary import Vocabulary
 
 from sherlock import Document
 from sherlock.feature_converters.input_features import (
@@ -33,8 +30,7 @@ class FeatureConverter(Registrable):
     **kwargs : ``Dict[str,any]``
         init arguments for `transformer` or `allennlp` FeatureConverter:
         `transformer`:  {"tokenizer": PreTrainedTokenizer}
-        `allennlp`: {"tokenizer": Tokenizer, "token_indexer": TokenIndexer
-            "vocabulary": Vocabulary}
+        `allennlp`: {"tokenizer": Tokenizer, "token_indexer": TokenIndexer}
     """
     def __init__(
         self,
@@ -57,7 +53,7 @@ class FeatureConverter(Registrable):
         elif framework == "allennlp":
             logger.info("Initializing AllenNLP FeatureConverter")
             self._init_feature_converter_allennlp(**{k: v for k, v in kwargs.items()
-                                                     if k in ["tokenizer", "token_indexer", "vocabulary"]})
+                                                     if k in ["tokenizer", "token_indexer"]})
         else:
             raise NotImplementedError(f"Framework not supported: {framework}")
 
@@ -67,11 +63,10 @@ class FeatureConverter(Registrable):
         self.tokenizer = tokenizer
 
     def _init_feature_converter_allennlp(
-        self, tokenizer: Tokenizer, token_indexer: TokenIndexer, vocabulary: Vocabulary
+        self, tokenizer: Tokenizer, token_indexer: TokenIndexer
     ) -> None:
         self.tokenizer = tokenizer
         self.token_indexer = token_indexer
-        self.vocabulary = vocabulary
 
     @property
     def name(self) -> str:
@@ -134,7 +129,6 @@ class FeatureConverter(Registrable):
         with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
-        config["vocabulary"] = Vocabulary.from_files(os.path.join(path, "allennlp_vocabulary"))
         config["token_indexer"] = token_indexer
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
@@ -156,9 +150,6 @@ class FeatureConverter(Registrable):
         elif framework == "allennlp":
             return FeatureConverter._from_pretrained_allennlp(path, config, **kwargs)
 
-    #def _save_vocabulary_allennlp(self, vocab_path: str) -> None:
-    #    self.vocabulary.save_to_files(vocab_path)
-
     def save_vocabulary(self, vocab_path: str) -> None:
         """Save the converters label vocabulary to a directory or file."""
         # TODO: maybe rename this to save_label_vocabulary
@@ -178,12 +169,6 @@ class FeatureConverter(Registrable):
                     index = label_index
                 writer.write(label + "\n")
                 index += 1
-
-        if self.framework == "allennlp":
-            if os.path.isdir(vocab_path):
-                self.vocabulary.save_to_files(os.path.join(vocab_path, "allennlp_vocabulary"))
-            else:
-                self.vocabulary.save_to_files(os.path.join(os.path.dirname(vocab_path), "allennlp_vocabulary"))
 
     def save(self, save_directory: str) -> None:
         if not os.path.isdir(save_directory):

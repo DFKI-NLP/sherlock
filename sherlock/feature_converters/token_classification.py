@@ -37,7 +37,6 @@ class TokenClassificationConverter(FeatureConverter):
         `allennlp`:
             tokenizer : ``Tokenizer``
             token_indexer : ``TokenIndexer``
-            vocabulary : ``Vocabulary``
     """
 
     def __init__(
