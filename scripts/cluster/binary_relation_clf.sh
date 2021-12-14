@@ -1,6 +1,6 @@
 python ./scripts/run_binary_relation_clf.py \
   --model_type bert \
-  --model_name_or_path bert-case-uncased \
+  --model_name_or_path bert-base-uncased \
   --do_train \
   --do_eval \
   --do_predict \
