@@ -341,7 +341,7 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
         args.cache_dir,
-        "cached_{}_{}_{}".format(
+        "cached_ner_{}_{}_{}".format(
             split,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
