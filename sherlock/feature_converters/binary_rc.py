@@ -128,9 +128,9 @@ class BinaryRcConverter(FeatureConverter):
             inputs = self.tokenizer.encode_plus(
                 text=tokens,
                 add_special_tokens=True,
-                max_length=self.max_length,
                 truncation=True,
-                pad_to_max_length=True,
+                max_length=self.max_length,
+                padding='max_length',
                 return_overflowing_tokens=True,
             )
 
@@ -169,7 +169,7 @@ class BinaryRcConverter(FeatureConverter):
         mention_combinations = self._create_mention_combinations(document)
 
         if verbose:
-            logger.warn("Logging function for Allennlp FeatureConverter not implemented yet")
+            logger.warning("Logging function for Allennlp FeatureConverter not implemented yet")
 
         input_features = []
         for head_idx, tail_idx, label, sent_id in mention_combinations:

@@ -91,8 +91,9 @@ class TokenClassificationConverter(FeatureConverter):
         inputs = self.tokenizer.encode_plus(
             text=tokens,
             add_special_tokens=True,
+            truncation=True,
             max_length=self.max_length,
-            pad_to_max_length=True,
+            padding='max_length',
             return_overflowing_tokens=True,
         )
 
