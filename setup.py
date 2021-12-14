@@ -29,14 +29,16 @@ setup(
                                     "tests.*", "tests"]),
     install_requires=[
         # core
-        "spacy",
-        "transformers==2.7.0",
+        "spacy>=2.1.0,<3.3",
+        "transformers>=4.1,<4.13",
         "seqeval",
-        "torch",
+        "torch>=1.6.0,<1.11.0",
         "registrable",
+        "tensorboardX>=1.2",
+        "allennlp==2.8.0",
 
         # Microscope
-        "jsonnet",
+        "jsonnet>=0.10.0 ; sys.platform != 'win32'",
         "flask",
         "flask_cors",
         "gevent",
@@ -46,7 +48,7 @@ setup(
     entry_points={
         "console_scripts": []
     },
-    python_requires='>=3.7.0',
+    python_requires='>=3.7.1',
     classifiers=[
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT Software License",

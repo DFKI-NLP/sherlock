@@ -339,7 +339,7 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
 
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
-        args.data_dir,
+        args.cache_dir,
         "cached_{}_{}_{}".format(
             split,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
@@ -351,6 +351,7 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         input_features = torch.load(cached_features_file)
     else:
         logger.info("Creating features from dataset file at %s", args.data_dir)
+        os.makedirs(args.cache_dir, exist_ok=True)
         documents = dataset_reader.get_documents(split)
         input_features = converter.documents_to_features(documents)
 
@@ -442,9 +443,10 @@ def main():
     )
     parser.add_argument(
         "--cache_dir",
-        default="",
+        default=None,
         type=str,
-        help="Where do you want to store the pre-trained models downloaded from s3",
+        required=True,
+        help="Where do you want to store the pre-trained models downloaded from s3 and cached features",
     )
     parser.add_argument(
         "--max_seq_length",
