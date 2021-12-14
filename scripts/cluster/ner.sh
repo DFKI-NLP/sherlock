@@ -7,7 +7,7 @@ python ./scripts/run_ner.py \
   --evaluate_during_training \
   --eval_all_checkpoints \
   --do_lower_case \
-  --data_dir /ds/text/tacred/data/json/ \
+  --data_dir /ds/text/tacred/data/json \
   --cache_dir ./.cache \
   --save_steps 8500 \
   --logging_steps 8500 \

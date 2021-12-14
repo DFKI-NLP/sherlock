@@ -7,7 +7,7 @@ python ./scripts/run_binary_relation_clf.py \
   --evaluate_during_training \
   --eval_all_checkpoints \
   --do_lower_case \
-  --data_dir /ds/text/tacred/data/json/ \
+  --data_dir /ds/text/tacred/data/json \
   --cache_dir ./.cache \
   --save_steps 8500 \
   --logging_steps 8500 \
@@ -19,4 +19,4 @@ python ./scripts/run_binary_relation_clf.py \
   --overwrite_cache \
   --overwrite_output_dir \
   --entity_handling mark_entity_append_ner \
-  --output_dir ./experiments/binary_relation_clf/
+  --output_dir ./experiments/binary_relation_clf
