@@ -26,7 +26,7 @@ INVERSE_RELATIONS = {
 
 logger = logging.getLogger(__name__)
 
-
+@DatasetReader.register("tacred")
 class TacredDatasetReader(DatasetReader):
     """Dataset reader for the TACRED data set."""
 

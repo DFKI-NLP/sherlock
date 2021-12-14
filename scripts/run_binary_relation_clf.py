@@ -52,7 +52,7 @@ from transformers import (
 )
 
 from sherlock.dataset import TensorDictDataset
-from sherlock.dataset_readers import TacredDatasetReader
+from sherlock.dataset_readers import DatasetReader
 from sherlock.feature_converters import FeatureConverter
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
@@ -632,6 +632,8 @@ def main():
 
     # Set seed
     set_seed(args)
+
+    TacredDatasetReader = DatasetReader.by_name("tacred")
 
     dataset_reader = TacredDatasetReader(
         data_dir=args.data_dir, add_inverse_relations=args.add_inverse_relations
