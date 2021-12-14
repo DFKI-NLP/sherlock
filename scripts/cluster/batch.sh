@@ -14,6 +14,8 @@ WORKDIR="`pwd`"
 srun -K --container-mounts=/netscratch/$USER:/netscratch/$USER,/ds:/ds:ro,"`pwd`":"`pwd`" \
 --container-image=$IMAGE \
 --container-workdir=$WORKDIR \
+--ntasks=1 \
+--nodes=1 \
 ./scripts/cluster/wrapper.sh \
 python ./scripts/run_binary_relation_clf.py \
   --model_type bert \
