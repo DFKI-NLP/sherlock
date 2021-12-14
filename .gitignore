@@ -55,3 +55,4 @@ Dockerfile~
 
 !sherlock/microscope/static/js/brat/client/lib
 /experiments/
+/runs/
