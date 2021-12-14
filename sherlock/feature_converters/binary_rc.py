@@ -91,9 +91,9 @@ class BinaryRcConverter(FeatureConverter):
                     self.sep_token = sep_token
             else:
                 if sep_token is None:
-                    # Option 1: people need to give the sep_token: TODO: decide
-                    return NotImplementedError(
-                        "FeatureConverterAllennlp for non-transformers must specify sep_token")
+                    # # Option 1: people need to give the sep_token: TODO: decide
+                    # return NotImplementedError(
+                    #     "FeatureConverterAllennlp for non-transformers must specify sep_token")
                     # Option 2: set sep_token for people
                     self.sep_token = "[SEP]"
                 else:
@@ -162,6 +162,9 @@ class BinaryRcConverter(FeatureConverter):
 
         assert isinstance(self.tokenizer, Tokenizer),\
             "FeatureConverter initialized with wrong Tokenizer class"
+        # Nevermind this # token_indexer is a dict with TokenIndexer
+        #               # + this should be token_indexers! TODO
+        # but for consistency it is good it would be a dict with TokenIndexers TODO
         assert isinstance(self.token_indexer, TokenIndexer),\
             "FeatureConverter initialized with wrong TokenIndexer class"
 
