@@ -1,4 +1,4 @@
-python ./scripts/run_binary_relation_clf.py \
+python ./scripts/run_ner.py \
   --model_type bert \
   --model_name_or_path bert-base-uncased \
   --do_train \
@@ -18,5 +18,4 @@ python ./scripts/run_binary_relation_clf.py \
   --num_train_epochs 5.0 \
   --overwrite_cache \
   --overwrite_output_dir \
-  --entity_handling mark_entity_append_ner \
-  --output_dir ./experiments/binary_relation_clf/
+  --output_dir ./experiments/ner
