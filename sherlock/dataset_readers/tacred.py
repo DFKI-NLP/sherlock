@@ -26,7 +26,7 @@ INVERSE_RELATIONS = {
 }
 
 logger = logging.getLogger(__name__)
-
+# TODO: ordering
 
 @DatasetReader.register("tacred")
 class TacredDatasetReader(DatasetReader):
@@ -117,7 +117,7 @@ class TacredDatasetReader(DatasetReader):
         return self._documents_generator(self._read_json(file_path))
 
 
-    def _label_generator(self, task: IETask, file_path: str=None) -> Iterable[str]:
+    def _labels_generator(self, task: IETask, file_path: str=None) -> Iterable[str]:
         if task not in self.get_available_tasks():
             raise ValueError("Selected task '%s' not available." % task)
 
@@ -161,10 +161,10 @@ class TacredDatasetReader(DatasetReader):
 
     def get_labels(self, task: IETask, file_path: str=None) -> Iterable[str]:
         if self.data_dir is not None:
-            return list(self._label_generator(task))
+            return list(self._labels_generator(task))
         elif file_path is None:
             raise AttributeError("get_labels requires file_path as argument")
-        return self._label_generator(task, file_path)
+        return self._labels_generator(task, file_path)
 
 
     def get_additional_tokens(self, task: IETask, file_path: str=None) -> List[str]:
