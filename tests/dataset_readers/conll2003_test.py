@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from sherlock.dataset_readers import Conll2003DatasetReader
 from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
@@ -56,6 +58,7 @@ def test_get_additional_tokens():
     assert len(reader.get_additional_tokens(IETask.NER, file_path=TRAIN_FILE)) == 0
 
 
+@pytest.mark.backwards_compability
 def test_get_documents_deprecated():
     reader = Conll2003DatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="conll.txt"
@@ -93,6 +96,7 @@ def test_get_documents_deprecated():
         assert ment.label == expected_ment["label"]
 
 
+@pytest.mark.backwards_compability
 def test_get_labels_deprecated():
     reader = Conll2003DatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="conll.txt"
@@ -102,6 +106,7 @@ def test_get_labels_deprecated():
     assert list(sorted(labels)) == list(sorted(["O", "I-MISC", "I-PER", "I-ORG", "I-LOC"]))
 
 
+@pytest.mark.backwards_compability
 def test_get_additional_tokens_deprecated():
     reader = Conll2003DatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="conll.txt"

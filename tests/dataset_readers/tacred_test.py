@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
@@ -137,6 +139,7 @@ def test_add_inverse_relations():
     assert [rel.label for rel in documents[2].rels] == ["per:children", "per:parents"]
 
 
+@pytest.mark.backwards_compability
 def test_get_documents_deprecated():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
@@ -159,6 +162,7 @@ def test_get_documents_deprecated():
     assert relation.label == "no_relation"
 
 
+@pytest.mark.backwards_compability
 def test_get_labels_ner_deprecated():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
@@ -184,6 +188,7 @@ def test_get_labels_ner_deprecated():
     assert sorted(labels) == sorted(expected_labels)
 
 
+@pytest.mark.backwards_compability
 def test_get_additional_tokens_ner_deprecated():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
@@ -193,6 +198,7 @@ def test_get_additional_tokens_ner_deprecated():
     assert labels == []
 
 
+@pytest.mark.backwards_compability
 def test_get_labels_re_deprecated():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
@@ -202,6 +208,7 @@ def test_get_labels_re_deprecated():
     assert sorted(labels) == sorted(["no_relation", "per:title", "per:children"])
 
 
+@pytest.mark.backwards_compability
 def test_get_additional_tokens_re_deprecated():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
@@ -223,6 +230,7 @@ def test_get_additional_tokens_re_deprecated():
     )
 
 
+@pytest.mark.backwards_compability
 def test_convert_ptb_token_deprecated():
     not_convert_reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
@@ -266,6 +274,7 @@ def test_convert_ptb_token_deprecated():
     assert [t.text for t in convert_doc.tokens] == ["(", ")", "[", "]", "{", "}"]
 
 
+@pytest.mark.backwards_compability
 def test_add_inverse_relations_deprecated():
     reader = TacredDatasetReader(
         data_dir=os.path.join(FIXTURES_ROOT, "datasets"),
