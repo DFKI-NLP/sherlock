@@ -74,6 +74,21 @@ For example, to train a RC model on the TACRED dataset:
   --output_dir <OUTPUT DIR>
 ```
 
+# Test
+
+Tests are located in the directory `tests`. To run them, being in the root directory call:
+```
+py.test
+```
+or
+```
+pytest -sv
+```
+To call a specific test specify testfile and use `-k` flag:
+```
+pytest tests/feature_converters/token_classification_test.py -sv -k "truncate"
+```
+
 # Installation issues
 
 * Using `python==3.9` the installation of `tokenizers` needed for `transformers`

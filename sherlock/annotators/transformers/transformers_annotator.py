@@ -25,14 +25,12 @@ class TransformersAnnotator(Annotator):
 
     def __init__(
         self,
-        tokenizer: PreTrainedTokenizer,
         converter: FeatureConverter,
         model: PreTrainedModel,
         device: str = "cpu",
         batch_size: int = 16,
         **kwargs,
     ) -> None:
-        self.tokenizer = tokenizer
         self.converter = converter
         self.model = model.to(device)
         self.device = device
@@ -45,19 +43,19 @@ class TransformersAnnotator(Annotator):
     def from_pretrained(  # type: ignore
         cls, path: str, **kwargs
     ) -> "Annotator":
+        # TODO: not very consistent, some of the stuff comes from args, some from kwargs
         args = torch.load(os.path.join(path, "training_args.bin"))
         _, model_class, tokenizer_class = NLP_TASK_CLASSES[cls.task][args.model_type]
         tokenizer = tokenizer_class.from_pretrained(path, do_lower_case=args.do_lower_case)
         model = model_class.from_pretrained(path)
-        converter = FeatureConverter.from_pretrained(path, tokenizer)
+        converter = FeatureConverter.from_pretrained(path, tokenizer=tokenizer)
         return cls(
-            tokenizer,
             converter,
             model,
-            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "add_logits"]},
+            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size", "ignore_no_relation", "add_logits"]},
         )
 
-    def annotate_documents(self, documents: List[Document]) -> List[Document]:
+    def process_documents(self, documents: List[Document]) -> List[Document]:
         results = []  # type: List[Document]
         for i in range(0, len(documents), self.batch_size):
             batch_documents = documents[i : i + self.batch_size]

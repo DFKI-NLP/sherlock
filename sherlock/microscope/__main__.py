@@ -76,8 +76,8 @@ def make_app(
     def get_examples() -> Response:  # pylint: disable=unused-variable
         return send_file(examples_file)
 
-    @app.route("/annotate", methods=["POST", "OPTIONS"])
-    def annotate() -> Response:  # pylint: disable=unused-variable
+    @app.route("/process", methods=["POST", "OPTIONS"])
+    def process() -> Response:  # pylint: disable=unused-variable
         """make a annotation using the specified pipeline and return the results"""
         if request.method == "OPTIONS":
             return Response(response="", status=200)
@@ -90,7 +90,7 @@ def make_app(
         logger.info("data: %s", data)
 
         doc = Document(data.get("guid", 0), data["text"])
-        pipeline.annotate_document(doc)
+        pipeline.process_document(doc)
 
         logger.info("document: %s", doc)
 

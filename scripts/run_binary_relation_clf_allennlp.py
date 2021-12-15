@@ -24,36 +24,28 @@ import random
 
 import numpy as np
 import torch
-from seqeval.metrics import f1_score, precision_score, recall_score
-from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
-from transformers import (
-    WEIGHTS_NAME,
-    AdamW,
-    BertConfig,
-    BertForTokenClassification,
-    BertTokenizer,
-    CamembertConfig,
-    CamembertForTokenClassification,
-    CamembertTokenizer,
-    DistilBertConfig,
-    DistilBertForTokenClassification,
-    DistilBertTokenizer,
-    RobertaConfig,
-    RobertaForTokenClassification,
-    RobertaTokenizer,
-    XLMRobertaConfig,
-    XLMRobertaForTokenClassification,
-    XLMRobertaTokenizer,
-    get_linear_schedule_with_warmup,
-)
 
+import allennlp
+from allennlp.data import Vocabulary
+from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
+from allennlp.data.tokenizers import WhitespaceTokenizer
+from allennlp.data.token_indexers import SingleIdTokenIndexer
+from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
+from allennlp.modules.token_embedders import Embedding
+from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
+from allennlp.modules import FeedForward
+
+from sherlock import dataset
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import FeatureConverter
+from sherlock.dataset_readers.dataset_reader import DatasetReader
+from sherlock.feature_converters import BinaryRcConverter
+from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
+from sherlock.models.relation_classification import BasicRelationClassifier
 
 
 try:
@@ -63,15 +55,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
-
-MODEL_CLASSES = {
-    "bert": (BertConfig, BertForTokenClassification, BertTokenizer),
-    "roberta": (RobertaConfig, RobertaForTokenClassification, RobertaTokenizer),
-    "distilbert": (DistilBertConfig, DistilBertForTokenClassification, DistilBertTokenizer),
-    "camembert": (CamembertConfig, CamembertForTokenClassification, CamembertTokenizer),
-    "xlmroberta": (XLMRobertaConfig, XLMRobertaForTokenClassification, XLMRobertaTokenizer),
-}
 
 
 def set_seed(args):
@@ -175,11 +158,6 @@ def train(args, dataset_reader, converter, model, tokenizer):
         for step, batch in enumerate(epoch_iterator):
             model.train()
             batch = {k: t.to(args.device) for k, t in batch.items()}
-            if args.model_type not in ["bert", "xlnet"]:
-                batch["token_type_ids"] = None
-
-            if args.model_type == "distilbert":
-                del batch["token_type_ids"]
 
             outputs = model(**batch)
             loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
@@ -308,29 +286,17 @@ def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""
             out_label_ids = np.append(out_label_ids, batch["labels"].detach().cpu().numpy(), axis=0)
 
     eval_loss = eval_loss / nb_eval_steps
-    preds = np.argmax(preds, axis=2)
+    preds = np.argmax(preds, axis=1)
+    result = compute_f1(preds, out_label_ids)
 
-    out_label_list = [[] for _ in range(out_label_ids.shape[0])]
-    preds_list = [[] for _ in range(out_label_ids.shape[0])]
+    output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
+    with open(output_eval_file, "w") as writer:
+        logger.info("***** Eval results {} *****".format(prefix))
+        for key in sorted(result.keys()):
+            logger.info("  %s = %s", key, str(result[key]))
+            writer.write("%s = %s\n" % (key, str(result[key])))
 
-    for i in range(out_label_ids.shape[0]):
-        for j in range(out_label_ids.shape[1]):
-            if out_label_ids[i, j] != converter.pad_token_label_id:
-                out_label_list[i].append(converter.id_to_label_map[out_label_ids[i][j]])
-                preds_list[i].append(converter.id_to_label_map[preds[i][j]])
-
-    results = {
-        "loss": eval_loss,
-        "precision": precision_score(out_label_list, preds_list),
-        "recall": recall_score(out_label_list, preds_list),
-        "f1": f1_score(out_label_list, preds_list),
-    }
-
-    logger.info("***** Eval results %s *****", prefix)
-    for key in sorted(results.keys()):
-        logger.info("  %s = %s", key, str(results[key]))
-
-    return results, preds_list
+    return result, preds
 
 
 def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
@@ -368,8 +334,9 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         tensor_dict = {
             "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
-            "token_type_ids": torch.tensor(features.token_type_ids, dtype=torch.long),
         }
+        if features.token_type_ids is not None:
+            tensor_dict["token_type_ids"] = torch.tensor(features.token_type_ids, dtype=torch.long)
         if features.labels is not None:
             tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
         tensor_dicts.append(tensor_dict)
@@ -394,7 +361,7 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()),
+        help="Model type",
     )
     parser.add_argument(
         "--model_name_or_path",
@@ -413,9 +380,20 @@ def main():
     )
 
     # Task-specific parameters
-    parser.add_argument("--negative_label", default="O", type=str)
+    parser.add_argument("--negative_label", default="no_relation", type=str)
+    parser.add_argument(
+        "--entity_handling",
+        type=str,
+        default="mask_entity",
+        choices=["mark_entity", "mark_entity_append_ner", "mask_entity", "mask_entity_append_text"],
+    )
     parser.add_argument(
         "--do_predict", action="store_true", help="Whether to run predictions on the test set."
+    )
+    parser.add_argument(
+        "--add_inverse_relations",
+        action="store_true",
+        help="Whether to also add inverse relations to the document.",
     )
 
     # Other parameters
@@ -636,43 +614,55 @@ def main():
     # Set seed
     set_seed(args)
 
-    # dataset_reader = Conll2003DatasetReader(data_dir=args.data_dir)
-    dataset_reader = TacredDatasetReader(data_dir=args.data_dir, tagging_scheme="bio")
-    labels = dataset_reader.get_labels(task=IETask.NER)
-    num_labels = len(labels)
+    tokenizer = WhitespaceTokenizer()
+    token_indexers = {"tokens": SingleIdTokenIndexer()}
 
-    # Load pretrained model and tokenizer
+
+    WrapperAllennlpClass = allennlp.data.DatasetReader.by_name("sherlock_reader")
+    dataset_reader = WrapperAllennlpClass(task="binary_rc",
+        dataset_reader_name="tacred",
+        feature_converter_name = "binary_rc",
+        tokenizer=tokenizer,
+        token_indexer=token_indexers["tokens"],
+        max_tokens=512,
+        )
+
     if args.local_rank not in [-1, 0]:
         # Make sure only the first process in distributed training will download model & vocab
         torch.distributed.barrier()
 
-    args.model_type = args.model_type.lower()
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    config = config_class.from_pretrained(
-        args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels
-    )
-    tokenizer = tokenizer_class.from_pretrained(
-        args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
-        do_lower_case=args.do_lower_case,
-    )
-    model = model_class.from_pretrained(
-        args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
-    )
+    # args.model_type = args.model_type.lower()
+    # config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    # config = config_class.from_pretrained(
+    #     args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels
+    # )
+    # tokenizer = tokenizer_class.from_pretrained(
+    #     args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
+    #     do_lower_case=args.do_lower_case,
+    # )
+    # model = model_class.from_pretrained(
+    #     args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
+    # )
 
-    TokenClassificationConverter = FeatureConverter.by_name("token_classification")
-    converter = TokenClassificationConverter(
-        labels=labels,
-        max_length=args.max_seq_length,
-        pad_token_label_id=CrossEntropyLoss().ignore_index,
-        pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
-        log_num_input_features=20,
-        tokenizer=tokenizer,
-    )
+    instances = dataset_reader.read(args.data_dir)
+    loader = SimpleDataLoader(instances, batch_size=8)
 
-    additional_tokens = dataset_reader.get_additional_tokens(task=IETask.NER)
-    if additional_tokens:
-        tokenizer.add_tokens(additional_tokens)
-        model.resize_token_embeddings(len(tokenizer))
+    vocabulary = Vocabulary.from_instances(instances)
+    vocab_size = vocabulary.get_vocab_size()
+    label_size = len(dataset_reader.dataset_reader.get_labels(dataset_reader.task))
+
+    embedder = BasicTextFieldEmbedder(
+        {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
+    )
+    encoder = BagOfEmbeddingsEncoder(embedding_dim=20)
+    feedforward = FeedForward(20, label_size, 1, torch.nn.ReLU(), 0)
+
+    model = BasicRelationClassifier(vocabulary, embedder, encoder, feedforward)
+
+    # additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
+    # if additional_tokens:
+    #     tokenizer.add_tokens(additional_tokens)
+    #     model.resize_token_embeddings(len(tokenizer))
 
     if args.local_rank == 0:
         # Make sure only the first process in distributed training will download model & vocab
@@ -681,6 +671,8 @@ def main():
     model.to(args.device)
 
     logger.info("Training/evaluation parameters %s", args)
+
+    return None
 
     # Training
     if args.do_train:
@@ -723,7 +715,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = TokenClassificationConverter.from_pretrained(args.output_dir, tokenizer)
+        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer)
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(
@@ -750,12 +742,12 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = TokenClassificationConverter.from_pretrained(args.output_dir, tokenizer)
         model = model_class.from_pretrained(args.output_dir)
         model.to(args.device)
         result, predictions = evaluate(
             args, dataset_reader, converter, model, tokenizer, split="test"
         )
+        predictions = [converter.id_to_label_map[i] for i in predictions]
 
         # Save results
         output_test_results_file = os.path.join(args.output_dir, "test_results.txt")
@@ -763,10 +755,10 @@ def main():
             for key in sorted(result.keys()):
                 writer.write("{} = {}\n".format(key, str(result[key])))
         # Save predictions
-        # output_test_predictions_file = os.path.join(args.output_dir, "test_predictions.txt")
-        # with open(output_test_predictions_file, "w") as writer:
-        #     for prediction in predictions:
-        #         writer.write(prediction + "\n")
+        output_test_predictions_file = os.path.join(args.output_dir, "test_predictions.txt")
+        with open(output_test_predictions_file, "w") as writer:
+            for prediction in predictions:
+                writer.write(prediction + "\n")
         results.update(result)
 
     return results

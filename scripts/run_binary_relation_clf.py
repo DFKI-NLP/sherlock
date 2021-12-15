@@ -52,8 +52,8 @@ from transformers import (
 )
 
 from sherlock.dataset import TensorDictDataset
-from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import BinaryRcConverter
+from sherlock.dataset_readers import DatasetReader
+from sherlock.feature_converters import FeatureConverter
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
 
@@ -633,6 +633,8 @@ def main():
     # Set seed
     set_seed(args)
 
+    TacredDatasetReader = DatasetReader.by_name("tacred")
+
     dataset_reader = TacredDatasetReader(
         data_dir=args.data_dir, add_inverse_relations=args.add_inverse_relations
     )
@@ -657,10 +659,12 @@ def main():
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
 
+    BinaryRcConverter = FeatureConverter.by_name("binary_rc")
+
     converter = BinaryRcConverter(
-        tokenizer=tokenizer,
         labels=labels,
         max_length=args.max_seq_length,
+        tokenizer=tokenizer,
         entity_handling=args.entity_handling,
         pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
         log_num_input_features=20,
@@ -708,11 +712,11 @@ def main():
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
         # Load a trained model and vocabulary that you have fine-tuned
-        model = model_class.from_pretrained(args.output_dir)
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
-        )
-        model.to(args.device)
+        #model = model_class.from_pretrained(args.output_dir)  # todo why do we do this here during training?
+        #tokenizer = tokenizer_class.from_pretrained(  # todo why do we do this here during training?
+        #    args.output_dir, do_lower_case=args.do_lower_case
+        #)
+        #model.to(args.device) # todo why do we do this here during training?
 
     # Evaluation
     results = {}
@@ -720,7 +724,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer)
+        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer=tokenizer)
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(

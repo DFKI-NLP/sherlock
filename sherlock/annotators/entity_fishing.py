@@ -37,10 +37,10 @@ class EntityFishingAnnotator(Annotator):
     ) -> "Annotator":  # type: ignore
         return cls(service_url, lang, connect_timeout_ms, read_timeout_ms)
 
-    def annotate_documents(self, documents: List[Document]) -> List[Document]:
-        return [self.annotate_document(d) for d in documents]
+    def process_documents(self, documents: List[Document]) -> List[Document]:
+        return [self.process_document(d) for d in documents]
 
-    def annotate_document(self, document: Document) -> Document:
+    def process_document(self, document: Document) -> Document:
         params = {"text": document.text, "language": {"lang": self.lang}}
 
         response = requests.post(

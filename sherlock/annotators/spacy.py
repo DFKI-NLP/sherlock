@@ -93,7 +93,7 @@ class SpacyAnnotator(Annotator):
             },
         )
 
-    def annotate_documents(self, documents: List[Document]) -> List[Document]:
+    def process_documents(self, documents: List[Document]) -> List[Document]:
         spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
             doc.tokens = [Token.from_spacy(doc, token) for token in spacy_doc]
@@ -103,7 +103,7 @@ class SpacyAnnotator(Annotator):
                 doc.ments.append(Span.from_spacy(doc, mention))
         return documents
 
-    def annotate_document(self, document: Document) -> Document:
+    def process_document(self, document: Document) -> Document:
         spacy_doc = self.spacy(_replace_ws(document.text))
         document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
         if self.has_sentencizer:

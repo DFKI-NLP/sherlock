@@ -349,7 +349,7 @@ def test_save_and_load(tmpdir):
     )
     converter.save(tmpdir)
 
-    loaded_converter = BinaryRcConverter.from_pretrained(tmpdir, tokenizer)
+    loaded_converter = BinaryRcConverter.from_pretrained(tmpdir, tokenizer=tokenizer)
     assert loaded_converter.max_length == converter.max_length
     assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
     assert loaded_converter.entity_handling == converter.entity_handling

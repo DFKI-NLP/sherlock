@@ -21,9 +21,9 @@ class Pipeline(DocumentProcessor):
         self._processors: List[DocumentProcessor] = processors
         self._provenance = provenance
 
-    def annotate_documents(self, documents: List[Document]) -> List[Document]:
+    def process_documents(self, documents: List[Document]) -> List[Document]:
         for processor in self._processors:
-            processor.annotate_documents(documents)
+            processor.process_documents(documents)
         self._add_provenance(documents)
         return documents
 

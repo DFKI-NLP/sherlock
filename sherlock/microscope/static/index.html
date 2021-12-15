@@ -166,7 +166,7 @@
                         annotate_text: function() {
                             this.isLoading = true;
                             axios
-                            .post("/annotate?format=json-brat", {"guid": 0, "text": this.text})
+                            .post("/process?format=json-brat", {"guid": 0, "text": this.text})
                             .then(response => {
                                 this.collData = response.data.collData;
                                 this.docData = response.data.docData;

@@ -2,10 +2,16 @@ import itertools
 import logging
 from typing import List, Optional, Tuple
 
+from allennlp.data.fields import TextField, LabelField, MetadataField
+from allennlp.data.instance import Instance
+from allennlp.data.tokenizers import Tokenizer, PretrainedTransformerTokenizer
+from allennlp.data.token_indexers import TokenIndexer
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
-from sherlock.feature_converters.feature_converter import FeatureConverter, InputFeatures
+from sherlock.feature_converters.feature_converter import FeatureConverter
+from sherlock.feature_converters.input_features import (
+    InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformers)
 
 
 logger = logging.getLogger(__name__)
@@ -13,16 +19,42 @@ logger = logging.getLogger(__name__)
 
 @FeatureConverter.register("binary_rc")
 class BinaryRcConverter(FeatureConverter):
+    """
+    Class to convert Documents into InputFeatures used for Annotators
+    in Binary Relation Classification.
+
+    Attributes
+    ----------
+    labels
+    max_length
+    framework
+    entity_handling
+    pad_token_segment_id    # TODO: probably move into `transformers` kwargs
+    log_num_input_features
+    kwargs : ``Dict[str, any]``
+        framwork specific keywords.
+        `transformers`:
+            tokenizer  : `PreTrainedTokenizer`
+        `allennlp`:
+            tokenizer : ``Tokenizer``
+            token_indexer : ``TokenIndexer``
+            sep_token : ``str``, optional (default=`None`)
+                model-specific separator token used to separate
+                relations at the end of sentence. Is automatically
+                set for allennlp-transformers, but for other models
+                has to be set to separator used in training.
+    """
     def __init__(
         self,
-        tokenizer: PreTrainedTokenizer,
         labels: List[str],
         max_length: int = 512,
+        framework: str = "transformers",
         entity_handling: str = "mark_entity",
-        pad_token_segment_id: int = 0,
+        pad_token_segment_id: int = 0,      # TODO: Remove? Never used.
         log_num_input_features: int = -1,
+        **kwargs,
     ) -> None:
-        super().__init__(tokenizer, labels, max_length)
+        super().__init__(labels, max_length, framework, **kwargs)
         if entity_handling not in [
             "mark_entity",
             "mark_entity_append_ner",
@@ -35,17 +67,153 @@ class BinaryRcConverter(FeatureConverter):
         self.pad_token_segment_id = pad_token_segment_id
         self.log_num_input_features = log_num_input_features
 
+        if framework == "transformers":
+            sep_token = kwargs.get("sep_token")
+            if sep_token is None:
+                self.sep_token = self.tokenizer.sep_token
+            else:
+                # Overriding native sep_token <- undefined behavior
+                if sep_token != self.tokenizer.sep_token:
+                    logger.warn("Overwriting transformer sep_token leads to undefined behavior!")
+                self.sep_token = sep_token
+
+        elif framework == "allennlp":
+            sep_token = kwargs.get("sep_token")
+            if isinstance(self.tokenizer, PretrainedTransformerTokenizer):
+                if sep_token is None:
+                    # access transformers sep_token automatically:
+                    # https://github.com/huggingface/transformers/blob/b66c5ab20c8bb08d52cb840382498f936ea8da03/src/transformers/tokenization_utils_base.py#L985
+                    self.sep_token = self.tokenizer.tokenizer.sep_token
+                else:
+                    # Overriding native sep_token <- undefined behavior
+                    if sep_token != self.tokenizer.tokenizer.sep_token:
+                        logger.warn("Overwriting transformer sep_token leads to undefined behavior!")
+                    self.sep_token = sep_token
+            else:
+                if sep_token is None:
+                    # # Option 1: people need to give the sep_token: TODO: decide
+                    # return NotImplementedError(
+                    #     "FeatureConverterAllennlp for non-transformers must specify sep_token")
+                    # Option 2: set sep_token for people
+                    self.sep_token = "[SEP]"
+                else:
+                    self.sep_token = sep_token
+
     @property
     def name(self) -> str:
         return "binary_rc"
 
     @property
     def persist_attributes(self) -> List[str]:
-        return ["max_length", "entity_handling", "pad_token_segment_id"]
+        if self.framework == "transformers":
+            return ["max_length", "entity_handling", "pad_token_segment_id", "sep_token"]
+        elif self.framework == "allennlp":
+            return ["max_length", "entity_handling", "pad_token_segment_id", "sep_token"]
 
-    def document_to_features(
+    def document_to_features_transformers(
         self, document: Document, verbose: bool = False
-    ) -> List[InputFeatures]:
+    ) -> List[InputFeaturesTransformers]:
+
+        assert isinstance(self.tokenizer, PreTrainedTokenizer),\
+            "FeatureConverter initialized with wrong Tokenizer class"
+
+        mention_combinations = self._create_mention_combinations(document)
+
+        input_features = []
+        for head_idx, tail_idx, label, sent_id in mention_combinations:
+            input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
+            tokens = self.tokenizer.tokenize(input_string)
+
+            inputs = self.tokenizer.encode_plus(
+                text=tokens,
+                add_special_tokens=True,
+                truncation=True,
+                max_length=self.max_length,
+                padding='max_length',
+                return_overflowing_tokens=True,
+            )
+
+            metadata = dict(
+                guid=document.guid,
+                truncated="overflowing_tokens" in inputs and len(inputs["overflowing_tokens"]) > 0,
+                head_idx=head_idx,
+                tail_idx=tail_idx,
+            )
+
+            label_id = self.label_to_id_map[label] if label is not None else None
+
+            features = InputFeaturesTransformers(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                token_type_ids=inputs.get("token_type_ids"),
+                labels=label_id,
+                metadata=metadata,
+            )
+            input_features.append(features)
+
+            if verbose:
+                self._log_input_features(tokens, document, features, label)
+
+        return input_features
+
+    def document_to_features_allennlp(
+        self, document: Document, verbose: bool=False
+    ) -> List[InputFeaturesAllennlp]:
+
+        assert isinstance(self.tokenizer, Tokenizer),\
+            "FeatureConverter initialized with wrong Tokenizer class"
+        # Nevermind this # token_indexer is a dict with TokenIndexer
+        #               # + this should be token_indexers! TODO
+        # but for consistency it is good it would be a dict with TokenIndexers TODO
+        assert isinstance(self.token_indexer, TokenIndexer),\
+            "FeatureConverter initialized with wrong TokenIndexer class"
+
+        mention_combinations = self._create_mention_combinations(document)
+
+        if verbose:
+            logger.warning("Logging function for Allennlp FeatureConverter not implemented yet")
+
+        input_features = []
+        for head_idx, tail_idx, label, sent_id in mention_combinations:
+            input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
+
+            tokens = self.tokenizer.tokenize(input_string)
+            # todo - head or tail may have been truncated, check!
+            # see https://github.com/DFKI-NLP/RelEx/blob/master/relex/dataset_readers/tacred.py#text_to_instance()
+            # for example handling of this
+            text_tokens_field = TextField(tokens[: self.max_length],
+                                          {"tokens": self.token_indexer})
+            truncated = MetadataField({"truncated": len(tokens) > self.max_length})
+
+            fields = {"text": text_tokens_field, "metadata": truncated}
+
+            if label is not None:
+                label_id = self.label_to_id_map[label]
+                label_field = LabelField(label_id, skip_indexing=True)
+                fields["label"] = label_field
+            #if instance_id is not None:
+            #    fields["metadata"]["id"] = instance_id
+            instance = Instance(fields)
+
+
+            metadata = dict(
+                guid=document.guid,
+                truncated=instance["metadata"]["truncated"],
+                head_idx=head_idx,
+                tail_idx=tail_idx,
+            )
+            label_id = self.label_to_id_map[label] if label is not None else None
+            features = InputFeaturesAllennlp(
+                instance=instance,
+                labels=label_id,
+                metadata=metadata,
+            )
+            input_features.append(features)
+
+        return input_features
+
+
+    def _create_mention_combinations(self, document: Document) -> List[str]:
         """
         Converts Document to List of InputFeatures usable to train
         """
@@ -80,47 +248,15 @@ class BinaryRcConverter(FeatureConverter):
                         continue
                     mention_combinations.append((head_idx, tail_idx, None, None))
 
-        input_features = []
-        for head_idx, tail_idx, label, sent_id in mention_combinations:
-            tokens = self._handle_entities(document, head_idx, tail_idx, sent_id)
+        return mention_combinations
 
-            inputs = self.tokenizer.encode_plus(
-                text=tokens,
-                add_special_tokens=True,
-                max_length=self.max_length,
-                pad_to_max_length=True,
-                return_overflowing_tokens=True,
-            )
-
-            metadata = dict(
-                guid=document.guid,
-                truncated="overflowing_tokens" in inputs,
-                head_idx=head_idx,
-                tail_idx=tail_idx,
-            )
-
-            label_id = self.label_to_id_map[label] if label is not None else None
-
-            features = InputFeatures(
-                input_ids=inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
-                token_type_ids=inputs.get("token_type_ids"),
-                labels=label_id,
-                metadata=metadata,
-            )
-            input_features.append(features)
-
-            if verbose:
-                self._log_input_features(tokens, document, features, label)
-
-        return input_features
 
     def documents_to_features(self, documents: List[Document]) -> List[InputFeatures]:
         input_features = []
         num_shown_input_features = 0
         for doc_idx, document in enumerate(documents):
             if doc_idx % 10000 == 0:
-                logger.info("Writing document %d of %d" % (doc_idx, len(documents)))
+                logger.info("Converting document %d of %d to features" % (doc_idx, len(documents)))
 
             verbose = num_shown_input_features < self.log_num_input_features
             doc_input_features = self.document_to_features(document, verbose)
@@ -138,18 +274,21 @@ class BinaryRcConverter(FeatureConverter):
 
         return input_features
 
-    # Tokenize given Document/Sentence, handle head and tail entity
-    # according to entity_handling strategy
+
     def _handle_entities(
         self, document: Document, head_idx: int, tail_idx: int, sent_idx: Optional[int] = None
-    ) -> List[str]:
+    ) -> str:
+        """Apply entity handling strategy on Document and return string
+        ready to be tokenized.
+        """
+
         head_mention = document.ments[head_idx]
         tail_mention = document.ments[tail_idx]
 
         ner_head = "[HEAD=%s]" % head_mention.label
         ner_tail = "[TAIL=%s]" % tail_mention.label
 
-        sep_token = self.tokenizer.sep_token
+        sep_token = self.sep_token
 
         # Limit search space for known sentence id
         if sent_idx is None:
@@ -173,7 +312,7 @@ class BinaryRcConverter(FeatureConverter):
             if self.entity_handling == "mark_entity_append_ner":
                 tokens = tokens + [sep_token, ner_head, sep_token, ner_tail]
         else:
-            # self.entity_handling.startswith("mask_entity") case
+            # "mask_entity" case
             # Collect head_tokens, tail_tokens and other tokens separately
             head_tokens = []
             tail_tokens = []
@@ -193,4 +332,4 @@ class BinaryRcConverter(FeatureConverter):
                 tokens.extend(head_tokens)
                 tokens.append(sep_token)
                 tokens.extend(tail_tokens)
-        return self.tokenizer.tokenize(" ".join(tokens))
+        return " ".join(tokens)
