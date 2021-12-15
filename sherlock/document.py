@@ -10,6 +10,7 @@ class Token:
     """
     A simple token representation, keeping track of the token's start and end offset
     in the text it was taken from, POS tag, dependency relation, and similar information.
+
     Parameters
     ----------
     doc : ``Document``
@@ -97,24 +98,19 @@ class Token:
 @dataclass(frozen=True)
 class Span:
     """
-    Representation for an arbitrary Span within a Document.
+    A slice from a Document object.
 
-    A Span is a consecutive sequence of Tokens.
-    Saves parent Document, start index, end index and
-    a label belonging to the Span.
-
-    Attributes
+    Parameters
     ----------
-    doc : ``Document``
-        Document identifier the Span belongs to
+    doc: ``Document''
+        The document the Span belongs to.
     start : ``int``
-        Start index (inclusive)
+        The index of the first Token of the span.
     end : ``int``
-        End index (exclusive)
-    label : ``str``, optional
-        Saves all sentences within text
+        The index of the first Token after the span.
+    label: ``Optional[str]``
+        An optional label to attach to the span.
     """
-
     doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
@@ -141,25 +137,19 @@ class Span:
 @dataclass(frozen=True)
 class Mention:
     """
-    Representation for Mentions of Entities within a Document.
+    An entity mention string in text with token-based offsets and a label.
 
-    A Mention is a small group of consecutive Tokens associated to
-    an Entity or label (e.g. "Rio de Janeiro").
-    Saves parent Document, start index, end index and label where
-    a certain Entity is mentioned.
-
-    Attributes
+    Parameters
     ----------
-    doc : ``Document``
-        Document identifier the Entity belongs to
+    doc: ``Document''
+        The document the Mention belongs to.
     start : ``int``
-        Start index (inclusive)
+        The index of the first Token of the span.
     end : ``int``
-        End index (exclusive)
-    label : ``str``
-        Saves all sentences within text
+        The index of the first Token after the span.
+    label: ``str``
+        A named entity type label to attach to the span.
     """
-
     doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
@@ -192,25 +182,19 @@ class Mention:
 @dataclass(frozen=True)
 class Entity:
     """
-    Representation for an Entity class within a Document.
+    An entity, with a list of mentions in text and external identifiers.
 
-    An entity describes a unique, real-world concept, such as a
-    Person, that is referred to by a group of Mentions within this
-    document as well as a list of reference ids in external knowledge
-    bases, such as Wikidata or Freebase.
-
-    Attributes
+    Parameters
     ----------
-    doc : ``Document``
-        Document identifier the Entity belongs to
+    doc: ``Document''
+        The document the Entity belongs to.
     mentions_indices : ``List[int]``
-        List of indices of Mentions of this Entitiy within the Document
-    label : ``str``
-        Label belonging to Entity
+        The index of the first token of the span.
     ref_ids : ``Dict[str, Any]``
-        I have no idea
+        A dictionary of <KB alias, KB id> tuples
+    label: ``str``
+        A named entity type label.
     """
-
     doc: "Document" = field(compare=False, repr=False)
     mentions_indices: List[int]
     label: str
@@ -240,31 +224,21 @@ class Entity:
 @dataclass(frozen=True)
 class Relation:
     """
-    Representation for a certain Relation within a Document.
+    A binary relation mention between a head and a tail Mention
 
-    A Relation is a specific instantiation of a relationship between
-    a head Mention and a tail Mention within the Document.
-    Saves a specific Relation with its label, its head and tail Entity.
-    TODO: this is not consistent with Entity:
-          Entity has an abstract class (Entity) and its mentions
-          separate, whereas every Relation is counted for itself.
-
-    TODO: logits: actual label or only index of transformer label?
-
-    Attributes
+    Parameters
     ----------
-    doc : ``Document``
-        Document identifier the Entity belongs to
+    doc: ``Document''
+        The document the Relation belongs to.
     head_idx : ``int``
-        Index of Mention which is head Entity of the Relation
+        The index of the head Mention in doc.ments
     tail_idx : ``int``
-        Index of Mention which is tail Entity of the Relation
-    label : ``str``
-        label belonging to Relation
-    logits : ``Dict[str, float]``, optional
-        Dictionary containing every label and its predicted logit.
+        The index of the tail Mention in doc.ments
+    label: ``str``
+        The label of the relation.
+    logits: ``Optional[Dict[str, float]]
+        Optional logits over the space of possible relation labels.
     """
-
     doc: "Document" = field(compare=False, repr=False)
     head_idx: int
     tail_idx: int
@@ -303,29 +277,23 @@ class Relation:
 @dataclass(frozen=True)
 class Event:
     """
-    Representation for Events within a Document.
+    A n-ary relation mention / event with a list of Mention arguments.
 
-    Saves a single Event.
-    TODO: this is not consistent with Entity:
-          Entity has an abstract class (Entity) and its mentions
-          separate, whereas every Relation is counted for itself.
-
-    Attributes
+    Parameters
     ----------
-    doc : ``Document``
-        Document identifier the Entity belongs to
-    event_type : ``str``
-        ???
-    arg_idx : ``List[Tuple[str, int]]``
-        ???
-    trigger_idx : ``int``, optional
-        ???
+    doc: ``Document''
+        The document the Relation belongs to.
+    event_type: ``str``
+        The event type / relation type label of the Event.
+    arg_idxs : ``List[Tuple[str, int]]``
+        The arguments of this Event, as a list of tuples of role label and index into doc.ments
+    trigger_idx : ``Optional[int]``
+        The optional index of the trigger Mention or Token for this Event.
     """
-
     doc: "Document" = field(compare=False, repr=False)
     event_type: str
     arg_idxs: List[Tuple[str, int]]  # tuples of role and mention_idx
-    trigger_idx: Optional[int]
+    trigger_idx: Optional[int] # TODO is this token-index or Mention-index? Should we allow multiple, disjoint tokens?
 
     @property
     def idx(self) -> int:
@@ -364,43 +332,35 @@ class Event:
 @dataclass
 class Document:
     """
-    Representation for a Document
+    A simple document representation, keeping track of the document's text, id, list of tokens, sentences, paragraphs,
+    entity mentions, entities, relations, and events.
 
-    Main holder for raw text, Token,  Entity, Relation, Mention,
-    and Event representations.
-
-    Also saves title, sentences, paragraphs, provenance and
-    tokenization status.
-
-    TODO: provenance?
-
-    Attributes
+    Parameters
     ----------
-    guid : ``str``
-        Document identifier
-    text : ``str``
-        Raw string representation of text in Document.
-    tokens : ``List(Token)``
-        List of all Tokens within text.
-    sents : ``List(Span)``
-        List of all sentences within text as Span.
+    guid: ``str''
+        The identifier of this document.
+    text: ``str``
+        The text of this document.
+    tokens : ``List[Token]``
+        The list of tokens of this document.
+    sents : ``List[Span]``
+        The list of sentences of this document.
     ments : ``List[Mention]``
-        List of all Mentions. Entities and Relations reference this
-        list with indices.
+        The list of entity mentions of this document.
     ents : ``List[Entity]``
-        List of different Entities in Document. (Not their Mentions!)
+        The list of entities of this document.
     rels : ``List[Relation]``
-        List of all Relations in Document. (All instances, not types.)
-    events : ``List[Event]``, optional
-        List of Events in Document.
-    provenance : ``List[Any]``, optional
-        ???
-    paragraphs : ``List[Span]``, optional
-        List of Spans representing Paragraphs.
-    title : ``str``, optional
-        Document title.
+        The list of relations of this document.
+    events : ``List[Event]``
+        The list of events of this document.
+    paragraphs : ``Optional[List[Span]]``
+        The list of paragraphs of this document.
+    title: ``Optional[str]``
+        The optional title of this document, e.g. for news articles.
+    provenance: ``Optional[List[Any]]''
+        The optional provenance information for this document, e.g. source information, annotator identifiers, and
+        similar information.
     """
-
     guid: str
     text: str
     tokens: List[Token] = field(default_factory=list)
