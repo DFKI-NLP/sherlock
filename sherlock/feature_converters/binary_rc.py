@@ -178,11 +178,13 @@ class BinaryRcConverter(FeatureConverter):
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
             tokens = self.tokenizer.tokenize(input_string)
-            # todo - head or tail may have been truncated, check!
+            # TODO: head or tail may have been truncated, check!
             # see https://github.com/DFKI-NLP/RelEx/blob/master/relex/dataset_readers/tacred.py#text_to_instance()
             # for example handling of this
             text_tokens_field = TextField(tokens[: self.max_length],
                                           {"tokens": self.token_indexer})
+
+            # TODO: "double metadata" (see below)
             truncated = MetadataField({"truncated": len(tokens) > self.max_length})
 
             fields = {"text": text_tokens_field, "metadata": truncated}
@@ -190,7 +192,12 @@ class BinaryRcConverter(FeatureConverter):
             if label is not None:
                 label_id = self.label_to_id_map[label]
                 label_field = LabelField(label_id, skip_indexing=True)
-                fields["label"] = label_field
+                # skip_index=True leads to allennlp not creating a vocabulary
+                # for labels. Thus vocabulary.get_vocab_size("labels") will be 0
+                # TODO: is it necessary to skip this? Or can it be reverted later
+                # again into the sherlock int index space?
+                # e.g. some models use vocabulary.get_vocab_size("labels")
+                fields["labels"] = label_field
             #if instance_id is not None:
             #    fields["metadata"]["id"] = instance_id
             instance = Instance(fields)

@@ -6,6 +6,7 @@ Accomplished through the sherlock DatasetReader and
 FeatureConverter
 """
 import os
+import logging
 from typing import Iterable, List, Optional, Dict
 
 import allennlp
@@ -17,6 +18,10 @@ from allennlp.data import DatasetReader
 import sherlock
 from sherlock.document import Document
 from sherlock.tasks import IETask
+
+
+logger = logging.getLogger(__name__)
+
 
 @DatasetReader.register("sherlock_reader")
 class DatasetReaderAllennlp(DatasetReader):
@@ -102,10 +107,15 @@ class DatasetReaderAllennlp(DatasetReader):
                 )
 
         # 3. Get Documents
+        logger.info("Reading dataset to documents")
+        # TODO: Maybe make return type of dataset_reader an iterable?
         documents: List[Document] = self.dataset_reader.get_documents("train")
 
         # 4. Convert Documents to Instances
+        logger.info("Creating instances")
         for document in documents:
+            # TODO: Make return type of document_to_features to iterable
+            # (lazy loading -> performance boost)
             input_features = self.feature_converter.document_to_features(document)
             for input_feature in input_features:
                 yield input_feature.instance

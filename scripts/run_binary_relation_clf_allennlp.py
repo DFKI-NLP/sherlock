@@ -655,7 +655,13 @@ def main():
         {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
     )
     encoder = BagOfEmbeddingsEncoder(embedding_dim=20)
-    feedforward = FeedForward(20, label_size, 1, torch.nn.ReLU(), 0)
+    feedforward = FeedForward(
+        input_dim=20,
+        num_layers=1,
+        hidden_dims=label_size,
+        activations=torch.nn.ReLU(),
+        dropout=0.5,
+    )
 
     model = BasicRelationClassifier(vocabulary, embedder, encoder, feedforward)
 

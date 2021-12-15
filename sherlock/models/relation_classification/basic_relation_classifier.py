@@ -323,12 +323,12 @@ class BasicRelationClassifier(Model):
                     "respectively.".format(text_encoder.get_output_dim(),
                                            classifier_feedforward.get_input_dim()))
 
-        if classifier_feedforward.get_output_dim() != self.num_classes:
-            raise ConfigurationError(
-                    "The output dimension of the classifier_feedforward must match the "
-                    "number of classes in the dataset. Found {} and {}, "
-                    "respectively.".format(classifier_feedforward.get_output_dim(),
-                                           self.num_classes))
+        # if classifier_feedforward.get_output_dim() != self.num_classes:
+        #     raise ConfigurationError(
+        #             "The output dimension of the classifier_feedforward must match the "
+        #             "number of classes in the dataset. Found {} and {}, "
+        #             "respectively.".format(classifier_feedforward.get_output_dim(),
+        #                                    self.num_classes))
 
         self.metrics = {"accuracy": CategoricalAccuracy()}
         self._f1_measure = F1Measure(vocabulary=self.vocab,
