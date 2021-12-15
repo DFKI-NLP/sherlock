@@ -1,11 +1,16 @@
 import logging
 from typing import List
 
+from allennlp.data import Instance
+from allennlp.data.fields import TextField, SequenceLabelField
+from allennlp.data.tokenizers.token_class import Token
 from torch.nn import CrossEntropyLoss
-from transformers import PreTrainedTokenizer, XLNetTokenizer
+from transformers import XLNetTokenizer
 
 from sherlock import Document
 from sherlock.feature_converters.feature_converter import FeatureConverter, InputFeatures
+from sherlock.feature_converters.input_features import InputFeaturesAllennlp, InputFeaturesTransformers
+
 
 
 logger = logging.getLogger(__name__)
@@ -13,31 +18,56 @@ logger = logging.getLogger(__name__)
 
 @FeatureConverter.register("token_classification")
 class TokenClassificationConverter(FeatureConverter):
+    """
+    Class to convert Documents into InputFeatures used for Annotators
+    in TokenClassification.
+
+    Parameters
+    ----------
+    labels
+    max_length
+    framework
+    entity_handling
+    pad_token_segmend_id    # TODO: probably move into `transformers` kwargs
+    log_num_input_features
+    kwargs : ``Dict[str, any]``
+        framwork specific keywords.
+        `transformers`:
+            tokenizer  : `PreTrainedTokenizer`
+        `allennlp`:
+            tokenizer : ``Tokenizer``
+            token_indexer : ``TokenIndexer``
+    """
+
     def __init__(
         self,
-        tokenizer: PreTrainedTokenizer,
         labels: List[str],
-        max_length: int = 512,
-        pad_token_segment_id: int = 0,
-        pad_token_label_id: int = CrossEntropyLoss().ignore_index,
-        log_num_input_features: int = -1,
+        max_length: int=512,
+        framework: str="transformers",
+        pad_token_segment_id: int=0,
+        pad_token_label_id: int=CrossEntropyLoss().ignore_index,
+        log_num_input_features: int=-1,
+        **kwargs,
     ) -> None:
-        super().__init__(tokenizer, labels, max_length)
+        super().__init__(labels, max_length, framework, **kwargs)
         self.pad_token_segment_id = pad_token_segment_id
         self.pad_token_label_id = pad_token_label_id
         self.log_num_input_features = log_num_input_features
+
 
     @property
     def name(self) -> str:
         return "token_classification"
 
+
     @property
     def persist_attributes(self) -> List[str]:
         return ["max_length", "pad_token_segment_id", "pad_token_label_id"]
 
-    def document_to_features(
+
+    def document_to_features_transformers(
         self, document: Document, verbose: bool = False
-    ) -> List[InputFeatures]:
+    ) -> List[InputFeaturesTransformers]:
         tokens: List[str] = []
         labels: List[str] = []
         label_ids: List[int] = []
@@ -60,8 +90,9 @@ class TokenClassificationConverter(FeatureConverter):
         inputs = self.tokenizer.encode_plus(
             text=tokens,
             add_special_tokens=True,
+            truncation=True,
             max_length=self.max_length,
-            pad_to_max_length=True,
+            padding='max_length',
             return_overflowing_tokens=True,
         )
 
@@ -83,7 +114,7 @@ class TokenClassificationConverter(FeatureConverter):
 
         metadata = dict(guid=document.guid, truncated=num_truncated_tokens > 0)
 
-        features = InputFeatures(
+        features = InputFeaturesTransformers(
             input_ids=inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
             token_type_ids=inputs["token_type_ids"],
@@ -96,7 +127,57 @@ class TokenClassificationConverter(FeatureConverter):
 
         return [features]
 
-    def documents_to_features(self, documents: List[Document]) -> List[InputFeatures]:
+
+    def document_to_features_allennlp(
+        self, document: Document, verbose: bool = False
+    ) -> List[InputFeaturesAllennlp]:
+        # This implementation is kind of whacky and still needs
+        # testing and bugfixing.
+        tokens: List[Token] = []
+        labels: List[str] = []
+        label_ids: List[int] = []
+        # In this case one document is treated as one entire
+        # sequence for the model input
+        for token in document.tokens:
+            subword_tokens: List[Token] = self.tokenizer.tokenize(token.text)
+            if len(subword_tokens) == 0:
+                continue  # Skip whitespace tokens
+
+            tokens.extend(subword_tokens)
+            label = token.ent_type
+            if label is None:
+                label = "O"
+            labels.append(label)
+            # Use the real label id for the first token of the word,
+            # and padding ids for the remaining tokens
+            label_ids.extend(
+                [self.label_to_id_map[label]]
+                + [self.pad_token_label_id] * (len(subword_tokens) - 1)
+            )
+
+        text_field = TextField(tokens, self.token_indexer)
+        fields = {"text": text_field}
+
+        fields["labels"] = SequenceLabelField(label_ids, text_field)
+        instance = Instance(fields)
+
+        metadata = dict(guid=document.guid)
+
+        feature = InputFeaturesAllennlp(
+            instance=instance,
+            metadata=metadata,
+        )
+
+        # TODO: implement!
+        # if verbose:
+        #     self._log_input_features(tokens, document, features, labels)
+
+        return [feature]
+
+
+    def documents_to_features(
+        self, documents: List[Document]
+    ) -> List[InputFeatures]:
         input_features = []
         num_shown_input_features = 0
         for doc_idx, document in enumerate(documents):

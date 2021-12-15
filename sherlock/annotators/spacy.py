@@ -8,7 +8,7 @@ from spacy.language import Language as SpacyModelType
 
 from sherlock import Document
 from sherlock.document import Span, Token
-from sherlock.predictors.predictor import Predictor
+from sherlock.annotators.annotator import Annotator
 
 
 logger = logging.getLogger(__name__)
@@ -60,8 +60,8 @@ def _replace_ws(text: str) -> str:
     return re.sub(r"[\t\n\r\f\v]", "_", text)
 
 
-@Predictor.register("spacy")
-class SpacyPredictor(Predictor):
+@Annotator.register("spacy")
+class SpacyAnnotator(Annotator):
     def __init__(
         self,
         path: str = "en_core_web_sm",
@@ -83,7 +83,7 @@ class SpacyPredictor(Predictor):
         # parse: bool = False,
         # ner: bool = False,
         # split_on_spaces: bool = False,
-    ) -> "Predictor":  # type: ignore
+    ) -> "Annotator":  # type: ignore
         return cls(
             path,
             **{
@@ -93,7 +93,7 @@ class SpacyPredictor(Predictor):
             },
         )
 
-    def predict_documents(self, documents: List[Document]) -> List[Document]:
+    def process_documents(self, documents: List[Document]) -> List[Document]:
         spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
             doc.tokens = [Token.from_spacy(doc, token) for token in spacy_doc]
@@ -103,7 +103,7 @@ class SpacyPredictor(Predictor):
                 doc.ments.append(Span.from_spacy(doc, mention))
         return documents
 
-    def predict_document(self, document: Document) -> Document:
+    def process_document(self, document: Document) -> Document:
         spacy_doc = self.spacy(_replace_ws(document.text))
         document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
         if self.has_sentencizer:

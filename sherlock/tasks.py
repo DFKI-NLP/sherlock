@@ -30,6 +30,8 @@ from transformers import (
     XLNetTokenizer,
 )
 
+from allennlp.data.tokenizers import PretrainedTransformerTokenizer
+from allennlp.data.token_indexers import PretrainedTransformerIndexer
 
 class IETask(Enum):
     NER = "ner"
@@ -58,4 +60,13 @@ NLP_TASK_CLASSES = {
         "camembert": (CamembertConfig, CamembertForTokenClassification, CamembertTokenizer),
         "xlmroberta": (XLMRobertaConfig, XLMRobertaForTokenClassification, XLMRobertaTokenizer),
     },
+}
+
+ALLENNLP_TASK_CLASSES = {
+    NLPTask.SEQUENCE_CLASSIFICATION: {
+        "bert": ("", BertForSequenceClassification, PretrainedTransformerTokenizer, PretrainedTransformerIndexer),
+    },
+    NLPTask.TOKEN_CLASSIFICATION: {
+        "bert": ("", BertForTokenClassification, PretrainedTransformerTokenizer, PretrainedTransformerIndexer),
+    }
 }

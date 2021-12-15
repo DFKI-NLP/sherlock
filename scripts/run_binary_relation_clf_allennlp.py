@@ -27,35 +27,25 @@ import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
-from transformers import (
-    WEIGHTS_NAME,
-    AdamW,
-    AlbertConfig,
-    AlbertForSequenceClassification,
-    AlbertTokenizer,
-    BertConfig,
-    BertForSequenceClassification,
-    BertTokenizer,
-    DistilBertConfig,
-    DistilBertForSequenceClassification,
-    DistilBertTokenizer,
-    RobertaConfig,
-    RobertaForSequenceClassification,
-    RobertaTokenizer,
-    XLMConfig,
-    XLMForSequenceClassification,
-    XLMTokenizer,
-    XLNetConfig,
-    XLNetForSequenceClassification,
-    XLNetTokenizer,
-    get_linear_schedule_with_warmup,
-)
 
+import allennlp
+from allennlp.data import Vocabulary
+from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
+from allennlp.data.tokenizers import WhitespaceTokenizer
+from allennlp.data.token_indexers import SingleIdTokenIndexer
+from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
+from allennlp.modules.token_embedders import Embedding
+from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
+from allennlp.modules import FeedForward
+
+from sherlock import dataset
 from sherlock.dataset import TensorDictDataset
-from sherlock.dataset_readers import DatasetReader
-from sherlock.feature_converters import FeatureConverter
+from sherlock.dataset_readers import TacredDatasetReader
+from sherlock.dataset_readers.dataset_reader import DatasetReader
+from sherlock.feature_converters import BinaryRcConverter
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
+from sherlock.models.relation_classification import BasicRelationClassifier
 
 
 try:
@@ -65,15 +55,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
-MODEL_CLASSES = {
-    "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
-    "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
-    "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
-    "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
-    "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
-    "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
-}
 
 
 def set_seed(args):
@@ -326,24 +307,23 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
 
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
-        args.cache_dir,
-        "cached_rc_{}_{}_{}".format(
+        args.data_dir,
+        "cached_{}_{}_{}".format(
             split,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
-        logger.info("Loading features for split %s from cached file %s", split, cached_features_file)
+        logger.info("Loading features from cached file %s", cached_features_file)
         input_features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features for split %s from dataset file at %s", split, args.data_dir)
+        logger.info("Creating features from dataset file at %s", args.data_dir)
         documents = dataset_reader.get_documents(split)
         input_features = converter.documents_to_features(documents)
 
         if args.local_rank in [-1, 0]:
-            logger.info("Saving features for split %s into cached file %s", split, cached_features_file)
-            os.makedirs(args.cache_dir, exist_ok=True)
+            logger.info("Saving features into cached file %s", cached_features_file)
             torch.save(input_features, cached_features_file)
 
     if args.local_rank == 0 and split not in ["dev", "test"]:
@@ -381,7 +361,7 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Model type selected in the list: " + ", ".join(MODEL_CLASSES.keys()),
+        help="Model type",
     )
     parser.add_argument(
         "--model_name_or_path",
@@ -431,10 +411,9 @@ def main():
     )
     parser.add_argument(
         "--cache_dir",
-        default=None,
+        default="",
         type=str,
-        required=True,
-        help="Where do you want to store the pre-trained models downloaded from s3 and cached features",
+        help="Where do you want to store the pre-trained models downloaded from s3",
     )
     parser.add_argument(
         "--max_seq_length",
@@ -635,47 +614,55 @@ def main():
     # Set seed
     set_seed(args)
 
-    TacredDatasetReader = DatasetReader.by_name("tacred")
+    tokenizer = WhitespaceTokenizer()
+    token_indexers = {"tokens": SingleIdTokenIndexer()}
 
-    dataset_reader = TacredDatasetReader(
-        data_dir=args.data_dir, add_inverse_relations=args.add_inverse_relations
-    )
-    labels = dataset_reader.get_labels(task=IETask.BINARY_RC)
-    num_labels = len(labels)
 
-    # Load pretrained model and tokenizer
+    WrapperAllennlpClass = allennlp.data.DatasetReader.by_name("sherlock_reader")
+    dataset_reader = WrapperAllennlpClass(task="binary_rc",
+        dataset_reader_name="tacred",
+        feature_converter_name = "binary_rc",
+        tokenizer=tokenizer,
+        token_indexer=token_indexers["tokens"],
+        max_tokens=512,
+        )
+
     if args.local_rank not in [-1, 0]:
         # Make sure only the first process in distributed training will download model & vocab
         torch.distributed.barrier()
 
-    args.model_type = args.model_type.lower()
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    config = config_class.from_pretrained(
-        args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels
-    )
-    tokenizer = tokenizer_class.from_pretrained(
-        args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
-        do_lower_case=args.do_lower_case,
-    )
-    model = model_class.from_pretrained(
-        args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
-    )
+    # args.model_type = args.model_type.lower()
+    # config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    # config = config_class.from_pretrained(
+    #     args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels
+    # )
+    # tokenizer = tokenizer_class.from_pretrained(
+    #     args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
+    #     do_lower_case=args.do_lower_case,
+    # )
+    # model = model_class.from_pretrained(
+    #     args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
+    # )
 
-    BinaryRcConverter = FeatureConverter.by_name("binary_rc")
+    instances = dataset_reader.read(args.data_dir)
+    loader = SimpleDataLoader(instances, batch_size=8)
 
-    converter = BinaryRcConverter(
-        labels=labels,
-        max_length=args.max_seq_length,
-        tokenizer=tokenizer,
-        entity_handling=args.entity_handling,
-        pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
-        log_num_input_features=20,
+    vocabulary = Vocabulary.from_instances(instances)
+    vocab_size = vocabulary.get_vocab_size()
+    label_size = len(dataset_reader.dataset_reader.get_labels(dataset_reader.task))
+
+    embedder = BasicTextFieldEmbedder(
+        {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
     )
+    encoder = BagOfEmbeddingsEncoder(embedding_dim=20)
+    feedforward = FeedForward(20, label_size, 1, torch.nn.ReLU(), 0)
 
-    additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
-    if additional_tokens:
-        tokenizer.add_tokens(additional_tokens)
-        model.resize_token_embeddings(len(tokenizer))
+    model = BasicRelationClassifier(vocabulary, embedder, encoder, feedforward)
+
+    # additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
+    # if additional_tokens:
+    #     tokenizer.add_tokens(additional_tokens)
+    #     model.resize_token_embeddings(len(tokenizer))
 
     if args.local_rank == 0:
         # Make sure only the first process in distributed training will download model & vocab
@@ -684,6 +671,8 @@ def main():
     model.to(args.device)
 
     logger.info("Training/evaluation parameters %s", args)
+
+    return None
 
     # Training
     if args.do_train:
@@ -714,11 +703,11 @@ def main():
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
         # Load a trained model and vocabulary that you have fine-tuned
-        #model = model_class.from_pretrained(args.output_dir)  # todo why do we do this here during training?
-        #tokenizer = tokenizer_class.from_pretrained(  # todo why do we do this here during training?
-        #    args.output_dir, do_lower_case=args.do_lower_case
-        #)
-        #model.to(args.device) # todo why do we do this here during training?
+        model = model_class.from_pretrained(args.output_dir)
+        tokenizer = tokenizer_class.from_pretrained(
+            args.output_dir, do_lower_case=args.do_lower_case
+        )
+        model.to(args.device)
 
     # Evaluation
     results = {}
@@ -726,7 +715,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer=tokenizer)
+        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer)
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(

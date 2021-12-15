@@ -7,7 +7,7 @@ from sherlock.dataset_readers.dataset_reader import DatasetReader
 from sherlock.document import Document, Mention, Span, Token
 from sherlock.tasks import IETask
 
-
+@DatasetReader.register("conll2003")
 class Conll2003DatasetReader(DatasetReader):
     def __init__(
         self,

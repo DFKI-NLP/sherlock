@@ -1,10 +1,12 @@
 from typing import List
 
+from registrable import Registrable
+
 from sherlock import Document
 from sherlock.tasks import IETask
 
 
-class DatasetReader:
+class DatasetReader(Registrable):
     def __init__(self, data_dir: str) -> None:
         self.data_dir = data_dir
 
