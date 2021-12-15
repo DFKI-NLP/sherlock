@@ -21,15 +21,19 @@ srun -K --ntasks=1 --gpus-per-task=0 --cpus-per-task=1 -p batch \
 ### Train Relation Classifier
 Note: Maybe adapt the number gpus and number of tasks etc in scripts/cluster/batch.sh or on the command line
 
+PROFILE refers to one of the Cluster profiles, e.g. "RTXA6000".
+
 ```bash
-./scripts/cluster/batch.sh -p <PROFILE> --gpus=1 ./scripts/cluster/wrapper.sh ./scripts/cluster/binary_relation_clf.sh
+./scripts/cluster/batch.sh -p PROFILE --gpus=1 ./scripts/cluster/wrapper.sh ./scripts/cluster/binary_relation_clf.sh
 ```
 
 ### Train NER
 
 Note: Maybe adapt the number gpus and number of tasks etc in scripts/cluster/batch.sh or on the command line
 
+PROFILE refers to one of the Cluster profiles, e.g. "RTXA6000".
+
 ```bash
-./scripts/cluster/batch.sh -p <PROFILE> --gpus=1 ./scripts/cluster/wrapper.sh ./scripts/cluster/ner.sh
+./scripts/cluster/batch.sh -p PROFILE --gpus=1 ./scripts/cluster/wrapper.sh ./scripts/cluster/ner.sh
 ```
 
