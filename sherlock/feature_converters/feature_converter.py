@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Iterable
 
 from registrable import Registrable
 from transformers import PreTrainedTokenizer
@@ -34,15 +34,15 @@ class FeatureConverter(Registrable):
     """
     def __init__(
         self,
-        labels: List[str],
+        labels: Iterable[str],
         max_length: Optional[int] = None,
         framework: str = "transformers",
         **kwargs,
     ) -> None:
-        self.labels = labels
+        self.labels = list(labels)
         self.max_length = max_length
-        self.id_to_label_map = {i: l for i, l in enumerate(labels)}
-        self.label_to_id_map = {l: i for i, l in enumerate(labels)}
+        self.id_to_label_map = {i: l for i, l in enumerate(self.labels)}
+        self.label_to_id_map = {l: i for i, l in enumerate(self.labels)}
         self.framework = framework
 
         if framework == "transformers":
