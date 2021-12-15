@@ -8,7 +8,7 @@ python ./scripts/run_ner.py \
   --eval_all_checkpoints \
   --do_lower_case \
   --data_dir /ds/text/tacred/data/json \
-  --cache_dir ./.cache \
+  --cache_dir ./.cache/ner \
   --save_steps 8500 \
   --logging_steps 8500 \
   --max_seq_length 128 \
