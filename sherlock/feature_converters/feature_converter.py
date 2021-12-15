@@ -14,7 +14,7 @@ from sherlock.feature_converters.input_features import (
 
 logger = logging.getLogger(__name__)
 
-
+# TODO: enable generator support for FeatureConverter
 class FeatureConverter(Registrable):
     """
     Converts Document into Representation usable for Model Training.

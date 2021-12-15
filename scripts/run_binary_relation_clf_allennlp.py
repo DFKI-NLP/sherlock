@@ -21,6 +21,7 @@ import glob
 import logging
 import os
 import random
+from typing import Iterable
 
 import numpy as np
 import torch
@@ -29,7 +30,7 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 
 import allennlp
-from allennlp.data import Vocabulary
+from allennlp.data import Vocabulary, Instance
 from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
 from allennlp.data.tokenizers import WhitespaceTokenizer
 from allennlp.data.token_indexers import SingleIdTokenIndexer
@@ -37,6 +38,8 @@ from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
 from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
 from allennlp.modules import FeedForward
+from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
+from allennlp.training import GradientDescentTrainer
 
 from sherlock import dataset
 from sherlock.dataset import TensorDictDataset
@@ -65,70 +68,83 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def train(args, dataset_reader, converter, model, tokenizer):
+def train(args, data_loader, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
         tb_writer = SummaryWriter()
 
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
 
-    train_dataset = load_and_cache_examples(
-        args, dataset_reader, converter, tokenizer, split="train"
-    )
-    train_sampler = (
-        RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
-    )
-    train_dataloader = DataLoader(
-        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size
-    )
+    # TODO: cache for allennlp
+    # train_dataset = load_and_cache_examples(
+    #     args, dataset_reader, converter, tokenizer, split="train"
+    # )
+    # train_sampler = (
+    #     RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
+    # )
+    # train_dataloader = DataLoader(
+    #     train_dataset, sampler=train_sampler, batch_size=args.train_batch_size
+    # )
 
     if args.max_steps > 0:
         t_total = args.max_steps
         args.num_train_epochs = (
-            args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
+            args.max_steps // (len(data_loader) // args.gradient_accumulation_steps) + 1
         )
     else:
-        t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
+        t_total = len(data_loader) // args.gradient_accumulation_steps * args.num_train_epochs
 
     # Prepare optimizer and schedule (linear warmup and decay)
-    no_decay = ["bias", "LayerNorm.weight"]
-    optimizer_grouped_parameters = [
-        {
-            "params": [
-                p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)
-            ],
-            "weight_decay": args.weight_decay,
-        },
-        {
-            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-            "weight_decay": 0.0,
-        },
-    ]
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total
-    )
-    if args.fp16:
-        try:
-            from apex import amp
-        except ImportError:
-            raise ImportError(
-                "Please install apex from https://www.github.com/nvidia/apex to use fp16 training."
-            )
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
+    # no_decay = ["bias", "LayerNorm.weight"]
+    # optimizer_grouped_parameters = [
+    #     {
+    #         "params": [
+    #             p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)
+    #         ],
+    #         "weight_decay": args.weight_decay,
+    #     },
+    #     {
+    #         "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+    #         "weight_decay": 0.0,
+    #     },
+    # ]
+    # optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+    # scheduler = get_linear_schedule_with_warmup(
+    #     optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total
+    # )
+    # if args.fp16:
+    #     try:
+    #         from apex import amp
+    #     except ImportError:
+    #         raise ImportError(
+    #             "Please install apex from https://www.github.com/nvidia/apex to use fp16 training."
+    #         )
+    #     model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
     # multi-gpu training (should be after apex fp16 initialization)
-    if args.n_gpu > 1:
-        model = torch.nn.DataParallel(model)
+    # if args.n_gpu > 1:
+    #     model = torch.nn.DataParallel(model)
 
     # Distributed training (should be after apex fp16 initialization)
-    if args.local_rank != -1:
-        model = torch.nn.parallel.DistributedDataParallel(
-            model,
-            device_ids=[args.local_rank],
-            output_device=args.local_rank,
-            find_unused_parameters=True,
-        )
+    # if args.local_rank != -1:
+    #     model = torch.nn.parallel.DistributedDataParallel(
+    #         model,
+    #         device_ids=[args.local_rank],
+    #         output_device=args.local_rank,
+    #         find_unused_parameters=True,
+    #     )
+
+    # Prepare training allennlp
+    logger.info("Building Trainer")
+    params = [(n, p) for (n, p) in model.named_parameters() if p.requires_grad]
+    optimizer = HuggingfaceAdamWOptimizer(params)
+    trainer = GradientDescentTrainer(
+        model=model,
+        optimizer=optimizer,
+        data_loader=data_loader,
+        validation_data_loader=val_data_loader,
+        num_epochs=args.num_train_epochs,
+    )
 
     # Train!
     logger.info("***** Running training *****")
@@ -299,7 +315,7 @@ def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""
     return result, preds
 
 
-def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
+def load_and_cache_examples(args, dataloader, split):
     if args.local_rank not in [-1, 0] and split not in ["dev", "test"]:
         # Make sure only the first process in distributed training process
         # the dataset, and the others will use the cache
@@ -307,18 +323,22 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
 
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
-        args.data_dir,
-        "cached_{}_{}_{}".format(
+        args.cache_dir,
+        "cached_rc_{}_{}_{}".format(
             split,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
-        logger.info("Loading features from cached file %s", cached_features_file)
+        logger.info(
+            "Loading features for split %s from cached file %s",
+            split,cached_features_file)
         input_features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        logger.info(
+            "Creating features for split %s from dataset file at %s",
+            split, args.data_dir)
         documents = dataset_reader.get_documents(split)
         input_features = converter.documents_to_features(documents)
 
@@ -411,9 +431,10 @@ def main():
     )
     parser.add_argument(
         "--cache_dir",
-        default="",
+        default=None,
         type=str,
-        help="Where do you want to store the pre-trained models downloaded from s3",
+        required=True,
+        help="Where do you want to store the pre-trained models downloaded from s3 and cached features",
     )
     parser.add_argument(
         "--max_seq_length",
@@ -644,10 +665,10 @@ def main():
     #     args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     # )
 
-    instances = dataset_reader.read(args.data_dir)
-    loader = SimpleDataLoader(instances, batch_size=8)
+    train_dataset: Iterable[Instance] = dataset_reader.read(args.data_dir, split="train")
+    # data_loader = SimpleDataLoader(instances, batch_size=8)
 
-    vocabulary = Vocabulary.from_instances(instances)
+    vocabulary = Vocabulary.from_instances(train_dataset)
     vocab_size = vocabulary.get_vocab_size()
     label_size = len(dataset_reader.dataset_reader.get_labels(dataset_reader.task))
 
@@ -670,19 +691,19 @@ def main():
     #     tokenizer.add_tokens(additional_tokens)
     #     model.resize_token_embeddings(len(tokenizer))
 
-    if args.local_rank == 0:
-        # Make sure only the first process in distributed training will download model & vocab
-        torch.distributed.barrier()
+    # if args.local_rank == 0:
+    #     # Make sure only the first process in distributed training will download model & vocab
+    #     torch.distributed.barrier()
 
     model.to(args.device)
 
     logger.info("Training/evaluation parameters %s", args)
 
-    return None
+    return
 
     # Training
     if args.do_train:
-        global_step, tr_loss = train(args, dataset_reader, converter, model, tokenizer)
+        global_step, tr_loss = train(args, data_loader, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
