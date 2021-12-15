@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Iterable
+import warnings
 
 from sherlock.dataset_readers.dataset_reader import DatasetReader
 from sherlock.document import Document, Mention, Relation, Span, Token
@@ -26,23 +27,38 @@ INVERSE_RELATIONS = {
 
 logger = logging.getLogger(__name__)
 
+
 @DatasetReader.register("tacred")
 class TacredDatasetReader(DatasetReader):
     """Dataset reader for the TACRED data set."""
 
     def __init__(
         self,
-        data_dir: str,
-        train_file: str = "train.json",
-        dev_file: str = "dev.json",
-        test_file: str = "test.json",
-        negative_label_ner: str = "O",
-        negative_label_re: str = "no_relation",
-        convert_ptb_tokens: bool = True,
-        tagging_scheme: str = "bio",
-        add_inverse_relations: bool = False,
+        negative_label_ner: str="O",
+        negative_label_re: str="no_relation",
+        convert_ptb_tokens: bool=True,
+        tagging_scheme: str="bio",
+        add_inverse_relations: bool=False,
+        **kwargs,
     ) -> None:
+        # for backward compability handle data_dir and train_file args
+        # if data_dir is given, the get_documents and get_labels will return
+        # lists instead of generators.
+        data_dir = kwargs.get("data_dir")
         super().__init__(data_dir)
+
+        if self.data_dir is not None:
+            files = [
+                kwargs.get("train_file") or "train.json",
+                kwargs.get("dev_file") or "dev.json",
+                kwargs.get("test_file") or "test.json",
+            ]
+            self.input_files = {
+                split: os.path.join(data_dir, filename)
+                for split, filename in zip(["train", "dev", "test"], files)
+            }
+
+        # initialize other parameters
         if tagging_scheme.lower() not in ["bio"]:
             raise ValueError("Unknown tagging scheme '%s'" % tagging_scheme)
         self.negative_label_ner = negative_label_ner
@@ -50,10 +66,7 @@ class TacredDatasetReader(DatasetReader):
         self.convert_ptb_tokens = convert_ptb_tokens
         self.tagging_scheme = tagging_scheme.lower()
         self.add_inverse_relations = add_inverse_relations
-        self.input_files = {
-            split: os.path.join(data_dir, filename)
-            for split, filename in zip(["train", "dev", "test"], [train_file, dev_file, test_file])
-        }
+
 
     @staticmethod
     def _read_json(input_file: str) -> List[Dict[str, Any]]:
@@ -61,22 +74,50 @@ class TacredDatasetReader(DatasetReader):
             data = json.load(tacred_file)
         return data
 
-    def get_available_splits(self) -> List[str]:
-        return ["train", "dev", "test"]
 
     def get_available_tasks(self) -> List[IETask]:
         return [IETask.NER, IETask.BINARY_RC]
 
-    def get_documents(self, split: str) -> List[Document]:
-        if split not in self.get_available_splits():
-            raise ValueError("Selected split '%s' not available." % split)
-        return self._create_documents(self._read_json(self.input_files[split]), split)
 
-    def get_labels(self, task: IETask) -> List[str]:
+    def get_documents(
+        self,
+        file_path: str=None,
+        split: Optional[str]=None
+    ) -> Iterable[Document]:
+        """
+        Returns generator of Documents over data in file_path
+
+        Parameters
+        ----------
+        file_path : ``str``
+            path to data in json format
+        split : ``str | None``, deprecated (default=``None``)
+            only here for backwards compability
+        """
+
+        if split is not None:
+            warnings.warn(
+                "Using split as argument for get_documents is deprecated,"
+                + "instead use `file_path`",
+                DeprecationWarning,
+            )
+            file_path = self.input_files[split]
+            # Returns list for backward compability
+            return list(self._documents_generator(self._read_json(file_path)))
+
+        # Returns generator for performance improvements
+        return self._documents_generator(self._read_json(file_path))
+
+
+    def _label_generator(self, task: IETask, file_path: str=None) -> Iterable[str]:
         if task not in self.get_available_tasks():
             raise ValueError("Selected task '%s' not available." % task)
 
-        dataset = self._read_json(self.input_files["train"])
+        # Backwards compability
+        if self.data_dir is not None:
+            dataset = list(self._read_json(self.input_files["train"]))
+        else:
+            dataset = self._read_json(file_path)
 
         unique_labels: Set[str] = set()
         for example in dataset:
@@ -88,29 +129,50 @@ class TacredDatasetReader(DatasetReader):
             else:
                 raise Exception("This should not happen.")
 
-        labels = []
+
         if task == IETask.NER and self.tagging_scheme == "bio":
             # Make sure the negative label is always at position 0
-            labels = [self.negative_label_ner]
+            yield self.negative_label_ner
             for label in unique_labels:
                 if label != self.negative_label_ner:
-                    labels.extend([prefix + label for prefix in ["B-", "I-"]])
+                    ret_labels = [prefix + label for prefix in ["B-", "I-"]]
+                    for ret_label in ret_labels:
+                        yield ret_label
         elif task == IETask.BINARY_RC:
             # Make sure the negative label is always at position 0
             labels = [self.negative_label_re]
+            yield self.negative_label_re
             for label in unique_labels:
+                # Not sure why unique labels are tracked, but keep tracking
                 if label not in labels:
                     labels.append(label)
+                    yield label
         else:
             raise Exception("This should not happen.")
 
-        return labels
 
-    def get_additional_tokens(self, task: IETask) -> List[str]:
+    def get_labels(self, task: IETask, file_path: str=None) -> Iterable[str]:
+        if self.data_dir is not None:
+            return list(self._label_generator(task))
+        elif file_path is None:
+            raise AttributeError("get_labels requires file_path as argument")
+        return self._label_generator(task, file_path)
+
+
+    def get_additional_tokens(self, task: IETask, file_path: str=None) -> List[str]:
         additional_tokens: Set[str] = set()
         if task == IETask.BINARY_RC:
-            dataset = self._read_json(self.input_files["train"])
-            additional_tokens = set(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]"])
+            # backwards compability
+            if self.data_dir is not None:
+                dataset = list(self._read_json(self.input_files["train"]))
+            else:
+                if file_path is None:
+                    raise AttributeError(
+                        "get_additional_tokens requires file_path as argument")
+                dataset = self._read_json(file_path)
+
+            additional_tokens = \
+                set(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]"])
             for example in dataset:
                 head_type = "[HEAD=%s]" % example["subj_type"].upper()
                 tail_type = "[TAIL=%s]" % example["obj_type"].upper()
@@ -119,16 +181,16 @@ class TacredDatasetReader(DatasetReader):
 
         return list(additional_tokens)
 
-    def _create_documents(self, dataset: List[Dict[str, Any]], split: str) -> List[Document]:
-        documents: List[Document] = []
+
+    def _documents_generator(self, dataset: List[Dict[str, Any]]) -> Iterable[Document]:
         for example in dataset:
             document = self._example_to_document(example)
             if document is None:
                 logger.info(f"Skipped document with id: {example['id']}")
                 continue
 
-            documents.append(document)
-        return documents
+            yield document
+
 
     def _example_to_document(self, example: Dict[str, Any]) -> Optional[Document]:
         tokens = example["token"]
@@ -194,6 +256,7 @@ class TacredDatasetReader(DatasetReader):
             )
 
         return doc
+
 
     @staticmethod
     def _convert_token(token):
