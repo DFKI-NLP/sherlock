@@ -11,9 +11,21 @@ from sherlock.tasks import IETask
 
 @DatasetReader.register("conll2003")
 class Conll2003DatasetReader(DatasetReader):
+    """
+    Dataset reader for the CONLL_2003 dataset.
+
+    Parameters
+    ----------
+    negative_label: ``str``, optional (default=`"O"`)
+        label for instances in NER without a label class.
+    **kwargs: ``Dict[str, Any]``, optional
+        Catches keywords for backwards compability
+        (`data_dir`, `train_file`, `dev_file`, `test_file`).
+    """
+
     def __init__(
         self,
-        negative_label: str = "O",
+        negative_label: str="O",
         **kwargs,
     ) -> None:
         # for backward compability handle data_dir and train_file args
@@ -35,6 +47,61 @@ class Conll2003DatasetReader(DatasetReader):
 
         # Initialize other parameters
         self.negative_label = negative_label
+
+
+    def get_documents(
+        self,
+        split: Optional[str]=None,
+        file_path: str=None,
+    ) -> Iterable[Document]:
+        """
+        Returns generator of Documents over data in file_path
+
+        Parameters
+        ----------
+        file_path : ``str``
+            path to data in json format
+        split : ``str | None``, deprecated (default=``None``)
+            only for backwards compability; in most cases ignored; do not use;
+        """
+
+        if split is not None and self.data_dir is not None:
+            warnings.warn(
+                "Using split as argument for get_documents is deprecated,"
+                + " instead use `file_path`",
+                DeprecationWarning,
+            )
+            if split not in self.get_available_splits():
+                raise ValueError("Selected split '%s' not available." % split)
+
+            # Returns list for backward compability
+            return list(self._documents_generator(
+                self._read_txt(split=split)))
+
+        return self._documents_generator(
+            self._read_txt(file_path=file_path))
+
+
+    def get_labels(self, task: IETask, file_path: str=None) -> Iterable[str]:
+        if self.data_dir is not None:
+            return list(self._labels_generator(task))
+        elif file_path is None:
+            raise AttributeError("get_labels requires file_path as argument")
+        return self._labels_generator(task, file_path)
+
+
+    def get_additional_tokens(self, task: IETask, file_path: str=None) -> List[str]:
+        return []
+
+
+    def get_available_splits(self) -> List[str]:
+        warnings.warn(
+            "`get_available_splits()` is deprecated.", DeprecationWarning)
+        return ["train", "dev", "test"]
+
+
+    def get_available_tasks(self) -> List[IETask]:
+        return [IETask.NER]
 
 
     def _read_txt(
@@ -83,47 +150,33 @@ class Conll2003DatasetReader(DatasetReader):
         return dataset
 
 
-    def get_available_splits(self) -> List[str]:
-        warnings.warn(
-            "`get_available_splits()` is deprecated.", DeprecationWarning)
-        return ["train", "dev", "test"]
+    def _example_to_document(self, example: Dict[str, Any]) -> Document:
+        tokens = example["tokens"]
+        ner = example["ner"]
+        text = " ".join(tokens)
 
+        doc = Document(guid=example["guid"], text=text)
+        doc.sents = [Span(doc=doc, start=0, end=len(tokens))]
 
-    def get_available_tasks(self) -> List[IETask]:
-        return [IETask.NER]
-
-
-    def get_documents(
-        self,
-        split: Optional[str]=None,
-        file_path: str=None,
-    ) -> Iterable[Document]:
-        """
-        Returns generator of Documents over data in file_path
-
-        Parameters
-        ----------
-        file_path : ``str``
-            path to data in json format
-        split : ``str | None``, deprecated (default=``None``)
-            only for backwards compability; in most cases ignored; do not use;
-        """
-
-        if split is not None and self.data_dir is not None:
-            warnings.warn(
-                "Using split as argument for get_documents is deprecated,"
-                + " instead use `file_path`",
-                DeprecationWarning,
+        start_offset = 0
+        for idx, token in enumerate(tokens):
+            end_offset = start_offset + len(token)
+            doc.tokens.append(
+                Token(doc=doc, start=start_offset, end=end_offset, lemma=token, ent_type=ner[idx])
             )
-            if split not in self.get_available_splits():
-                raise ValueError("Selected split '%s' not available." % split)
+            # increment offset because of whitespace
+            start_offset = end_offset + 1
 
-            # Returns list for backward compability
-            return list(self._documents_generator(
-                self._read_txt(split=split)))
+        for label, start, end in get_entities(ner):
+            # end is inclusive, we want exclusive -> +1
+            doc.ments.append(Mention(doc=doc, start=start, end=end + 1, label=label))
+        return doc
 
-        return self._documents_generator(
-            self._read_txt(file_path=file_path))
+
+    def _documents_generator(self, dataset: List[Dict[str, Any]]) -> Iterable[Document]:
+        """Creates documents for the dataset."""
+        for example in dataset:
+            yield self._example_to_document(example)
 
 
     def _labels_generator(self, task: IETask, file_path: str=None) -> Iterable[str]:
@@ -147,44 +200,3 @@ class Conll2003DatasetReader(DatasetReader):
             if label not in labels:
                 labels.append(label)
                 yield label
-
-
-    def get_labels(self, task: IETask, file_path: str=None) -> Iterable[str]:
-        if self.data_dir is not None:
-            return list(self._labels_generator(task))
-        elif file_path is None:
-            raise AttributeError("get_labels requires file_path as argument")
-        return self._labels_generator(task, file_path)
-
-
-    def get_additional_tokens(self, task: IETask, file_path: str=None) -> List[str]:
-        return []
-
-
-    def _documents_generator(self, dataset: List[Dict[str, Any]]) -> Iterable[Document]:
-        """Creates documents for the dataset."""
-        for example in dataset:
-            yield self._example_to_document(example)
-
-
-    def _example_to_document(self, example: Dict[str, Any]) -> Document:
-        tokens = example["tokens"]
-        ner = example["ner"]
-        text = " ".join(tokens)
-
-        doc = Document(guid=example["guid"], text=text)
-        doc.sents = [Span(doc=doc, start=0, end=len(tokens))]
-
-        start_offset = 0
-        for idx, token in enumerate(tokens):
-            end_offset = start_offset + len(token)
-            doc.tokens.append(
-                Token(doc=doc, start=start_offset, end=end_offset, lemma=token, ent_type=ner[idx])
-            )
-            # increment offset because of whitespace
-            start_offset = end_offset + 1
-
-        for label, start, end in get_entities(ner):
-            # end is inclusive, we want exclusive -> +1
-            doc.ments.append(Mention(doc=doc, start=start, end=end + 1, label=label))
-        return doc

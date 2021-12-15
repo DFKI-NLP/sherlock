@@ -18,23 +18,48 @@ from sherlock.tasks import IETask
 
 @DatasetReader.register("sherlock_reader")
 class DatasetReaderAllennlp(DatasetReader):
+    """
+    Allennlp DatasetReader. Is realized by using a sherlock DatasetReader
+    and sherlock FeatureConverter.
+
+    Note: this class does not have the "text_to_instance" function,
+          because sherlock DatasetReaders do not produce text, but
+          rather Documents. These are then converted with a FeatureConverter
+          into allennlp Instances.
+
+    Parameters
+    ----------
+    task : ``"ner" | "binary_rc"``
+        Name of task for which data is loaded.
+    dataset_reader_name : ``str``
+        Unique identifier for sherlock DatasetReader (e.g. "tacred").
+    feature_converter_name : ``str``
+        Unique identifier for sherlock FeatureConverter (e.g. "binary_rc").
+    tokenizer : ``Tokenizer``
+        allennlp Tokenizer that can process Instances.
+    token_indexer : ``TokenIndexer``
+        allennlp TokenIndexer to index Instances.
+    max_tokens : ``int``, optional (default=`None`)
+        If set to a number, will limit sequences of tokens to maximum length.
+    feature_converter_kwargs : ``Dict[str, any]]``, optional (default=`None`)
+        Additional keyword arguments for FeatureConverter.
+    **kwargs : ``Dict[str, any]]``, optional (default=`None`)
+        Additional kewyowrd arguments for allennlp DatasetReader class.
+    """
 
     def __init__(
         self,
         task: str,
         dataset_reader_name: str,
         feature_converter_name: str,
-        tokenizer: Tokenizer=None,
-        token_indexer: Dict[str, TokenIndexer]=None,
+        tokenizer: Tokenizer,
+        # token_indexer: Dict[str, TokenIndexer], TODO: this is goal
+        token_indexer: TokenIndexer,
         max_tokens: int=None,
         feature_converter_kwargs: Optional[Dict[str, any]]=None,
         **kwargs
     ) -> None:
-        """Initializes allennlp DatasetReader.
 
-        Takes a sherlock DatasetReader and FeatureConverter and uses
-        both of them to create the correct allennlp Instances.
-        """
         super().__init__(**kwargs)
 
         # TODO: make this clean: is it enough to just take the string???
@@ -55,11 +80,7 @@ class DatasetReaderAllennlp(DatasetReader):
         self.feature_converter_name = feature_converter_name
         self.feature_converter = None
 
-        if feature_converter_kwargs is None:
-            self.feature_converter_kwargs = {}
-        else:
-            self.feature_converter_kwargs = feature_converter_kwargs
-
+        self.feature_converter_kwargs = feature_converter_kwargs or {}
         self.feature_converter_kwargs["tokenizer"] = tokenizer
         self.feature_converter_kwargs["token_indexer"] = token_indexer
         self.feature_converter_kwargs["max_length"] = max_tokens
@@ -69,7 +90,6 @@ class DatasetReaderAllennlp(DatasetReader):
         self,
         file_path: Optional[str]=None,
     ) -> Iterable[Instance]:
-        """Returns iterable of allennlp instances."""
 
         # Initialize FeatureConverter if that did not happen yet
         if self.feature_converter is None:

@@ -26,11 +26,29 @@ INVERSE_RELATIONS = {
 }
 
 logger = logging.getLogger(__name__)
-# TODO: ordering
+
 
 @DatasetReader.register("tacred")
 class TacredDatasetReader(DatasetReader):
-    """Dataset reader for the TACRED data set."""
+    """
+    Dataset reader for the TACRED dataset.
+
+    Parameters
+    ----------
+    negative_label_ner : ``str``, optional (default=`"O"`)
+        label for instances in NER without a label class.
+    negative_label_re : ``str``, optional (default=`"no_relation"`)
+        label for instances without relation in Relation Extraction.
+    convert_ptb_tokens: ``bool``, optional (default=`True`)
+        flag to convert PTB tokens to normal tokens.
+    tagging_scheme: ``str``, optional (default=`"bio"`)
+        tagging scheme for charactes in sentences. Only supports `"bio"`.
+    add_inverse_relations: ``bool``, optional (default=`False`)
+        for any relation in TACRED, add the inversion as another instance.
+    **kwargs: ``Dict[str, Any]``
+        Catches keywords for backwards compability
+        (`data_dir`, `train_file`, `dev_file`, `test_file`).
+    """
 
     def __init__(
         self,
@@ -68,23 +86,6 @@ class TacredDatasetReader(DatasetReader):
         self.add_inverse_relations = add_inverse_relations
 
 
-    @staticmethod
-    def _read_json(input_file: str) -> List[Dict[str, Any]]:
-        with open(input_file, "r", encoding="utf-8") as tacred_file:
-            data = json.load(tacred_file)
-        return data
-
-
-    def get_available_splits(self) -> List[str]:
-        warnings.warn(
-            "`get_available_splits()` is deprecated.", DeprecationWarning)
-        return ["train", "dev", "test"]
-
-
-    def get_available_tasks(self) -> List[IETask]:
-        return [IETask.NER, IETask.BINARY_RC]
-
-
     def get_documents(
         self,
         file_path: str=None,
@@ -96,8 +97,8 @@ class TacredDatasetReader(DatasetReader):
         Parameters
         ----------
         file_path : ``str``
-            path to data in json format
-        split : ``str | None``, deprecated (default=``None``)
+            path to data in json format.
+        split : ``str | None``, deprecated (default=`None`)
             only for backwards compability; in most cases ignored; do not use;
         """
 
@@ -115,48 +116,6 @@ class TacredDatasetReader(DatasetReader):
 
         # Returns generator for performance improvements
         return self._documents_generator(self._read_json(file_path))
-
-
-    def _labels_generator(self, task: IETask, file_path: str=None) -> Iterable[str]:
-        if task not in self.get_available_tasks():
-            raise ValueError("Selected task '%s' not available." % task)
-
-        # Backwards compability
-        if self.data_dir is not None:
-            dataset = list(self._read_json(self.input_files["train"]))
-        else:
-            dataset = self._read_json(file_path)
-
-        unique_labels: Set[str] = set()
-        for example in dataset:
-            if task == IETask.NER:
-                ner = example["stanford_ner"] + [example["subj_type"], example["obj_type"]]
-                unique_labels.update(ner)
-            elif task == IETask.BINARY_RC:
-                unique_labels.add(example["relation"])
-            else:
-                raise Exception("This should not happen.")
-
-
-        if task == IETask.NER and self.tagging_scheme == "bio":
-            # Make sure the negative label is always at position 0
-            yield self.negative_label_ner
-            for label in unique_labels:
-                if label != self.negative_label_ner:
-                    ret_labels = [prefix + label for prefix in ["B-", "I-"]]
-                    for ret_label in ret_labels:
-                        yield ret_label
-        elif task == IETask.BINARY_RC:
-            # Make sure the negative label is always at position 0
-            labels = [self.negative_label_re]
-            yield self.negative_label_re
-            for label in unique_labels:
-                # Not sure why unique labels are tracked, but keep tracking
-                if label not in labels:
-                    labels.append(label)
-                    yield label
-        else:
-            raise Exception("This should not happen.")
 
 
     def get_labels(self, task: IETask, file_path: str=None) -> Iterable[str]:
@@ -190,14 +149,34 @@ class TacredDatasetReader(DatasetReader):
         return list(additional_tokens)
 
 
-    def _documents_generator(self, dataset: List[Dict[str, Any]]) -> Iterable[Document]:
-        for example in dataset:
-            document = self._example_to_document(example)
-            if document is None:
-                logger.info(f"Skipped document with id: {example['id']}")
-                continue
+    def get_available_splits(self) -> List[str]:
+        warnings.warn(
+            "`get_available_splits()` is deprecated.", DeprecationWarning)
+        return ["train", "dev", "test"]
 
-            yield document
+
+    def get_available_tasks(self) -> List[IETask]:
+        return [IETask.NER, IETask.BINARY_RC]
+
+
+    @staticmethod
+    def _read_json(input_file: str) -> List[Dict[str, Any]]:
+        with open(input_file, "r", encoding="utf-8") as tacred_file:
+            data = json.load(tacred_file)
+        return data
+
+
+    @staticmethod
+    def _convert_token(token):
+        """Convert PTB tokens to normal tokens"""
+        return {
+            "-lrb-": "(",
+            "-rrb-": ")",
+            "-lsb-": "[",
+            "-rsb-": "]",
+            "-lcb-": "{",
+            "-rcb-": "}",
+        }.get(token.lower(), token)
 
 
     def _example_to_document(self, example: Dict[str, Any]) -> Optional[Document]:
@@ -266,17 +245,57 @@ class TacredDatasetReader(DatasetReader):
         return doc
 
 
-    @staticmethod
-    def _convert_token(token):
-        """ Convert PTB tokens to normal tokens """
-        return {
-            "-lrb-": "(",
-            "-rrb-": ")",
-            "-lsb-": "[",
-            "-rsb-": "]",
-            "-lcb-": "{",
-            "-rcb-": "}",
-        }.get(token.lower(), token)
+    def _documents_generator(self, dataset: List[Dict[str, Any]]) -> Iterable[Document]:
+        for example in dataset:
+            document = self._example_to_document(example)
+            if document is None:
+                logger.info(f"Skipped document with id: {example['id']}")
+                continue
+
+            yield document
+
+
+    def _labels_generator(self, task: IETask, file_path: str=None) -> Iterable[str]:
+        if task not in self.get_available_tasks():
+            raise ValueError("Selected task '%s' not available." % task)
+
+        # Backwards compability
+        if self.data_dir is not None:
+            dataset = list(self._read_json(self.input_files["train"]))
+        else:
+            dataset = self._read_json(file_path)
+
+        unique_labels: Set[str] = set()
+        for example in dataset:
+            if task == IETask.NER:
+                ner = example["stanford_ner"] + [example["subj_type"], example["obj_type"]]
+                unique_labels.update(ner)
+            elif task == IETask.BINARY_RC:
+                unique_labels.add(example["relation"])
+            else:
+                raise Exception("This should not happen.")
+
+
+        if task == IETask.NER and self.tagging_scheme == "bio":
+            # Make sure the negative label is always at position 0
+            yield self.negative_label_ner
+            for label in unique_labels:
+                if label != self.negative_label_ner:
+                    ret_labels = [prefix + label for prefix in ["B-", "I-"]]
+                    for ret_label in ret_labels:
+                        yield ret_label
+        elif task == IETask.BINARY_RC:
+            # Make sure the negative label is always at position 0
+            labels = [self.negative_label_re]
+            yield self.negative_label_re
+            for label in unique_labels:
+                # Not sure why unique labels are tracked, but keep tracking
+                if label not in labels:
+                    labels.append(label)
+                    yield label
+        else:
+            raise Exception("This should not happen.")
+
 
     @staticmethod
     def _ner_as_bio(example: Dict[str, Any], insert_argument_types: bool = False):
