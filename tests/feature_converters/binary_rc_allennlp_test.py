@@ -12,26 +12,30 @@ from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
 
+TRAIN_FILE = os.path.join(FIXTURES_ROOT, "datasets", "tacred.json")
+# TODO: create token_classification_allennlp test
+
 def test_convert_documents_to_features():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    tokenizer.tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    vocab = Vocabulary()
-    # manually add the labels seen in fixtures/datasets/tacred.json to label Vocab
-    for label in reader.get_labels(IETask.BINARY_RC):
-        vocab.add_token_to_namespace(label, "labels")
 
-    converter = BinaryRcConverter(labels=reader.get_labels(IETask.BINARY_RC), max_length=512,
-                                  framework="allennlp", tokenizer=tokenizer,
-                                  token_indexer=token_indexer, vocabulary=vocab, log_num_input_features=1)
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=512,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexer=token_indexer,
+        log_num_input_features=1,
+    )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
 
@@ -83,27 +87,29 @@ def test_convert_documents_to_features():
 
 
 def test_convert_documents_to_features_truncate():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
+
     max_length = 10
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
         + """, "tokenizer_kwargs": {"use_fast": false}}""")))
-    tokenizer.tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
         + """, "tokenizer_kwargs": {"use_fast": false}}""")))
-    vocab = Vocabulary()
-    # manually add the labels seen in fixtures/datasets/tacred.json to label Vocab
-    for label in reader.get_labels(IETask.BINARY_RC):
-        vocab.add_token_to_namespace(label, "labels")
 
-    converter = BinaryRcConverter(labels=reader.get_labels(IETask.BINARY_RC), max_length=max_length,
-                                  framework="allennlp", tokenizer=tokenizer,
-                                  token_indexer=token_indexer, vocabulary=vocab, log_num_input_features=1)
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=max_length,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexer=token_indexer,
+        log_num_input_features=1,
+    )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
 
@@ -133,26 +139,25 @@ def test_convert_documents_to_features_truncate():
 
 
 def test_entity_handling_mark_entity():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    tokenizer.tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    vocab = Vocabulary()
-    # manually add the labels seen in fixtures/datasets/tacred.json to label Vocab
-    for label in reader.get_labels(IETask.BINARY_RC):
-        vocab.add_token_to_namespace(label, "labels")
 
-    converter = BinaryRcConverter(labels=reader.get_labels(IETask.BINARY_RC), max_length=512,
-                                  framework="allennlp", tokenizer=tokenizer,
-                                  token_indexer=token_indexer, vocabulary=vocab, log_num_input_features=1,
-                                  entity_handling="mark_entity")
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexer=token_indexer,
+        log_num_input_features=1,
+    )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
 
@@ -200,26 +205,27 @@ def test_entity_handling_mark_entity():
 
 
 def test_entity_handling_mark_entity_append_ner():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    tokenizer.tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    vocab = Vocabulary()
-    # manually add the labels seen in fixtures/datasets/tacred.json to label Vocab
-    for label in reader.get_labels(IETask.BINARY_RC):
-        vocab.add_token_to_namespace(label, "labels")
 
-    converter = BinaryRcConverter(labels=reader.get_labels(IETask.BINARY_RC), max_length=512,
-                                  framework="allennlp", tokenizer=tokenizer,
-                                  token_indexer=token_indexer, vocabulary=vocab, log_num_input_features=1,
-                                  entity_handling="mark_entity_append_ner")
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=512,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexer=token_indexer,
+        log_num_input_features=1,
+        entity_handling="mark_entity_append_ner",
+    )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
 
@@ -271,26 +277,27 @@ def test_entity_handling_mark_entity_append_ner():
 
 
 def test_entity_handling_mask_entity():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    tokenizer.tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    vocab = Vocabulary()
-    # manually add the labels seen in fixtures/datasets/tacred.json to label Vocab
-    for label in reader.get_labels(IETask.BINARY_RC):
-        vocab.add_token_to_namespace(label, "labels")
 
-    converter = BinaryRcConverter(labels=reader.get_labels(IETask.BINARY_RC), max_length=512,
-                                  framework="allennlp", tokenizer=tokenizer,
-                                  token_indexer=token_indexer, vocabulary=vocab, log_num_input_features=1,
-                                  entity_handling="mask_entity")
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=512,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexer=token_indexer,
+        log_num_input_features=1,
+        entity_handling="mask_entity",
+    )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
 
@@ -333,26 +340,27 @@ def test_entity_handling_mask_entity():
 
 
 def test_entity_handling_mask_entity_append_text():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    tokenizer.tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
-    vocab = Vocabulary()
-    # manually add the labels seen in fixtures/datasets/tacred.json to label Vocab
-    for label in reader.get_labels(IETask.BINARY_RC):
-        vocab.add_token_to_namespace(label, "labels")
 
-    converter = BinaryRcConverter(labels=reader.get_labels(IETask.BINARY_RC), max_length=512,
-                                  framework="allennlp", tokenizer=tokenizer,
-                                  token_indexer=token_indexer, vocabulary=vocab, log_num_input_features=1,
-                                  entity_handling="mask_entity_append_text")
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=512,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexer=token_indexer,
+        log_num_input_features=1,
+        entity_handling="mask_entity_append_text",
+    )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
 
@@ -400,26 +408,26 @@ def test_entity_handling_mask_entity_append_text():
 
 
 def test_save_and_load(tmpdir):
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 10, "tokenizer_kwargs": {"use_fast": false}}""")))
-    tokenizer.tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": 10, "tokenizer_kwargs": {"use_fast": false}}""")))
-    vocab = Vocabulary()
-    # manually add the labels seen in fixtures/datasets/tacred.json to label Vocab
-    for label in reader.get_labels(IETask.BINARY_RC):
-        vocab.add_token_to_namespace(label, "labels")
 
-    converter = BinaryRcConverter(labels=reader.get_labels(IETask.BINARY_RC), max_length=10,
-                                  framework="allennlp", tokenizer=tokenizer,
-                                  token_indexer=token_indexer, vocabulary=vocab,
-                                  pad_token_segment_id=2,
-                                  log_num_input_features=3,
-                                  entity_handling="mask_entity_append_text")
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=10,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexer=token_indexer,
+        pad_token_segment_id=2,
+        log_num_input_features=3,
+        entity_handling="mask_entity_append_text",
+    )
+
     converter.save(tmpdir)
     loaded_converter = BinaryRcConverter.from_pretrained(tmpdir, tokenizer=tokenizer, token_indexer=token_indexer)
     assert loaded_converter.max_length == converter.max_length

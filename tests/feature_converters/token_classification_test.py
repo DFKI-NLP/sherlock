@@ -8,34 +8,42 @@ from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
 
+TRAIN_FILE = os.path.join(FIXTURES_ROOT, "datasets", "tacred.json")
+
+
 def test_create_converter():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(task="ner"))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(task="ner", file_path=TRAIN_FILE))
     converter = TokenClassificationConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(IETask.NER)
+        tokenizer=tokenizer,
+        labels=reader.get_labels(IETask.NER, file_path=TRAIN_FILE)
     )
 
     assert converter.pad_token_label_id == -100
-    assert len(converter.label_to_id_map) == len(reader.get_labels(IETask.NER)) == 17
-    assert len(converter.id_to_label_map) == len(reader.get_labels(IETask.NER))
+    assert (len(converter.label_to_id_map)
+            == len(list(reader.get_labels(IETask.NER, file_path=TRAIN_FILE)))
+            == 17)
+    assert (len(converter.id_to_label_map)
+            == len(list(reader.get_labels(IETask.NER, file_path=TRAIN_FILE))))
 
 
 def test_convert_documents_to_features():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.NER))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.NER, file_path=TRAIN_FILE))
     converter = TokenClassificationConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(IETask.NER), log_num_input_features=1
+        tokenizer=tokenizer,
+        labels=reader.get_labels(IETask.NER, file_path=TRAIN_FILE),
+        log_num_input_features=1,
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
     assert len(input_features) == 3
@@ -90,18 +98,20 @@ def test_convert_documents_to_features():
 
 
 def test_convert_documents_to_features_truncate():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     max_length = 10
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.NER))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.NER, file_path=TRAIN_FILE))
     converter = TokenClassificationConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(IETask.NER), max_length=max_length
+        tokenizer=tokenizer,
+        labels=reader.get_labels(IETask.NER, file_path=TRAIN_FILE),
+        max_length=max_length,
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
     assert all([features.metadata["truncated"] for features in input_features])
@@ -135,13 +145,11 @@ def test_convert_documents_to_features_truncate():
 
 
 def test_save_and_load(tmpdir):
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     converter = TokenClassificationConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(IETask.NER),
+        labels=reader.get_labels(IETask.NER, file_path=TRAIN_FILE),
         max_length=1,
         pad_token_segment_id=2,
         pad_token_label_id=3,
