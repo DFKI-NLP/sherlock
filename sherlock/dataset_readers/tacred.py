@@ -75,6 +75,12 @@ class TacredDatasetReader(DatasetReader):
         return data
 
 
+    def get_available_splits(self) -> List[str]:
+        warnings.warn(
+            "`get_available_splits()` is deprecated.", DeprecationWarning)
+        return ["train", "dev", "test"]
+
+
     def get_available_tasks(self) -> List[IETask]:
         return [IETask.NER, IETask.BINARY_RC]
 
@@ -92,15 +98,17 @@ class TacredDatasetReader(DatasetReader):
         file_path : ``str``
             path to data in json format
         split : ``str | None``, deprecated (default=``None``)
-            only here for backwards compability
+            only for backwards compability; in most cases ignored; do not use;
         """
 
-        if split is not None:
+        if split is not None and self.data_dir is not None:
             warnings.warn(
                 "Using split as argument for get_documents is deprecated,"
                 + "instead use `file_path`",
                 DeprecationWarning,
             )
+            if split not in self.get_available_splits():
+                raise ValueError("Selected split '%s' not available." % split)
             file_path = self.input_files[split]
             # Returns list for backward compability
             return list(self._documents_generator(self._read_json(file_path)))
