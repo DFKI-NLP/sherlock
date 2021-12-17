@@ -58,8 +58,12 @@ def _remove_spaces(tokens: List[spacy.tokens.Token]) -> List[spacy.tokens.Token]
     return [token for token in tokens if not token.is_space]
 
 
-def _remove_escape_char_tokens(tokens: List[Token]) -> List[Token]:
-    return [token for token in tokens if not ("_" == token.lemma and SPACY_ESCAPE_CHAR_REGEX.match(token.doc.text[token.start:token.end]))]
+def _remove_escape_char_and_whitespace_tokens(tokens: List[Token]) -> List[Token]:
+    def is_whitespace(token: Token) -> bool:
+        return token.lemma == ' ' and token.tag == "_SP"
+    def is_escape_char(token: Token) -> bool:
+        return token.lemma == '_' and SPACY_ESCAPE_CHAR_REGEX.match(token.doc.text[token.start:token.end])
+    return [token for token in tokens if not (is_whitespace(token) or is_escape_char(token))]
 
 
 def _replace_ws(text: str) -> str:
