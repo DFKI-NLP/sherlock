@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 LOADED_SPACY_MODELS: Dict[Tuple[str, bool, bool, bool], SpacyModelType] = {}
-
+SPACY_ESCAPE_CHAR_REGEX = re.compile(r"[\t\n\r\f\v]") # we replace these escape chars with _ before running spacy,
+# so that they get properly tokenized, and discard the corresponding tokens afterwards. Otherwise, we will get
+# harder-to-remove spacy tokens such as '\n \n' or '\t \n \n'
 
 # taken from: https://github.com/allenai/allennlp/blob/master/allennlp/common/util.py
 def get_spacy_model(
@@ -54,6 +56,10 @@ def get_spacy_model(
 
 def _remove_spaces(tokens: List[spacy.tokens.Token]) -> List[spacy.tokens.Token]:
     return [token for token in tokens if not token.is_space]
+
+
+def _remove_escape_char_tokens(tokens: List[Token]) -> List[Token]:
+    return [token for token in tokens if not ("_" == token.lemma and SPACY_ESCAPE_CHAR_REGEX.match(token.doc.text[token.start:token.end]))]
 
 # Todo Not sure why this method is needed for spacy
 def _replace_ws(text: str) -> str:
@@ -94,10 +100,9 @@ class SpacyPredictor(Predictor):
         )
 
     def predict_documents(self, documents: List[Document]) -> List[Document]:
-        #spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
-        spacy_docs = self.spacy.pipe([doc.text for doc in documents], n_threads=-1)
+        spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
-            doc.tokens = [Token.from_spacy(doc, token) for token in spacy_doc]
+            doc.tokens = _remove_escape_char_tokens([Token.from_spacy(doc, token) for token in spacy_doc])
             if self.has_sentencizer:
                 doc.sents = [Span(doc, sent.start, sent.end) for sent in spacy_doc.sents]
             for mention in spacy_doc.ents:
@@ -105,9 +110,8 @@ class SpacyPredictor(Predictor):
         return documents
 
     def predict_document(self, document: Document) -> Document:
-        #spacy_doc = self.spacy(_replace_ws(document.text))
-        spacy_doc = self.spacy(document.text)
-        document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
+        spacy_doc = self.spacy(_replace_ws(document.text))
+        document.tokens = _remove_escape_char_tokens([Token.from_spacy(document, token) for token in spacy_doc])
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents]
         for mention in spacy_doc.ents:
