@@ -109,7 +109,7 @@ class SpacyPredictor(Predictor):
     def predict_documents(self, documents: List[Document]) -> List[Document]:
         spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
-            doc.tokens = _remove_escape_char_tokens([Token.from_spacy(doc, token) for token in spacy_doc])
+            doc.tokens = _remove_escape_char_and_whitespace_tokens([Token.from_spacy(doc, token) for token in spacy_doc])
             if self.has_sentencizer:
                 doc.sents = [Span(doc, sent.start, sent.end) for sent in spacy_doc.sents]
             for mention in spacy_doc.ents:
@@ -118,7 +118,7 @@ class SpacyPredictor(Predictor):
 
     def predict_document(self, document: Document) -> Document:
         spacy_doc = self.spacy(_replace_ws(document.text))
-        document.tokens = _remove_escape_char_tokens([Token.from_spacy(document, token) for token in spacy_doc])
+        document.tokens = _remove_escape_char_and_whitespace_tokens([Token.from_spacy(document, token) for token in spacy_doc])
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents]
         for mention in spacy_doc.ents:
