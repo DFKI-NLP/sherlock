@@ -61,9 +61,12 @@ def _remove_spaces(tokens: List[spacy.tokens.Token]) -> List[spacy.tokens.Token]
 def _remove_escape_char_tokens(tokens: List[Token]) -> List[Token]:
     return [token for token in tokens if not ("_" == token.lemma and SPACY_ESCAPE_CHAR_REGEX.match(token.doc.text[token.start:token.end]))]
 
-# Todo Not sure why this method is needed for spacy
+
 def _replace_ws(text: str) -> str:
-    return re.sub(r"[\t\n\r\f\v]", "_", text)
+    """
+    Replace escape characters for easier tokenization by Spacy
+    """
+    return SPACY_ESCAPE_CHAR_REGEX.sub("_", text)
 
 
 @Predictor.register("spacy")
