@@ -21,7 +21,7 @@ import glob
 import logging
 import os
 import random
-from typing import Iterable
+from typing import Iterable, List
 
 import numpy as np
 import torch
@@ -40,6 +40,7 @@ from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
 from allennlp.modules import FeedForward
 from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
 from allennlp.training import GradientDescentTrainer
+from allennlp.training.util import evaluate as evaluateAllennlp
 
 from sherlock import dataset
 from sherlock.dataset import TensorDictDataset
@@ -68,8 +69,13 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def train(args, data_loader, model, tokenizer):
-    """ Train the model """
+def train(
+    args,
+    train_data_loader,
+    valid_data_loader,
+    model,
+):
+    """Train the model."""
     if args.local_rank in [-1, 0]:
         tb_writer = SummaryWriter()
 
@@ -89,10 +95,10 @@ def train(args, data_loader, model, tokenizer):
     if args.max_steps > 0:
         t_total = args.max_steps
         args.num_train_epochs = (
-            args.max_steps // (len(data_loader) // args.gradient_accumulation_steps) + 1
+            args.max_steps // (len(train_data_loader) // args.gradient_accumulation_steps) + 1
         )
     else:
-        t_total = len(data_loader) // args.gradient_accumulation_steps * args.num_train_epochs
+        t_total = len(train_data_loader) // args.gradient_accumulation_steps * args.num_train_epochs
 
     # Prepare optimizer and schedule (linear warmup and decay)
     # no_decay = ["bias", "LayerNorm.weight"]
@@ -140,15 +146,16 @@ def train(args, data_loader, model, tokenizer):
     optimizer = HuggingfaceAdamWOptimizer(params)
     trainer = GradientDescentTrainer(
         model=model,
+        serialization_dir=args.output_dir,
         optimizer=optimizer,
-        data_loader=data_loader,
-        validation_data_loader=val_data_loader,
+        data_loader=train_data_loader,
+        validation_data_loader=valid_data_loader,
         num_epochs=args.num_train_epochs,
     )
 
     # Train!
     logger.info("***** Running training *****")
-    logger.info("  Num examples = %d", len(train_dataset))
+    logger.info("  Num examples = %d", len(train_data_loader))
     logger.info("  Num Epochs = %d", args.num_train_epochs)
     logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
     logger.info(
@@ -159,6 +166,9 @@ def train(args, data_loader, model, tokenizer):
     )
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", t_total)
+
+    trainer.train()
+    return
 
     global_step = 0
     tr_loss, logging_loss = 0.0, 0.0
@@ -252,67 +262,67 @@ def train(args, data_loader, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""):
-    eval_output_dir = args.output_dir
+# def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""):
+#     eval_output_dir = args.output_dir
 
-    eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
+#     eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
 
-    if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
-        os.makedirs(eval_output_dir)
+#     if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
+#         os.makedirs(eval_output_dir)
 
-    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-    # Note that DistributedSampler samples randomly
-    eval_sampler = (
-        SequentialSampler(eval_dataset)
-        if args.local_rank == -1
-        else DistributedSampler(eval_dataset)
-    )
-    eval_dataloader = DataLoader(
-        eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size
-    )
+#     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
+#     # Note that DistributedSampler samples randomly
+#     eval_sampler = (
+#         SequentialSampler(eval_dataset)
+#         if args.local_rank == -1
+#         else DistributedSampler(eval_dataset)
+#     )
+#     eval_dataloader = DataLoader(
+#         eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size
+#     )
 
-    # Eval!
-    logger.info("***** Running evaluation {} *****".format(prefix))
-    logger.info("  Num examples = %d", len(eval_dataset))
-    logger.info("  Batch size = %d", args.eval_batch_size)
-    eval_loss = 0.0
-    nb_eval_steps = 0
-    preds = None
-    out_label_ids = None
-    for batch in tqdm(eval_dataloader, desc="Evaluating"):
-        model.eval()
-        batch = {k: t.to(args.device) for k, t in batch.items()}
-        if args.model_type not in ["bert", "xlnet"]:
-            batch["token_type_ids"] = None
+#     # Eval!
+#     logger.info("***** Running evaluation {} *****".format(prefix))
+#     logger.info("  Num examples = %d", len(eval_dataset))
+#     logger.info("  Batch size = %d", args.eval_batch_size)
+#     eval_loss = 0.0
+#     nb_eval_steps = 0
+#     preds = None
+#     out_label_ids = None
+#     for batch in tqdm(eval_dataloader, desc="Evaluating"):
+#         model.eval()
+#         batch = {k: t.to(args.device) for k, t in batch.items()}
+#         if args.model_type not in ["bert", "xlnet"]:
+#             batch["token_type_ids"] = None
 
-        if args.model_type == "distilbert":
-            del batch["token_type_ids"]
+#         if args.model_type == "distilbert":
+#             del batch["token_type_ids"]
 
-        with torch.no_grad():
-            outputs = model(**batch)
-            tmp_eval_loss, logits = outputs[:2]
+#         with torch.no_grad():
+#             outputs = model(**batch)
+#             tmp_eval_loss, logits = outputs[:2]
 
-            eval_loss += tmp_eval_loss.mean().item()
-        nb_eval_steps += 1
-        if preds is None:
-            preds = logits.detach().cpu().numpy()
-            out_label_ids = batch["labels"].detach().cpu().numpy()
-        else:
-            preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-            out_label_ids = np.append(out_label_ids, batch["labels"].detach().cpu().numpy(), axis=0)
+#             eval_loss += tmp_eval_loss.mean().item()
+#         nb_eval_steps += 1
+#         if preds is None:
+#             preds = logits.detach().cpu().numpy()
+#             out_label_ids = batch["labels"].detach().cpu().numpy()
+#         else:
+#             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
+#             out_label_ids = np.append(out_label_ids, batch["labels"].detach().cpu().numpy(), axis=0)
 
-    eval_loss = eval_loss / nb_eval_steps
-    preds = np.argmax(preds, axis=1)
-    result = compute_f1(preds, out_label_ids)
+#     eval_loss = eval_loss / nb_eval_steps
+#     preds = np.argmax(preds, axis=1)
+#     result = compute_f1(preds, out_label_ids)
 
-    output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
-    with open(output_eval_file, "w") as writer:
-        logger.info("***** Eval results {} *****".format(prefix))
-        for key in sorted(result.keys()):
-            logger.info("  %s = %s", key, str(result[key]))
-            writer.write("%s = %s\n" % (key, str(result[key])))
+#     output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
+#     with open(output_eval_file, "w") as writer:
+#         logger.info("***** Eval results {} *****".format(prefix))
+#         for key in sorted(result.keys()):
+#             logger.info("  %s = %s", key, str(result[key]))
+#             writer.write("%s = %s\n" % (key, str(result[key])))
 
-    return result, preds
+#     return result, preds
 
 
 def load_and_cache_examples(args, dataloader, split):
@@ -488,8 +498,8 @@ def main():
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
     parser.add_argument(
         "--num_train_epochs",
-        default=3.0,
-        type=float,
+        default=3,
+        type=int,
         help="Total number of training epochs to perform.",
     )
     parser.add_argument(
@@ -666,12 +676,20 @@ def main():
     # )
 
     train_path = os.path.join(args.data_dir, "train.json")
-    train_dataset: Iterable[Instance] = dataset_reader.read(train_path)
-    # data_loader = SimpleDataLoader(instances, batch_size=8)
+    valid_path = os.path.join(args.data_dir, "dev.json")
+    train_dataset: List[Instance] = list(dataset_reader.read(train_path))
+    valid_dataset: List[Instance] = list(dataset_reader.read(valid_path))
+    train_data_loader = SimpleDataLoader(
+        list(train_dataset), batch_size=args.per_gpu_train_batch_size)
+    valid_data_loader = SimpleDataLoader(
+        list(valid_dataset), batch_size=args.per_gpu_eval_batch_size)
 
     vocabulary = Vocabulary.from_instances(train_dataset)
     vocab_size = vocabulary.get_vocab_size()
     label_size = len(dataset_reader.feature_converter.labels)
+
+    train_data_loader.index_with(vocabulary)
+    valid_data_loader.index_with(vocabulary)
 
     embedder = BasicTextFieldEmbedder(
         {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
@@ -700,12 +718,13 @@ def main():
 
     logger.info("Training/evaluation parameters %s", args)
 
-    return
-
     # Training
     if args.do_train:
-        global_step, tr_loss = train(args, data_loader, model, tokenizer)
-        logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
+        train(args, train_data_loader, valid_data_loader, model)
+        logger.info(evaluateAllennlp(model, train_data_loader))
+        # logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
+
+    return
 
     # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
     if (
@@ -714,6 +733,7 @@ def main():
         and not args.tpu
     ):
         # Create output directory if needed
+        # TODO: check: allennlp should do that for you
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)
 

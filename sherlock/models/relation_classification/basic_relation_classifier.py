@@ -84,9 +84,10 @@ class F1Measure(Metric):
         mask: ``torch.Tensor``, optional (default = None).
             A masking tensor the same size as ``gold_labels``.
         """
-        predictions, gold_labels, mask = self.unwrap_to_tensors(predictions,
-                                                                gold_labels,
-                                                                mask)
+        # TODO: debug
+        # predictions, gold_labels, mask = self.unwrap_to_tensors(predictions,
+        #                                                         gold_labels,
+        #                                                         mask)
 
         num_classes = predictions.size(-1)
         if (gold_labels >= num_classes).any():
@@ -342,8 +343,8 @@ class BasicRelationClassifier(Model):
     @overrides
     def forward(self,  # type: ignore
                 text: Dict[str, torch.LongTensor],
-                head: torch.LongTensor,
-                tail: torch.LongTensor,
+                # head: torch.LongTensor,
+                # tail: torch.LongTensor,
                 adjacency: torch.LongTensor = None,
                 metadata: Optional[List[Dict[str, Any]]] = None,
                 label: Optional[torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
@@ -394,9 +395,9 @@ class BasicRelationClassifier(Model):
             embedded_text = embeddings[0]
 
         additional_encoder_args = {}
-        if self._use_entity_offsets:
-            additional_encoder_args['head'] = head
-            additional_encoder_args['tail'] = tail
+        # if self._use_entity_offsets:
+        #     additional_encoder_args['head'] = head
+        #     additional_encoder_args['tail'] = tail
         if self._use_adjacency:
             additional_encoder_args['adjacency'] = adjacency
 
