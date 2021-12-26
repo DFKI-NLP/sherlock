@@ -100,7 +100,7 @@ class DatasetReaderAllennlp(DatasetReader):
             # Initialize
             self.feature_converter = \
                 FeatureConverterClass(
-                    labels=self.dataset_reader.get_labels(self.task),
+                    labels=self.dataset_reader.get_labels(self.task, file_path),
                     framework="allennlp",
                     **self.feature_converter_kwargs
                 )

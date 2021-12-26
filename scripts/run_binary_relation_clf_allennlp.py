@@ -665,12 +665,13 @@ def main():
     #     args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     # )
 
-    train_dataset: Iterable[Instance] = dataset_reader.read(args.data_dir, split="train")
+    train_path = os.path.join(args.data_dir, "train.json")
+    train_dataset: Iterable[Instance] = dataset_reader.read(train_path)
     # data_loader = SimpleDataLoader(instances, batch_size=8)
 
     vocabulary = Vocabulary.from_instances(train_dataset)
     vocab_size = vocabulary.get_vocab_size()
-    label_size = len(dataset_reader.dataset_reader.get_labels(dataset_reader.task))
+    label_size = len(dataset_reader.feature_converter.labels)
 
     embedder = BasicTextFieldEmbedder(
         {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
