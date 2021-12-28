@@ -179,10 +179,7 @@ class BinaryRcConverter(FeatureConverter):
             text_tokens_field = TextField(tokens[: self.max_length],
                                           self.token_indexers)
 
-            # TODO: "double metadata" (see below)
-            truncated = MetadataField({"truncated": len(tokens) > self.max_length})
-
-            fields = {"text": text_tokens_field, "metadata": truncated}
+            fields = {"text": text_tokens_field}
 
             if label is not None:
                 #label_id = self.label_to_id_map[label]
@@ -200,7 +197,7 @@ class BinaryRcConverter(FeatureConverter):
 
             metadata = dict(
                 guid=document.guid,
-                truncated=instance["metadata"]["truncated"],
+                truncated=len(tokens) > self.max_length,
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )
