@@ -77,6 +77,35 @@ For example, to train a RC model on the TACRED dataset:
   --output_dir <OUTPUT DIR>
 ```
 
+With AllenNLP use `<MODEL_TYPE>` as follows:
+- for basic RNN: `<MODEL_TYPE>=basic`
+- for transformers: `<MODEL_TYPE>=bert`
+
+```bash
+python ./scripts/run_binary_relation_clf_allennlp.py \
+  --model_type <MODEL_TYPE> \
+  --model_name_or_path bert-base-uncased \
+  --do_train \
+  --do_eval \
+  --do_predict \
+  --evaluate_during_training \
+  --eval_all_checkpoints \
+  --do_lower_case \
+  --data_dir <TACRED DIR> \
+  --save_steps 8500 \
+  --logging_steps 8500 \
+  --max_seq_length 128 \
+  --per_gpu_eval_batch_size=8 \
+  --per_gpu_train_batch_size=8 \
+  --learning_rate 2e-5 \
+  --num_train_epochs 2 \
+  --overwrite_cache \
+  --overwrite_output_dir \
+  --entity_handling mark_entity_append_ner \
+  --cache_dir <CACHE_DIR> \
+  --output_dir <OUTPUT DIR>
+
+
 # Test
 
 Tests are located in the directory `tests`. To run them, being in the root directory call:
