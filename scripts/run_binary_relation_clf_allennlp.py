@@ -308,10 +308,11 @@ def load_data(
     return data_loader
 
 
-def build_model(vocabulary: Vocabulary, label_size: int) -> Model:
+def build_model(vocabulary: Vocabulary) -> Model:
     """Build an allennlp Model."""
 
     vocab_size = vocabulary.get_vocab_size()
+    label_size = vocabulary.get_vocab_size("labels")
     embedder = BasicTextFieldEmbedder(
         {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
     )
@@ -774,9 +775,9 @@ def main():
         valid_data_loader.index_with(vocabulary)
 
         # Init Model
-        # can only access feature_converter AFTER using load_data
-        label_size = len(dataset_reader.feature_converter.labels)
-        model = build_model(vocabulary, label_size)
+        # can only build model here, because vocabulary is needed, and the
+        # vocabulary is loaded in only after choosing what to do (train/eval)
+        model = build_model(vocabulary)
 
         train(args, train_data_loader, valid_data_loader, model)
 
@@ -803,13 +804,6 @@ def main():
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        # Load checkpooints to evaluate
-        checkpoints = [os.path.join(args.output_dir, "best.th")]
-        if args.eval_all_checkpoints:
-            search_dir = args.output_dir + "/**/model_state*.th"
-            checkpoints = list(
-                c for c in sorted(glob.glob(search_dir, recursive=True))
-            )
         # Load Vocabulary
         vocabulary = Vocabulary.from_files(vocab_dir)
 
@@ -818,8 +812,15 @@ def main():
         valid_data_loader.index_with(vocabulary)
 
         # Init model
-        label_size = len(dataset_reader.feature_converter.labels)
-        model = build_model(vocabulary, label_size)
+        model = build_model(vocabulary)
+
+        # Load checkpooints to evaluate
+        checkpoints = [os.path.join(args.output_dir, "best.th")]
+        if args.eval_all_checkpoints:
+            search_dir = args.output_dir + "/**/model_state*.th"
+            checkpoints = list(
+                c for c in sorted(glob.glob(search_dir, recursive=True))
+            )
 
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
         for checkpoint in checkpoints:
@@ -828,6 +829,7 @@ def main():
             epoch_and_step = \
                 f"{splitted[-2]}_{splitted[-1]}" if len(checkpoints) > 1 else ""
 
+            # load checkpoint model
             state_dict = torch.load(checkpoint, map_location=args.device)
             model.load_state_dict(state_dict)
 
@@ -841,15 +843,13 @@ def main():
         vocabulary = Vocabulary.from_files(vocab_dir)
 
         # Load data
-        # TODO: path to testset as direct argument
-        test_path = os.path.join(args.data_dir, "test.json")
-        test_dataset: List[Instance] = list(dataset_reader.read(test_path))
-        test_data_loader = SimpleDataLoader(
-            list(test_dataset), batch_size=args.per_gpu_eval_batch_size)
+        test_data_loader = load_data(args, dataset_reader, "test")
         test_data_loader.index_with(vocabulary)
 
-        # Init model & load best
-        # TODO: init
+        # Init model
+        model = build_model(vocabulary)
+
+        # Load best model
         best_model_path = os.path.join(args.output_dir, "best.th")
         state_dict = torch.load(best_model_path, map_location=args.device)
         model.load_state_dict(state_dict)
