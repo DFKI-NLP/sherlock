@@ -725,37 +725,33 @@ def main():
         # logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
     return
-
-    # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
+    # Saving best-practices: if you use defaults names for the model,
+    # you can reload it using from_pretrained()
     if (
         args.do_train
         and (args.local_rank == -1 or torch.distributed.get_rank() == 0)
         and not args.tpu
     ):
         # Create output directory if needed
-        # TODO: check: allennlp should do that for you
         if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
             os.makedirs(args.output_dir)
 
         logger.info("Saving model checkpoint to %s", args.output_dir)
         # Save a trained model, configuration and tokenizer using `save_pretrained()`.
         # They can then be reloaded using `from_pretrained()`
-        model_to_save = (
-            model.module if hasattr(model, "module") else model
-        )  # Take care of distributed/parallel training
-        model_to_save.save_pretrained(args.output_dir)
-        tokenizer.save_pretrained(args.output_dir)
-        converter.save(args.output_dir)
+        torch.save(model, os.path.join(args.output_dir, "model.th"))
+
+        vocabulary.save_to_files(args.output_dir)
 
         # Good practice: save your training arguments together with the trained model
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
-        # Load a trained model and vocabulary that you have fine-tuned
-        model = model_class.from_pretrained(args.output_dir)
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
-        )
-        model.to(args.device)
+        # # Load a trained model and vocabulary that you have fine-tuned
+        # model = model_class.from_pretrained(args.output_dir)
+        # tokenizer = tokenizer_class.from_pretrained(
+        #     args.output_dir, do_lower_case=args.do_lower_case
+        # )
+        # model.to(args.device)
 
     # Evaluation
     results = {}
