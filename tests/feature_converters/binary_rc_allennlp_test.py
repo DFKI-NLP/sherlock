@@ -30,7 +30,7 @@ def test_convert_documents_to_features():
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
-        token_indexer=token_indexer,
+        token_indexers={"tokens": token_indexer},
         log_num_input_features=1,
     )
 
@@ -104,7 +104,7 @@ def test_convert_documents_to_features_truncate():
         max_length=max_length,
         framework="allennlp",
         tokenizer=tokenizer,
-        token_indexer=token_indexer,
+        token_indexers={"tokens": token_indexer},
         log_num_input_features=1,
     )
 
@@ -152,7 +152,7 @@ def test_entity_handling_mark_entity():
         labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         framework="allennlp",
         tokenizer=tokenizer,
-        token_indexer=token_indexer,
+        token_indexers={"tokens": token_indexer},
         log_num_input_features=1,
     )
 
@@ -219,7 +219,7 @@ def test_entity_handling_mark_entity_append_ner():
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
-        token_indexer=token_indexer,
+        token_indexers={"tokens": token_indexer},
         log_num_input_features=1,
         entity_handling="mark_entity_append_ner",
     )
@@ -291,7 +291,7 @@ def test_entity_handling_mask_entity():
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
-        token_indexer=token_indexer,
+        token_indexers={"tokens": token_indexer},
         log_num_input_features=1,
         entity_handling="mask_entity",
     )
@@ -354,7 +354,7 @@ def test_entity_handling_mask_entity_append_text():
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
-        token_indexer=token_indexer,
+        token_indexers={"tokens": token_indexer},
         log_num_input_features=1,
         entity_handling="mask_entity_append_text",
     )
@@ -422,14 +422,15 @@ def test_save_and_load(tmpdir):
         max_length=10,
         framework="allennlp",
         tokenizer=tokenizer,
-        token_indexer=token_indexer,
+        token_indexers={"tokens": token_indexer},
         pad_token_segment_id=2,
         log_num_input_features=3,
         entity_handling="mask_entity_append_text",
     )
 
     converter.save(tmpdir)
-    loaded_converter = BinaryRcConverter.from_pretrained(tmpdir, tokenizer=tokenizer, token_indexer=token_indexer)
+    loaded_converter = BinaryRcConverter.from_pretrained(
+        tmpdir, tokenizer=tokenizer, token_indexers={"tokens": token_indexer})
     assert loaded_converter.max_length == converter.max_length
     assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
     assert loaded_converter.entity_handling == converter.entity_handling

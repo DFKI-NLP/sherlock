@@ -723,7 +723,7 @@ def main():
         dataset_reader_name="tacred",
         feature_converter_name = "binary_rc",
         tokenizer=tokenizer,
-        token_indexer=token_indexers["tokens"],
+        token_indexers=token_indexers,
         max_tokens=512,
     )
 

@@ -37,7 +37,7 @@ class BinaryRcConverter(FeatureConverter):
             tokenizer  : `PreTrainedTokenizer`
         `allennlp`:
             tokenizer : ``Tokenizer``
-            token_indexer : ``TokenIndexer``
+            token_indexers : ``Dict[str,TokenIndexer]``
             sep_token : ``str``, optional (default=`None`)
                 model-specific separator token used to separate
                 relations at the end of sentence. Is automatically
@@ -162,11 +162,6 @@ class BinaryRcConverter(FeatureConverter):
 
         assert isinstance(self.tokenizer, Tokenizer),\
             "FeatureConverter initialized with wrong Tokenizer class"
-        # Nevermind this # token_indexer is a dict with TokenIndexer
-        #               # + this should be token_indexers! TODO
-        # but for consistency it is good it would be a dict with TokenIndexers TODO
-        assert isinstance(self.token_indexer, TokenIndexer),\
-            "FeatureConverter initialized with wrong TokenIndexer class"
 
         mention_combinations = self._create_mention_combinations(document)
 
@@ -182,7 +177,7 @@ class BinaryRcConverter(FeatureConverter):
             # see https://github.com/DFKI-NLP/RelEx/blob/master/relex/dataset_readers/tacred.py#text_to_instance()
             # for example handling of this
             text_tokens_field = TextField(tokens[: self.max_length],
-                                          {"tokens": self.token_indexer})
+                                          self.token_indexers)
 
             # TODO: "double metadata" (see below)
             truncated = MetadataField({"truncated": len(tokens) > self.max_length})

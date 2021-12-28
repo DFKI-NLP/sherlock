@@ -14,6 +14,7 @@ from allennlp.data import DatasetReader
 
 import sherlock
 from sherlock.tasks import IETask
+from sherlock.feature_converters import FeatureConverter
 
 
 @DatasetReader.register("sherlock_reader")
@@ -22,9 +23,12 @@ class DatasetReaderAllennlp(DatasetReader):
     Allennlp DatasetReader. Is realized by using a sherlock DatasetReader
     and sherlock FeatureConverter.
 
+    Important: the sherlock FeatureConverter is only initialized AFTER calling
+    self.read() for the first time (see below for reason)
+
     Note: this class does not have the "text_to_instance" function,
           because sherlock DatasetReaders do not produce text, but
-          rather Documents. These are then converted with a FeatureConverter
+          Documents. These are then converted with a FeatureConverter
           into allennlp Instances.
 
     Parameters
@@ -53,8 +57,7 @@ class DatasetReaderAllennlp(DatasetReader):
         dataset_reader_name: str,
         feature_converter_name: str,
         tokenizer: Tokenizer,
-        # token_indexer: Dict[str, TokenIndexer], TODO: this is goal
-        token_indexer: TokenIndexer,
+        token_indexers: Dict[str, TokenIndexer],
         max_tokens: int=None,
         feature_converter_kwargs: Optional[Dict[str, any]]=None,
         **kwargs
@@ -77,12 +80,12 @@ class DatasetReaderAllennlp(DatasetReader):
 
         # can only initialize FeatureConverter with labels, but labels are only
         # retrievable given data. Thus, initialize FeatureConverter later
-        self.feature_converter_name = feature_converter_name
-        self.feature_converter = None
+        self.feature_converter_name: str = feature_converter_name
+        self.feature_converter: Optional[FeatureConverter] = None
 
         self.feature_converter_kwargs = feature_converter_kwargs or {}
         self.feature_converter_kwargs["tokenizer"] = tokenizer
-        self.feature_converter_kwargs["token_indexer"] = token_indexer
+        self.feature_converter_kwargs["token_indexers"] = token_indexers
         self.feature_converter_kwargs["max_length"] = max_tokens
 
 
@@ -95,7 +98,7 @@ class DatasetReaderAllennlp(DatasetReader):
         if self.feature_converter is None:
             # Get class
             FeatureConverterClass = \
-                sherlock.feature_converters.FeatureConverter.by_name(
+                FeatureConverter.by_name(
                     self.feature_converter_name)
             # Initialize
             self.feature_converter = \

@@ -15,6 +15,9 @@ from sherlock.feature_converters.input_features import InputFeaturesAllennlp, In
 
 logger = logging.getLogger(__name__)
 
+# TODO: this all needs testing.
+# TODO: needs own pytest.
+
 
 @FeatureConverter.register("token_classification")
 class TokenClassificationConverter(FeatureConverter):
@@ -36,7 +39,7 @@ class TokenClassificationConverter(FeatureConverter):
             tokenizer  : `PreTrainedTokenizer`
         `allennlp`:
             tokenizer : ``Tokenizer``
-            token_indexer : ``TokenIndexer``
+            token_indexers : ``Dict[str, TokenIndexer]``
     """
 
     def __init__(
@@ -155,7 +158,7 @@ class TokenClassificationConverter(FeatureConverter):
                 + [self.pad_token_label_id] * (len(subword_tokens) - 1)
             )
 
-        text_field = TextField(tokens, self.token_indexer)
+        text_field = TextField(tokens, self.token_indexers)
         fields = {"text": text_field}
 
         fields["labels"] = SequenceLabelField(label_ids, text_field)

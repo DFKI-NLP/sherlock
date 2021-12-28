@@ -30,13 +30,18 @@ class FeatureConverter(Registrable):
     **kwargs : ``Dict[str,any]``
         init arguments for `transformer` or `allennlp` FeatureConverter:
         `transformer`:  {"tokenizer": PreTrainedTokenizer}
-        `allennlp`: {"tokenizer": Tokenizer, "token_indexer": TokenIndexer}
+        `allennlp`:
+            {
+                "tokenizer": Tokenizer,
+                "token_indexers": Dict[str, TokenIndexer]
+            }
     """
+
     def __init__(
         self,
         labels: Iterable[str],
-        max_length: Optional[int] = None,
-        framework: str = "transformers",
+        max_length: Optional[int] =None,
+        framework: str ="transformers",
         **kwargs,
     ) -> None:
         self.labels = list(labels)
@@ -53,7 +58,7 @@ class FeatureConverter(Registrable):
         elif framework == "allennlp":
             logger.info("Initializing AllenNLP FeatureConverter")
             self._init_feature_converter_allennlp(**{k: v for k, v in kwargs.items()
-                                                     if k in ["tokenizer", "token_indexer"]})
+                                                     if k in ["tokenizer", "token_indexers"]})
         else:
             raise NotImplementedError(f"Framework not supported: {framework}")
 
@@ -63,10 +68,10 @@ class FeatureConverter(Registrable):
         self.tokenizer = tokenizer
 
     def _init_feature_converter_allennlp(
-        self, tokenizer: Tokenizer, token_indexer: TokenIndexer
+        self, tokenizer: Tokenizer, token_indexers: Dict[str, TokenIndexer]
     ) -> None:
         self.tokenizer = tokenizer
-        self.token_indexer = token_indexer
+        self.token_indexers = token_indexers
 
     @property
     def name(self) -> str:
@@ -121,15 +126,15 @@ class FeatureConverter(Registrable):
         path: str,
         config: Dict[str,any],
         tokenizer: Tokenizer,
-        token_indexer: TokenIndexer
+        token_indexers: Dict[str,TokenIndexer],
     ) -> "FeatureConverter":
-        # TODO: Alternatively it would be better to save the token_indexer and
+        # TODO: Alternatively it would be better to save the token_indexers and
         # tokenizer name in the config, then load it here
         vocab_file = os.path.join(path, "converter_label_vocab.txt")
         with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
-        config["token_indexer"] = token_indexer
+        config["token_indexers"] = token_indexers
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
 
