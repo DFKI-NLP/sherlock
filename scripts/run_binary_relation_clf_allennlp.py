@@ -21,7 +21,8 @@ import glob
 import logging
 import os
 import random
-from typing import Iterable, List
+import shutil
+from typing import Iterable, List, Union, Tuple
 
 import numpy as np
 import torch
@@ -34,6 +35,7 @@ from allennlp.data import Vocabulary, Instance
 from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
 from allennlp.data.tokenizers import WhitespaceTokenizer
 from allennlp.data.token_indexers import SingleIdTokenIndexer
+from allennlp.models import Model
 from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
 from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
@@ -273,6 +275,58 @@ def train(
 
     return global_step, tr_loss / global_step
 
+
+def load_data(
+    args,
+    dataset_reader: allennlp.data.DatasetReader,
+    split: str,
+    create_vocabulary: bool=False,
+) -> Union[SimpleDataLoader, Tuple[SimpleDataLoader, Vocabulary]]:
+    """Returns Dataloader with unindexed Instances. Optionally returns
+    vocabulary from instances as well."""
+
+    # TODO: paths as direct paths in args
+    if split == "train":
+        path_to_data = os.path.join(args.data_dir, "train.json")
+        batch_size = args.per_gpu_train_batch_size
+    elif split == "dev" or split in "validation":
+        path_to_data = os.path.join(args.data_dir, "dev.json")
+        batch_size = args.per_gpu_eval_batch_size
+    elif split == "test":
+        path_to_data = os.path.join(args.data_dir, "test.json")
+        batch_size = args.per_gpu_eval_batch_size
+
+    dataset = list(dataset_reader.read(path_to_data))
+    data_loader = SimpleDataLoader(
+        list(dataset),
+        batch_size=batch_size,
+    )
+
+    if create_vocabulary:
+        vocabulary = Vocabulary.from_instances(dataset)
+        return data_loader, vocabulary
+    return data_loader
+
+
+def build_model(vocabulary: Vocabulary, label_size: int) -> Model:
+    """Build an allennlp Model."""
+
+    vocab_size = vocabulary.get_vocab_size()
+    embedder = BasicTextFieldEmbedder(
+        {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
+    )
+
+    encoder = BagOfEmbeddingsEncoder(embedding_dim=20)
+
+    feedforward = FeedForward(
+        input_dim=20,
+        num_layers=1,
+        hidden_dims=label_size,
+        activations=torch.nn.ReLU(),
+        dropout=0.5,
+    )
+
+    return BasicRelationClassifier(vocabulary, embedder, encoder, feedforward)
 
 # def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""):
 #     eval_output_dir = args.output_dir
@@ -661,20 +715,20 @@ def main():
     tokenizer = WhitespaceTokenizer()
     token_indexers = {"tokens": SingleIdTokenIndexer()}
 
-
-    WrapperAllennlpClass = allennlp.data.DatasetReader.by_name("sherlock_reader")
-    dataset_reader = WrapperAllennlpClass(
+    # Allennlp DatasetReader
+    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
+    dataset_reader = AllennlpDatasetReader(
         task="binary_rc",
         dataset_reader_name="tacred",
         feature_converter_name = "binary_rc",
         tokenizer=tokenizer,
         token_indexer=token_indexers["tokens"],
         max_tokens=512,
-        )
+    )
 
-    if args.local_rank not in [-1, 0]:
-        # Make sure only the first process in distributed training will download model & vocab
-        torch.distributed.barrier()
+    # if args.local_rank not in [-1, 0]:
+    #     # Make sure only the first process in distributed training will download model & vocab
+    #     torch.distributed.barrier()
 
     # args.model_type = args.model_type.lower()
     # config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
@@ -689,35 +743,6 @@ def main():
     #     args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     # )
 
-    train_path = os.path.join(args.data_dir, "train.json")
-    valid_path = os.path.join(args.data_dir, "dev.json")
-    train_dataset: List[Instance] = list(dataset_reader.read(train_path))
-    valid_dataset: List[Instance] = list(dataset_reader.read(valid_path))
-    train_data_loader = SimpleDataLoader(
-        list(train_dataset), batch_size=args.per_gpu_train_batch_size)
-    valid_data_loader = SimpleDataLoader(
-        list(valid_dataset), batch_size=args.per_gpu_eval_batch_size)
-
-    vocabulary = Vocabulary.from_instances(train_dataset)
-    vocab_size = vocabulary.get_vocab_size()
-    label_size = len(dataset_reader.feature_converter.labels)
-
-    train_data_loader.index_with(vocabulary)
-    valid_data_loader.index_with(vocabulary)
-
-    embedder = BasicTextFieldEmbedder(
-        {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
-    )
-    encoder = BagOfEmbeddingsEncoder(embedding_dim=20)
-    feedforward = FeedForward(
-        input_dim=20,
-        num_layers=1,
-        hidden_dims=label_size,
-        activations=torch.nn.ReLU(),
-        dropout=0.5,
-    )
-
-    model = BasicRelationClassifier(vocabulary, embedder, encoder, feedforward)
 
     # additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
     # if additional_tokens:
@@ -728,95 +753,121 @@ def main():
     #     # Make sure only the first process in distributed training will download model & vocab
     #     torch.distributed.barrier()
 
-    model.to(args.device)
+    # vocabulary dir
+    vocab_dir = os.path.join(args.output_dir, "vocabulary")
 
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
     if args.do_train:
+        # output_dir is empty or overwrite_output_dir is True, if not there was
+        # an error beforehand -> replace output_dir with new dir if not empty
+        shutil.rmtree(args.output_dir)
+        os.makedirs(args.output_dir)
+
+        # Load data & create vocabulary
+        train_data_loader, vocabulary = load_data(
+            args, dataset_reader, "train", create_vocabulary=True)
+        valid_data_loader = load_data(args, dataset_reader, "dev")
+
+        train_data_loader.index_with(vocabulary)
+        valid_data_loader.index_with(vocabulary)
+
+        # Init Model
+        # can only access feature_converter AFTER using load_data
+        label_size = len(dataset_reader.feature_converter.labels)
+        model = build_model(vocabulary, label_size)
+
         train(args, train_data_loader, valid_data_loader, model)
-        logger.info(evaluateAllennlp(model, train_data_loader))
-        # logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
-    return
-    # Saving best-practices: if you use defaults names for the model,
-    # you can reload it using from_pretrained()
-    if (
-        args.do_train
-        and (args.local_rank == -1 or torch.distributed.get_rank() == 0)
-        and not args.tpu
-    ):
-        # Create output directory if needed
-        if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
-            os.makedirs(args.output_dir)
+    # # Saving best-practices: if you use defaults names for the model,
+    # # you can reload it using from_pretrained()
+    # if (
+    #     args.do_train
+    #     and (args.local_rank == -1 or torch.distributed.get_rank() == 0)
+    #     and not args.tpu
+    # ):
+    #     # Create output directory if needed
+    #     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
+    #         os.makedirs(args.output_dir)
 
-        logger.info("Saving model checkpoint to %s", args.output_dir)
-        # Save a trained model, configuration and tokenizer using `save_pretrained()`.
-        # They can then be reloaded using `from_pretrained()`
-        torch.save(model, os.path.join(args.output_dir, "model.th"))
+        # Save vocabulary
+        vocabulary.save_to_files(vocab_dir)
 
-        vocabulary.save_to_files(args.output_dir)
-
-        # Good practice: save your training arguments together with the trained model
+        # Save arguments
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
-        # # Load a trained model and vocabulary that you have fine-tuned
-        # model = model_class.from_pretrained(args.output_dir)
-        # tokenizer = tokenizer_class.from_pretrained(
-        #     args.output_dir, do_lower_case=args.do_lower_case
-        # )
-        # model.to(args.device)
+        logger.info(
+            f"Saved model checkpoints and vocabulary to {args.output_dir}")
 
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
-        )
-        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer)
-        checkpoints = [args.output_dir]
+        # Load checkpooints to evaluate
+        checkpoints = [os.path.join(args.output_dir, "best.th")]
         if args.eval_all_checkpoints:
+            search_dir = args.output_dir + "/**/model_state*.th"
             checkpoints = list(
-                os.path.dirname(c)
-                for c in sorted(glob.glob(args.output_dir + "/**/" + WEIGHTS_NAME, recursive=True))
+                c for c in sorted(glob.glob(search_dir, recursive=True))
             )
-            logging.getLogger("transformers.modeling_utils").setLevel(
-                logging.WARN
-            )  # Reduce logging
+        # Load Vocabulary
+        vocabulary = Vocabulary.from_files(vocab_dir)
+
+        # Load data
+        valid_data_loader = load_data(args, dataset_reader, "dev")
+        valid_data_loader.index_with(vocabulary)
+
+        # Init model
+        label_size = len(dataset_reader.feature_converter.labels)
+        model = build_model(vocabulary, label_size)
+
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
         for checkpoint in checkpoints:
-            global_step = checkpoint.split("-")[-1] if len(checkpoints) > 1 else ""
-            prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
+            logger.info(f"Evaluating {checkpoint.split('/')[-1]}")
+            splitted = checkpoint.split("_")
+            epoch_and_step = \
+                f"{splitted[-2]}_{splitted[-1]}" if len(checkpoints) > 1 else ""
 
-            model = model_class.from_pretrained(checkpoint)
-            model.to(args.device)
-            result, _ = evaluate(
-                args, dataset_reader, converter, model, tokenizer, split="dev", prefix=prefix
-            )
-            result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
+            state_dict = torch.load(checkpoint, map_location=args.device)
+            model.load_state_dict(state_dict)
+
+            result = evaluateAllennlp(model, valid_data_loader, args.device)
+            result = {f"{k}_{epoch_and_step}": v for k, v in result.items()}
             results.update(result)
 
+    # Prediction
     if args.do_predict and args.local_rank in [-1, 0]:
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
-        )
-        model = model_class.from_pretrained(args.output_dir)
-        model.to(args.device)
-        result, predictions = evaluate(
-            args, dataset_reader, converter, model, tokenizer, split="test"
-        )
-        predictions = [converter.id_to_label_map[i] for i in predictions]
+        # Load Vocabulary
+        vocabulary = Vocabulary.from_files(vocab_dir)
 
-        # Save results
-        output_test_results_file = os.path.join(args.output_dir, "test_results.txt")
-        with open(output_test_results_file, "w") as writer:
-            for key in sorted(result.keys()):
-                writer.write("{} = {}\n".format(key, str(result[key])))
-        # Save predictions
-        output_test_predictions_file = os.path.join(args.output_dir, "test_predictions.txt")
-        with open(output_test_predictions_file, "w") as writer:
-            for prediction in predictions:
-                writer.write(prediction + "\n")
+        # Load data
+        # TODO: path to testset as direct argument
+        test_path = os.path.join(args.data_dir, "test.json")
+        test_dataset: List[Instance] = list(dataset_reader.read(test_path))
+        test_data_loader = SimpleDataLoader(
+            list(test_dataset), batch_size=args.per_gpu_eval_batch_size)
+        test_data_loader.index_with(vocabulary)
+
+        # Init model & load best
+        # TODO: init
+        best_model_path = os.path.join(args.output_dir, "best.th")
+        state_dict = torch.load(best_model_path, map_location=args.device)
+        model.load_state_dict(state_dict)
+
+        output_test_results_file = os.path.join(
+            args.output_dir, "test_results.txt")
+        output_test_predictions_file = os.path.join(
+            args.output_dir, "test_predictions.txt")
+
+        result = evaluateAllennlp(
+            model,
+            test_data_loader,
+            cuda_device=args.device,
+            output_file=output_test_results_file,
+            predictions_output_file=output_test_predictions_file,
+        )
+        # Technically, the predictions are missing in results vs the
+        # transformers version of this code TODO: include argmax preds
         results.update(result)
 
     return results
