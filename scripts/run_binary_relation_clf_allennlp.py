@@ -33,8 +33,10 @@ from tqdm import tqdm, trange
 import allennlp
 from allennlp.data import Vocabulary, Instance
 from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
-from allennlp.data.tokenizers import WhitespaceTokenizer
-from allennlp.data.token_indexers import SingleIdTokenIndexer
+from allennlp.data.tokenizers import (
+    WhitespaceTokenizer, PretrainedTransformerTokenizer)
+from allennlp.data.token_indexers import (
+    SingleIdTokenIndexer, PretrainedTransformerIndexer)
 from allennlp.models import Model
 from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
@@ -44,10 +46,12 @@ from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
 from allennlp.training import GradientDescentTrainer
 from allennlp.training.util import evaluate as evaluateAllennlp
 from allennlp.training import Checkpointer
+from allennlp_models.classification.models import TransformerClassificationTT
 
 from sherlock import dataset
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
+from sherlock.dataset_readers import dataset_reader
 from sherlock.dataset_readers.dataset_reader import DatasetReader
 from sherlock.feature_converters import BinaryRcConverter
 from sherlock.metrics import compute_f1
@@ -59,6 +63,9 @@ try:
     from torch.utils.tensorboard import SummaryWriter
 except ImportError:
     from tensorboardX import SummaryWriter
+
+
+SUPPORTED_MODEL_TYPES_TRANSFORMERS = ["bert"]
 
 
 logger = logging.getLogger(__name__)
@@ -280,10 +287,10 @@ def load_data(
     args,
     dataset_reader: allennlp.data.DatasetReader,
     split: str,
-    create_vocabulary: bool=False,
+    return_dataset: bool=False,
 ) -> Union[SimpleDataLoader, Tuple[SimpleDataLoader, Vocabulary]]:
     """Returns Dataloader with unindexed Instances. Optionally returns
-    vocabulary from instances as well."""
+    dataset for e.g. vocabulary creation."""
 
     # TODO: paths as direct paths in args
     if split == "train":
@@ -302,17 +309,25 @@ def load_data(
         batch_size=batch_size,
     )
 
-    if create_vocabulary:
-        vocabulary = Vocabulary.from_instances(dataset)
-        return data_loader, vocabulary
+    if return_dataset:
+        return data_loader, dataset
     return data_loader
 
 
-def build_model(vocabulary: Vocabulary) -> Model:
-    """Build an allennlp Model."""
+def _build_transformers_model(args, vocabulary: Vocabulary) -> Model:
+    """Returns Transformers model within AllenNLP framework."""
+    return TransformerClassificationTT(
+        vocab=vocabulary,
+        transformer_model=args.model_name_or_path,
+    )
+
+
+def _build_basic_model(args, vocabulary: Vocabulary) -> Model:
+    """Returns basic AllenNLP model"""
 
     vocab_size = vocabulary.get_vocab_size()
     label_size = vocabulary.get_vocab_size("labels")
+
     embedder = BasicTextFieldEmbedder(
         {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
     )
@@ -328,6 +343,104 @@ def build_model(vocabulary: Vocabulary) -> Model:
     )
 
     return BasicRelationClassifier(vocabulary, embedder, encoder, feedforward)
+
+
+def build_model(args, vocabulary: Vocabulary) -> Model:
+    """Returns specified Allennlp Model."""
+
+    if args.model_type in SUPPORTED_MODEL_TYPES_TRANSFORMERS:
+        return _build_transformers_model(args, vocabulary)
+    elif args.model_type == "basic":
+        return _build_basic_model(args, vocabulary)
+    else:
+        raise NotImplementedError(
+            f"No Model for model_type: {args.model_type}")
+
+
+def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
+    """Returns appropriate DatasetReader for transformers model."""
+
+    tokenizer = PretrainedTransformerTokenizer(
+        args.tokenizer_name or args.model_name_or_path,
+        max_length=args.max_seq_length,
+        tokenizer_kwargs={"do_lower_case": args.do_lower_case},
+    )
+
+    token_indexer = PretrainedTransformerIndexer(
+        args.model_name_or_path,
+        max_length=args.max_seq_length,
+    )
+
+    # Allennlp DatasetReader
+    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
+    dataset_reader = AllennlpDatasetReader(
+        task="binary_rc",
+        dataset_reader_name="tacred",
+        feature_converter_name = "binary_rc",
+        tokenizer=tokenizer,
+        token_indexers={"tokens": token_indexer},
+        max_tokens=args.max_seq_length,
+    )
+    return dataset_reader
+
+
+def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
+    """Returns most basic version of a DatasetReader."""
+
+    tokenizer = WhitespaceTokenizer()
+    token_indexers = {"tokens": SingleIdTokenIndexer()}
+
+    # Allennlp DatasetReader
+    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
+    dataset_reader = AllennlpDatasetReader(
+        task="binary_rc",
+        dataset_reader_name="tacred",
+        feature_converter_name="binary_rc",
+        tokenizer=tokenizer,
+        token_indexers=token_indexers,
+        max_tokens=args.max_seq_length,
+    )
+    return dataset_reader
+
+
+def build_dataset_reader(args) -> allennlp.data.DatasetReader:
+    """Returns appropriate DatasetReader for model_type."""
+
+    # TODO: accept all transformers supported model_types
+    if args.model_type in SUPPORTED_MODEL_TYPES_TRANSFORMERS:
+        return _build_transformers_dataset_reader(args)
+    elif args.model_type == "basic":
+        return _build_basic_dataset_reader(args)
+    else:
+        raise NotImplementedError(
+            f"No DatasetReader for model_type: {args.model_type}")
+
+
+def _reset_output_dir(args, default_vocab_dir) -> None:
+    """Deletes old output_dir contents."""
+
+    old_files = (
+        glob.glob(os.path.join(args.output_dir, "model_state_*.th"))
+        + glob.glob(os.path.join(args.output_dir, "training_state_*.th"))
+        + glob.glob(os.path.join(args.output_dir, "metrics_epoch_*.json"))
+    )
+    for old_file in old_files:
+        if os.path.isfile(old_file):
+            os.remove(old_file)
+
+    # remove old vocabulary, make sure it is not the same as given in the param
+    if (
+        os.path.isdir(default_vocab_dir)
+        and (
+            not args.vocab_dir
+            or (
+                os.path.realpath(args.vocab_dir)
+                != os.path.realpath(default_vocab_dir)
+                )
+            )
+        ):
+        shutil.rmtree(default_vocab_dir)
+
 
 # def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""):
 #     eval_output_dir = args.output_dir
@@ -458,15 +571,7 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Model type",
-    )
-    parser.add_argument(
-        "--model_name_or_path",
-        default=None,
-        type=str,
-        required=True,
-        help="Path to pre-trained model or shortcut name selected in the hub "
-        + "https://huggingface.co/models",
+        help="Model type: ['transformers', 'basic_rnn']",
     )
     parser.add_argument(
         "--output_dir",
@@ -477,6 +582,14 @@ def main():
     )
 
     # Task-specific parameters
+    parser.add_argument(
+        "--model_name_or_path",
+        default=None,
+        type=str,
+        help="If model_type=='transformers': path to pre-trained model or"
+        + " shortcut name selected in the transformers hub:"
+        + " https://huggingface.co/models",
+    )
     parser.add_argument("--negative_label", default="no_relation", type=str)
     parser.add_argument(
         "--entity_handling",
@@ -492,6 +605,11 @@ def main():
         action="store_true",
         help="Whether to also add inverse relations to the document.",
     )
+    parser.add_argument(
+        "--vocab_dir",
+        default=None,
+        help="Path to directory containing a vocabulary to be used."
+    )
 
     # Other parameters
     parser.add_argument(
@@ -504,7 +622,7 @@ def main():
         "--tokenizer_name",
         default="",
         type=str,
-        help="Pretrained tokenizer name or path if not the same as model_name",
+        help="For Transformers: Pretrained tokenizer name or path if not the same as model_name",
     )
     parser.add_argument(
         "--cache_dir",
@@ -713,20 +831,6 @@ def main():
     # Set seed
     set_seed(args)
 
-    tokenizer = WhitespaceTokenizer()
-    token_indexers = {"tokens": SingleIdTokenIndexer()}
-
-    # Allennlp DatasetReader
-    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
-    dataset_reader = AllennlpDatasetReader(
-        task="binary_rc",
-        dataset_reader_name="tacred",
-        feature_converter_name = "binary_rc",
-        tokenizer=tokenizer,
-        token_indexers=token_indexers,
-        max_tokens=512,
-    )
-
     # if args.local_rank not in [-1, 0]:
     #     # Make sure only the first process in distributed training will download model & vocab
     #     torch.distributed.barrier()
@@ -754,30 +858,47 @@ def main():
     #     # Make sure only the first process in distributed training will download model & vocab
     #     torch.distributed.barrier()
 
+    # dataset reader
+    dataset_reader = build_dataset_reader(args)
+
     # vocabulary dir
-    vocab_dir = os.path.join(args.output_dir, "vocabulary")
+    default_vocab_dir = os.path.join(args.output_dir, "vocabulary")
 
     logger.info("Training/evaluation parameters %s", args)
 
     # Training
     if args.do_train:
         # output_dir is empty or overwrite_output_dir is True, if not there was
-        # an error beforehand -> replace output_dir with new dir if not empty
-        shutil.rmtree(args.output_dir)
-        os.makedirs(args.output_dir)
-
-        # Load data & create vocabulary
-        train_data_loader, vocabulary = load_data(
-            args, dataset_reader, "train", create_vocabulary=True)
+        # an error beforehand -> remove previous checkpoints
+        _reset_output_dir(args, default_vocab_dir)
+        # Load data
+        train_data_loader, train_dataset = load_data(
+            args, dataset_reader, "train", return_dataset=True)
         valid_data_loader = load_data(args, dataset_reader, "dev")
+
+        # load vocabulary
+        if args.model_type in SUPPORTED_MODEL_TYPES_TRANSFORMERS:
+            # PretrainedTransformers have their own vocabulary
+            # Optionally from_pretrained_transformer_and_instances
+            logger.info("Loading pretrained Vocabulary")
+            vocabulary = Vocabulary.from_pretrained_transformer(
+                model_name=args.model_name_or_path,
+            )
+        elif args.vocab_dir:
+            # If given, use a custom vocabulary
+            vocabulary = Vocabulary.from_files(args.vocab_dir)
+        else:
+            # Last option: get vocabulary from instances
+            vocabulary = Vocabulary.from_instances(train_dataset)
 
         train_data_loader.index_with(vocabulary)
         valid_data_loader.index_with(vocabulary)
 
+
         # Init Model
         # can only build model here, because vocabulary is needed, and the
         # vocabulary is loaded in only after choosing what to do (train/eval)
-        model = build_model(vocabulary)
+        model = build_model(args, vocabulary)
 
         train(args, train_data_loader, valid_data_loader, model)
 
@@ -792,8 +913,9 @@ def main():
     #     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
     #         os.makedirs(args.output_dir)
 
-        # Save vocabulary
-        vocabulary.save_to_files(vocab_dir)
+        # Save vocabulary if not given
+        if not args.vocab_dir:
+            vocabulary.save_to_files(default_vocab_dir)
 
         # Save arguments
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
@@ -801,18 +923,23 @@ def main():
         logger.info(
             f"Saved model checkpoints and vocabulary to {args.output_dir}")
 
+    # Need information beforehand whether vocab_dir!=default_vocab_dir, thus
+    # it only can be set here
+    if not args.vocab_dir:
+        args.vocab_dir = default_vocab_dir
+
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
         # Load Vocabulary
-        vocabulary = Vocabulary.from_files(vocab_dir)
+        vocabulary = Vocabulary.from_files(args.vocab_dir)
 
         # Load data
         valid_data_loader = load_data(args, dataset_reader, "dev")
         valid_data_loader.index_with(vocabulary)
 
         # Init model
-        model = build_model(vocabulary)
+        model = build_model(args, vocabulary)
 
         # Load checkpooints to evaluate
         checkpoints = [os.path.join(args.output_dir, "best.th")]
@@ -840,14 +967,14 @@ def main():
     # Prediction
     if args.do_predict and args.local_rank in [-1, 0]:
         # Load Vocabulary
-        vocabulary = Vocabulary.from_files(vocab_dir)
+        vocabulary = Vocabulary.from_files(args.vocab_dir)
 
         # Load data
         test_data_loader = load_data(args, dataset_reader, "test")
         test_data_loader.index_with(vocabulary)
 
         # Init model
-        model = build_model(vocabulary)
+        model = build_model(args, vocabulary)
 
         # Load best model
         best_model_path = os.path.join(args.output_dir, "best.th")
