@@ -41,6 +41,7 @@ from allennlp.modules import FeedForward
 from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
 from allennlp.training import GradientDescentTrainer
 from allennlp.training.util import evaluate as evaluateAllennlp
+from allennlp.training import Checkpointer
 
 from sherlock import dataset
 from sherlock.dataset import TensorDictDataset
@@ -141,9 +142,17 @@ def train(
     #     )
 
     # Prepare training allennlp
+    # TODO: warmup and decay
     logger.info("Building Trainer")
     params = [(n, p) for (n, p) in model.named_parameters() if p.requires_grad]
     optimizer = HuggingfaceAdamWOptimizer(params)
+    # object to decide when to save checkpoints
+    checkpointer = Checkpointer(
+        serialization_dir=args.output_dir,
+        save_every_num_batches=args.save_steps,
+        keep_most_recent_by_count=None,
+    )
+    # object to train model, every device gets its own trainer
     trainer = GradientDescentTrainer(
         model=model,
         serialization_dir=args.output_dir,
@@ -151,6 +160,9 @@ def train(
         data_loader=train_data_loader,
         validation_data_loader=valid_data_loader,
         num_epochs=args.num_train_epochs,
+        checkpointer=checkpointer,
+        cuda_device=args.device,
+        use_amp=args.fp16,
     )
 
     # Train!
@@ -514,7 +526,8 @@ def main():
 
     parser.add_argument("--logging_steps", type=int, default=50, help="Log every X updates steps.")
     parser.add_argument(
-        "--save_steps", type=int, default=50, help="Save checkpoint every X updates steps."
+        "--save_steps", type=int, default=50,
+        help="Save checkpoint every X updates steps (every X batches)."
     )
     parser.add_argument(
         "--eval_all_checkpoints",
@@ -650,7 +663,8 @@ def main():
 
 
     WrapperAllennlpClass = allennlp.data.DatasetReader.by_name("sherlock_reader")
-    dataset_reader = WrapperAllennlpClass(task="binary_rc",
+    dataset_reader = WrapperAllennlpClass(
+        task="binary_rc",
         dataset_reader_name="tacred",
         feature_converter_name = "binary_rc",
         tokenizer=tokenizer,
