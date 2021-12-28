@@ -36,6 +36,7 @@ setup(
         "registrable",
         "tensorboardX>=1.2",
         "allennlp==2.8.0",
+        "allennlp-models==2.8.0",
 
         # Microscope
         "jsonnet>=0.10.0 ; sys.platform != 'win32'",
