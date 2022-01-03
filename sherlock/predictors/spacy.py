@@ -117,10 +117,9 @@ class SpacyPredictor(Predictor):
         #spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
 
         # following AllenAI's implementation of Spacy Tokenizer, i.e. removing spaces after tokenization
-        texts = [doc.text for doc in documents]
-        spacy_docs = [_remove_spaces(tokens) for tokens in self.spacy.pipe(texts, n_threads=-1)]
+        spacy_docs = self.spacy.pipe([doc.text for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
-            doc.tokens = [Token.from_spacy(doc, token) for token in spacy_doc]
+            doc.tokens = [Token.from_spacy(doc, token) for token in _remove_spaces(spacy_doc)]
             if self.has_sentencizer:
                 # remove empty sentences
                 doc.sents = [Span(doc, sent.start, sent.end) for sent in spacy_doc.sents if not _is_empty_sentence(sent)]
@@ -129,8 +128,8 @@ class SpacyPredictor(Predictor):
         return documents
 
     def predict_document(self, document: Document) -> Document:
-        spacy_doc = _remove_spaces(self.spacy(_replace_ws(document.text)))
-        document.tokens = [Token.from_spacy(document, token) for token in spacy_doc]
+        spacy_doc = self.spacy.pipe(document.text)
+        document.tokens = [Token.from_spacy(document, token) for token in _remove_spaces(spacy_doc)]
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents if not _is_empty_sentence(sent)]
         for mention in spacy_doc.ents:
