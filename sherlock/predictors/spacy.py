@@ -128,7 +128,7 @@ class SpacyPredictor(Predictor):
         return documents
 
     def predict_document(self, document: Document) -> Document:
-        spacy_doc = self.spacy.pipe(document.text)
+        spacy_doc = self.spacy(document.text)
         document.tokens = [Token.from_spacy(document, token) for token in _remove_spaces([t for t in spacy_doc])]
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents if not _is_empty_sentence(sent)]
