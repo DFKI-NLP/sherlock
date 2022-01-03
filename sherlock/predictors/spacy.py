@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 LOADED_SPACY_MODELS: Dict[Tuple[str, bool, bool, bool], SpacyModelType] = {}
 SPACY_ESCAPE_CHAR_REGEX = re.compile(r"[\t\n\r\f\v]") # we replace these escape chars with "_" before running spacy,
 # so that they get properly tokenized, and discard the corresponding tokens afterwards. Otherwise, we will get
-# harder-to-remove spacy tokens such as '\n \n' or '\t \n \n'
+# harder-to-remove spacy tokens such as '\n \n' or '\t \n \n'. Note: Currently not used.
 WHITESPACE_ONLY_REGEX = re.compile(r"^[ \t\n\r\f\v]+$")
 
 # taken from: https://github.com/allenai/allennlp/blob/master/allennlp/common/util.py
@@ -64,6 +64,7 @@ def _remove_spaces(tokens: List[spacy.tokens.Token]) -> List[spacy.tokens.Token]
 
 
 def _remove_escape_char_and_whitespace_tokens(tokens: List[Token]) -> List[Token]:
+    """ Currently not used """
     def is_whitespace(token: Token) -> bool:
         return token.lemma == ' ' and token.tag == "_SP"
     def is_escape_char(token: Token) -> bool:
@@ -73,12 +74,24 @@ def _remove_escape_char_and_whitespace_tokens(tokens: List[Token]) -> List[Token
 
 def _replace_ws(text: str) -> str:
     """
-    Replace escape characters for easier tokenization by Spacy
+    Replace escape characters for easier tokenization by Spacy. Currently not used.
     """
     return SPACY_ESCAPE_CHAR_REGEX.sub("_", text)
 
+
 def _is_empty_sentence(sent:spacy.tokens.Span) -> bool:
+    """
+
+    Parameters
+    ----------
+    sent  - a sentence
+
+    Returns
+    -------
+    True if the sentence's text consists of whitespace-like characters only.
+    """
     return WHITESPACE_ONLY_REGEX.match(sent.text) is not None
+
 
 @Predictor.register("spacy")
 class SpacyPredictor(Predictor):
@@ -114,12 +127,10 @@ class SpacyPredictor(Predictor):
         )
 
     def predict_documents(self, documents: List[Document]) -> List[Document]:
-        #spacy_docs = self.spacy.pipe([_replace_ws(doc.text) for doc in documents], n_threads=-1)
-
-        # following AllenAI's implementation of Spacy Tokenizer, i.e. removing spaces after tokenization
+        # following AllenAI's usage of Spacy Tokenizer, i.e. removing spaces after tokenization
         spacy_docs = self.spacy.pipe([doc.text for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
-            doc.tokens = [Token.from_spacy(doc, token) for token in _remove_spaces([t for t in spacy_doc])]
+            doc.tokens = [Token.from_spacy(doc, token) for token in _remove_spaces(spacy_doc)]
             if self.has_sentencizer:
                 # remove empty sentences
                 doc.sents = [Span(doc, sent.start, sent.end) for sent in spacy_doc.sents if not _is_empty_sentence(sent)]
@@ -128,8 +139,9 @@ class SpacyPredictor(Predictor):
         return documents
 
     def predict_document(self, document: Document) -> Document:
+        # following AllenAI's usage of Spacy Tokenizer, i.e. removing spaces after tokenization
         spacy_doc = self.spacy(document.text)
-        document.tokens = [Token.from_spacy(document, token) for token in _remove_spaces([t for t in spacy_doc])]
+        document.tokens = [Token.from_spacy(document, token) for token in _remove_spaces(spacy_doc)]
         if self.has_sentencizer:
             document.sents = [Span(document, sent.start, sent.end) for sent in spacy_doc.sents if not _is_empty_sentence(sent)]
         for mention in spacy_doc.ents:
