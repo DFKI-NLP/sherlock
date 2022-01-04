@@ -55,7 +55,7 @@ def get_spacy_model(
     return LOADED_SPACY_MODELS[options]
 
 
-def _remove_spaces(tokens_isspace: List[(Token, bool)]) -> List[Token]:
+def _remove_spaces(tokens_isspace: List[Tuple[Token, bool]]) -> List[Token]:
     """
     Copied from AllenNLP's SpacyTokenizer at
     https://github.com/allenai/allennlp/blob/main/allennlp/data/tokenizers/spacy_tokenizer.py,
@@ -63,7 +63,7 @@ def _remove_spaces(tokens_isspace: List[(Token, bool)]) -> List[Token]:
     """
     tokens = []
     is_space_count = 0
-    for (token, is_space) in tokens:
+    for (token, is_space) in tokens_isspace:
         if is_space:
             is_space_count += 1
         else:
@@ -102,7 +102,7 @@ def _is_empty_sentence(sent:spacy.tokens.Span) -> bool:
     return WHITESPACE_ONLY_REGEX.match(sent.text) is not None
 
 
-def _convert_sents(spacy_doc: spacy.tokens.Doc, tokens_isspace: List[(spacy.tokens.Token, bool)], doc:Document) -> List[Span]:
+def _convert_sents(spacy_doc: spacy.tokens.Doc, tokens_isspace: List[Tuple[spacy.tokens.Token, bool]], doc:Document) -> List[Span]:
     sents = []
     for sent in spacy_doc.sents:
         if not _is_empty_sentence(sent):
