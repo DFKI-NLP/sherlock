@@ -111,10 +111,10 @@ def _convert_sents(spacy_doc: spacy.tokens.Doc, tokens_isspace: List[Tuple[spacy
             sent_end = sent.end
             while spacy_doc[sent_start].is_space and sent_start < sent_end:
                 sent_start += 1
-            while spacy_doc[sent_end].is_space and sent_end > sent_start:
+            while spacy_doc[sent_end - 1].is_space and sent_end > sent_start:
                 sent_end -= 1
-            sent_start -= sum([is_space for (token, is_space) in tokens_isspace[:sent_start] if is_space])
-            sent_end -= sum([is_space for (token, is_space) in tokens_isspace[:sent_end] if is_space])
+            sent_start -= len([is_space for (token, is_space) in tokens_isspace[:sent_start] if is_space])
+            sent_end -= len([is_space for (token, is_space) in tokens_isspace[:sent_end] if is_space])
             sents.append(Span(doc, sent_start, sent_end))
     return sents
 
