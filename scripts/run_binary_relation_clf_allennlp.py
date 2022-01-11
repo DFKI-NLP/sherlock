@@ -280,7 +280,7 @@ def train(
     return global_step, tr_loss / global_step
 
 
-def load_data(
+def load_and_chache_data(
     args,
     dataset_reader: allennlp.data.DatasetReader,
     split: str,
@@ -289,20 +289,47 @@ def load_data(
     """Returns Dataloader with unindexed Instances. Optionally returns
     dataset for e.g. vocabulary creation."""
 
-    # TODO: paths as direct paths in args
-    if split == "train":
-        path_to_data = os.path.join(args.data_dir, "train.json")
-        batch_size = args.per_gpu_train_batch_size
-    elif split == "dev" or split in "validation":
-        path_to_data = os.path.join(args.data_dir, "dev.json")
-        batch_size = args.per_gpu_eval_batch_size
-    elif split == "test":
-        path_to_data = os.path.join(args.data_dir, "test.json")
-        batch_size = args.per_gpu_eval_batch_size
+    if args.local_rank not in [-1, 0]:
+        # Make sure only the first process in distributed training process
+        # the dataset, and the others will use the cache
+        torch.distributed.barrier()
 
-    dataset = list(dataset_reader.read(path_to_data))
+    # chache_file name has to be sensitive to differences in dataloading.
+    cache_file = os.path.join(
+        args.cache_dir,
+        f"cached_rc_{split}_{os.path.basename(args.model_name_or_path)}"
+        + f"_{args.max_seq_length}_{args.entity_handling}"
+        + f"_{args.add_inverse_relations}_{args.do_lower_case}"
+        + f"_{args.tokenizer_name}",
+    )
+
+    if os.path.exists(cache_file) and not args.overwrite_cache:
+        logger.info(
+            f"Loading features for split {split} from cached file {cache_file}",
+        )
+        dataset: List[Instance] = torch.load(cache_file)
+    else:
+        # TODO: paths as direct paths in args
+        if split == "train":
+            path_to_data = os.path.join(args.data_dir, "train.json")
+            batch_size = args.per_gpu_train_batch_size
+        elif split == "dev" or split in "validation":
+            path_to_data = os.path.join(args.data_dir, "dev.json")
+            batch_size = args.per_gpu_eval_batch_size
+        elif split == "test":
+            path_to_data = os.path.join(args.data_dir, "test.json")
+            batch_size = args.per_gpu_eval_batch_size
+
+        dataset: List[Instance] = list(dataset_reader.read(path_to_data))
+        if args.local_rank not in [-1, 0]:
+            torch.save(dataset, cache_file)
+
+
+    if args.local_rank == 0:
+        torch.distributed.barrier()
+
     data_loader = SimpleDataLoader(
-        list(dataset),
+        dataset,
         batch_size=batch_size,
     )
 
@@ -828,9 +855,9 @@ def main():
         # an error beforehand -> remove previous checkpoints
         _reset_output_dir(args, default_vocab_dir)
         # Load data
-        train_data_loader, train_dataset = load_data(
+        train_data_loader, train_dataset = load_and_chache_data(
             args, dataset_reader, "train", return_dataset=True)
-        valid_data_loader = load_data(args, dataset_reader, "dev")
+        valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
 
         # load vocabulary
         if args.vocab_dir:
@@ -901,7 +928,7 @@ def main():
         vocabulary = Vocabulary.from_files(args.vocab_dir)
 
         # Load data
-        valid_data_loader = load_data(args, dataset_reader, "dev")
+        valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
         valid_data_loader.index_with(vocabulary)
 
         # Init model
@@ -936,7 +963,7 @@ def main():
         vocabulary = Vocabulary.from_files(args.vocab_dir)
 
         # Load data
-        test_data_loader = load_data(args, dataset_reader, "test")
+        test_data_loader = load_and_chache_data(args, dataset_reader, "test")
         test_data_loader.index_with(vocabulary)
 
         # Init model
