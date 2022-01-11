@@ -91,11 +91,11 @@ class BinaryRcConverter(FeatureConverter):
                     self.sep_token = sep_token
             else:
                 if sep_token is None:
-                    # # Option 1: people need to give the sep_token: TODO: decide
-                    # return NotImplementedError(
-                    #     "FeatureConverterAllennlp for non-transformers must specify sep_token")
-                    # Option 2: set sep_token for people
                     self.sep_token = "[SEP]"
+                    logger.warn(
+                        f"sep_token not given, setting it to {self.sep_token}."
+                        + "If the model was trained without this token this can"
+                        + "lead to undefined behavior.")
                 else:
                     self.sep_token = sep_token
 
