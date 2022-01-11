@@ -721,30 +721,6 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
 
     parser.add_argument(
-        "--tpu",
-        action="store_true",
-        help="Whether to run on the TPU defined in the environment variables",
-    )
-    parser.add_argument(
-        "--tpu_ip_address",
-        type=str,
-        default="",
-        help="TPU IP address if none are set in the environment variables",
-    )
-    parser.add_argument(
-        "--tpu_name",
-        type=str,
-        default="",
-        help="TPU name if none are set in the environment variables",
-    )
-    parser.add_argument(
-        "--xrt_tpu_config",
-        type=str,
-        default="",
-        help="XRT TPU config if none are set in the environment variables",
-    )
-
-    parser.add_argument(
         "--fp16",
         action="store_true",
         help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit",
@@ -759,8 +735,6 @@ def main():
     parser.add_argument(
         "--local_rank", type=int, default=-1, help="For distributed training: local_rank"
     )
-    parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
-    parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
     args = parser.parse_args()
 
     if (
@@ -775,15 +749,6 @@ def main():
             )
         )
 
-    # Setup distant debugging if needed
-    if args.server_ip and args.server_port:
-        # Distant debugging - see https://code.visualstudio.com/docs/python/debugging#_attach-to-a-local-script
-        import ptvsd
-
-        print("Waiting for debugger attach")
-        ptvsd.enable_attach(address=(args.server_ip, args.server_port), redirect_output=True)
-        ptvsd.wait_for_attach()
-
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
         device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
@@ -794,24 +759,6 @@ def main():
         torch.distributed.init_process_group(backend="nccl")
         args.n_gpu = 1
     args.device = device
-
-    if args.tpu:
-        if args.tpu_ip_address:
-            os.environ["TPU_IP_ADDRESS"] = args.tpu_ip_address
-        if args.tpu_name:
-            os.environ["TPU_NAME"] = args.tpu_name
-        if args.xrt_tpu_config:
-            os.environ["XRT_TPU_CONFIG"] = args.xrt_tpu_config
-
-        assert "TPU_IP_ADDRESS" in os.environ
-        assert "TPU_NAME" in os.environ
-        assert "XRT_TPU_CONFIG" in os.environ
-
-        import torch_xla  # noqa: F401
-        import torch_xla.core.xla_model as xm
-
-        args.device = xm.xla_device()
-        args.xla_model = xm
 
     # Setup logging
     logging.basicConfig(
