@@ -349,12 +349,14 @@ def build_model(args, vocabulary: Vocabulary) -> Model:
     """Returns specified Allennlp Model."""
 
     if args.model_type == "transformers":
-        return _build_transformers_model(args, vocabulary)
+        model = _build_transformers_model(args, vocabulary)
     elif args.model_type == "basic":
-        return _build_basic_model(args, vocabulary)
+        model = _build_basic_model(args, vocabulary)
     else:
         raise NotImplementedError(
             f"No Model for model_type: {args.model_type}")
+    model.to(args.device)
+    return model
 
 
 def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
@@ -751,12 +753,18 @@ def main():
         )
 
     # Setup CUDA, GPU & distributed training
-    if args.local_rank == -1 or args.no_cuda:
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+    if args.no_cuda:
+        device = torch.device("cpu", index=0)
+        if torch.cuda.is_available():
+            logger.warn("Not using cuda although it is available.")
+    elif args.local_rank == -1:
+        # Set index, because if not, allennlp crashes ¯\_(ツ)_/¯
+        device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu", index=0)
         args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
+        device = torch.device("cuda", index=args.local_rank)
         torch.distributed.init_process_group(backend="nccl")
         args.n_gpu = 1
     args.device = device
@@ -770,7 +778,7 @@ def main():
     logger.warning(
         "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
         args.local_rank,
-        device,
+        str(args.device),
         args.n_gpu,
         bool(args.local_rank != -1),
         args.fp16,

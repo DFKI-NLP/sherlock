@@ -146,7 +146,8 @@ class TransformerRelationClassifier(Model):
             result["loss"] = self.loss(logits, label)
             self.acc(logits, label)
             # FBetaMultiLabelMeasure requires boolean labels
-            self.f1(logits, self.eye[label])
+            bool_labels = self.eye[label]
+            self.f1(logits.detach().cpu(), bool_labels.cpu())
 
         return result
 
