@@ -317,6 +317,7 @@ def _build_transformers_model(args, vocabulary: Vocabulary) -> Model:
         vocab=vocabulary,
         model_name=args.model_name_or_path,
         max_length=args.max_seq_length,
+        ignore_label="no_relation",
     )
 
 
@@ -340,7 +341,8 @@ def _build_basic_model(args, vocabulary: Vocabulary) -> Model:
         dropout=0.5,
     )
 
-    return BasicRelationClassifier(vocabulary, embedder, encoder, feedforward)
+    return BasicRelationClassifier(
+        vocabulary, embedder, encoder, feedforward, ignore_label="no_relation")
 
 
 def build_model(args, vocabulary: Vocabulary) -> Model:
@@ -823,19 +825,29 @@ def main():
         valid_data_loader = load_data(args, dataset_reader, "dev")
 
         # load vocabulary
-        if args.model_type == "transformers":
-            # PretrainedTransformers have their own vocabulary
-            # Optionally from_pretrained_transformer_and_instances
-            logger.info("Loading pretrained Vocabulary")
-            vocabulary = Vocabulary.from_pretrained_transformer(
-                model_name=args.model_name_or_path,
-            )
-        elif args.vocab_dir:
+        if args.vocab_dir:
             # If given, use a custom vocabulary
+            logger.info(f"Loading Vocabulary from {args.vocab_dir}")
             vocabulary = Vocabulary.from_files(args.vocab_dir)
         else:
-            # Last option: get vocabulary from instances
+            # Else Vocabulary from instances
+            logger.info("Creating Vocabulary from Dataset.")
             vocabulary = Vocabulary.from_instances(train_dataset)
+
+        if args.model_type == "transformers":
+            # PretrainedTransformers have their own vocabulary, extend
+            # vocabulary with theirs.
+            logger.info(
+                "Extending Vocabulary with pretrained Transformer Vocabulary")
+            vocabulary_t = Vocabulary.from_pretrained_transformer(
+                model_name=args.model_name_or_path,
+            )
+            vocabulary.extend_from_vocab(vocabulary_t)
+
+        logger.info(
+            f"Vocabulary: Tokens: {vocabulary.get_vocab_size()}"
+            + f" Labels: {vocabulary.get_vocab_size('labels')}"
+        )
 
         train_data_loader.index_with(vocabulary)
         valid_data_loader.index_with(vocabulary)
