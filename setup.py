@@ -35,6 +35,10 @@ setup(
         "torch",
         "registrable",
 
+        # code formatting
+        "black",
+        "flake8",
+
         # Microscope
         "jsonnet",
         "flask",
