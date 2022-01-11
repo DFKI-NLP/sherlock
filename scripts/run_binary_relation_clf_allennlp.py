@@ -46,7 +46,7 @@ from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
 from allennlp.training import GradientDescentTrainer
 from allennlp.training.util import evaluate as evaluateAllennlp
 from allennlp.training import Checkpointer
-from allennlp_models.classification.models import TransformerClassificationTT
+from sherlock.models.relation_classification import TransformerRelationClassifier
 
 from sherlock import dataset
 from sherlock.dataset import TensorDictDataset
@@ -63,9 +63,6 @@ try:
     from torch.utils.tensorboard import SummaryWriter
 except ImportError:
     from tensorboardX import SummaryWriter
-
-
-SUPPORTED_MODEL_TYPES_TRANSFORMERS = ["bert"]
 
 
 logger = logging.getLogger(__name__)
@@ -288,7 +285,7 @@ def load_data(
     dataset_reader: allennlp.data.DatasetReader,
     split: str,
     return_dataset: bool=False,
-) -> Union[SimpleDataLoader, Tuple[SimpleDataLoader, Vocabulary]]:
+) -> Union[SimpleDataLoader, Tuple[SimpleDataLoader, List[Instance]]]:
     """Returns Dataloader with unindexed Instances. Optionally returns
     dataset for e.g. vocabulary creation."""
 
@@ -316,9 +313,10 @@ def load_data(
 
 def _build_transformers_model(args, vocabulary: Vocabulary) -> Model:
     """Returns Transformers model within AllenNLP framework."""
-    return TransformerClassificationTT(
+    return TransformerRelationClassifier(
         vocab=vocabulary,
-        transformer_model=args.model_name_or_path,
+        model_name=args.model_name_or_path,
+        max_length=args.max_seq_length,
     )
 
 
@@ -348,7 +346,7 @@ def _build_basic_model(args, vocabulary: Vocabulary) -> Model:
 def build_model(args, vocabulary: Vocabulary) -> Model:
     """Returns specified Allennlp Model."""
 
-    if args.model_type in SUPPORTED_MODEL_TYPES_TRANSFORMERS:
+    if args.model_type == "transformers":
         return _build_transformers_model(args, vocabulary)
     elif args.model_type == "basic":
         return _build_basic_model(args, vocabulary)
@@ -407,7 +405,7 @@ def build_dataset_reader(args) -> allennlp.data.DatasetReader:
     """Returns appropriate DatasetReader for model_type."""
 
     # TODO: accept all transformers supported model_types
-    if args.model_type in SUPPORTED_MODEL_TYPES_TRANSFORMERS:
+    if args.model_type == "transformers":
         return _build_transformers_dataset_reader(args)
     elif args.model_type == "basic":
         return _build_basic_dataset_reader(args)
@@ -571,7 +569,8 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Model type: ['transformers', 'basic_rnn']",
+        choices=["transformers", "basic"],
+        help="Model type: ['transformers', 'basic']",
     )
     parser.add_argument(
         "--output_dir",
@@ -824,7 +823,7 @@ def main():
         valid_data_loader = load_data(args, dataset_reader, "dev")
 
         # load vocabulary
-        if args.model_type in SUPPORTED_MODEL_TYPES_TRANSFORMERS:
+        if args.model_type == "transformers":
             # PretrainedTransformers have their own vocabulary
             # Optionally from_pretrained_transformer_and_instances
             logger.info("Loading pretrained Vocabulary")
