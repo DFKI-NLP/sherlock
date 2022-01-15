@@ -167,7 +167,7 @@ def train(
         validation_data_loader=valid_data_loader,
         num_epochs=args.num_train_epochs,
         checkpointer=checkpointer,
-        cuda_device=args.device,
+        cuda_device=-1 if ("cpu" in str(args.device)) else args.device,
         use_amp=args.fp16,
     )
 
@@ -784,6 +784,7 @@ def main():
         device = torch.device("cpu", index=0)
         if torch.cuda.is_available():
             logger.warn("Not using cuda although it is available.")
+        args.n_gpu = 0
     elif args.local_rank == -1:
         # Set index, because if not, allennlp crashes ¯\_(ツ)_/¯
         device = torch.device(
