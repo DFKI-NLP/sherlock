@@ -254,6 +254,8 @@ class BasicRelationClassifier(Model):
         text encoder.
     use_entity_offsets : ``bool``
         If true, head and tail spans are passed to the text encoder.
+    weights: ``torch.Tensor``, optional (default = None)
+        Weights for class labels. Useful for unbalanced training sets.
     """
 
     def __init__(self,
@@ -272,7 +274,9 @@ class BasicRelationClassifier(Model):
                  ignore_label: str = None,
                  f1_average: str = "macro",
                  use_adjacency: bool = False,
-                 use_entity_offsets: bool = False) -> None:
+                 use_entity_offsets: bool = False,
+                 weights: torch.Tensor = None,
+    ) -> None:
         super(BasicRelationClassifier, self).__init__(vocab, regularizer)
 
         self.text_field_embedder = text_field_embedder
@@ -336,7 +340,7 @@ class BasicRelationClassifier(Model):
                                      average=f1_average,
                                      ignore_label=ignore_label)
 
-        self.loss = torch.nn.CrossEntropyLoss()
+        self.loss = torch.nn.CrossEntropyLoss(weights)
 
         initializer(self)
 

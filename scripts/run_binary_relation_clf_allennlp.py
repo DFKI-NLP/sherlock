@@ -22,6 +22,7 @@ import logging
 import os
 import random
 import shutil
+from collections import Counter
 from typing import Iterable, List, Union, Tuple
 
 import numpy as np
@@ -332,17 +333,20 @@ def load_and_chache_data(
     return data_loader
 
 
-def _build_transformers_model(args, vocabulary: Vocabulary) -> Model:
+def _build_transformers_model(
+    args, vocabulary: Vocabulary, weights: torch.Tensor) -> Model:
     """Returns Transformers model within AllenNLP framework."""
     return TransformerRelationClassifier(
         vocab=vocabulary,
         model_name=args.model_name_or_path,
         max_length=args.max_seq_length,
         ignore_label=args.negative_label,
+        weights=weights,
     )
 
 
-def _build_basic_model(args, vocabulary: Vocabulary) -> Model:
+def _build_basic_model(
+    args, vocabulary: Vocabulary, weights: torch.Tensor) -> Model:
     """Returns basic AllenNLP model"""
 
     vocab_size = vocabulary.get_vocab_size()
@@ -363,16 +367,23 @@ def _build_basic_model(args, vocabulary: Vocabulary) -> Model:
     )
 
     return BasicRelationClassifier(
-        vocabulary, embedder, encoder, feedforward, ignore_label="no_relation")
+        vocabulary,
+        embedder,
+        encoder,
+        feedforward,
+        ignore_label=args.negative_label,
+        weights=weights,
+    )
 
 
-def build_model(args, vocabulary: Vocabulary) -> Model:
+
+def build_model(args, vocabulary: Vocabulary, weights: torch.Tensor) -> Model:
     """Returns specified Allennlp Model."""
 
     if args.model_type == "transformers":
-        model = _build_transformers_model(args, vocabulary)
+        model = _build_transformers_model(args, vocabulary, weights)
     elif args.model_type == "basic":
-        model = _build_basic_model(args, vocabulary)
+        model = _build_basic_model(args, vocabulary, weights)
     else:
         raise NotImplementedError(
             f"No Model for model_type: {args.model_type}")
@@ -383,12 +394,14 @@ def build_model(args, vocabulary: Vocabulary) -> Model:
 def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
     """Returns appropriate DatasetReader for transformers model."""
 
+    logger.info("Loading Transformer Tokenizer.")
     tokenizer = PretrainedTransformerTokenizer(
         args.tokenizer_name or args.model_name_or_path,
         max_length=args.max_seq_length,
         tokenizer_kwargs={"do_lower_case": args.do_lower_case},
     )
 
+    logger.info("Loading Transformer Indexer")
     token_indexer = PretrainedTransformerIndexer(
         args.model_name_or_path,
         max_length=args.max_seq_length,
@@ -678,7 +691,12 @@ def main():
         action="store_true",
         help="Set this flag if you are using an uncased model.",
     )
-
+    parser.add_argument(
+        "--weighted_labels",
+        action="store_true",
+        help="Weight labels based on their number occurances, useful for"
+             + " unbalanced datasets.",
+    )
     parser.add_argument(
         "--per_gpu_train_batch_size",
         default=8,
@@ -839,6 +857,7 @@ def main():
     #     torch.distributed.barrier()
 
     # dataset reader
+    logger.info("Loading DatasetReader.")
     dataset_reader = build_dataset_reader(args)
 
     # vocabulary dir
@@ -876,19 +895,43 @@ def main():
             )
             vocabulary.extend_from_vocab(vocabulary_t)
 
+        n_labels = vocabulary.get_vocab_size("labels")
         logger.info(
             f"Vocabulary: Tokens: {vocabulary.get_vocab_size()}"
-            + f" Labels: {vocabulary.get_vocab_size('labels')}"
+            + f" Labels: {n_labels}"
         )
 
         train_data_loader.index_with(vocabulary)
         valid_data_loader.index_with(vocabulary)
 
+        if args.weighted_labels:
+            # Compute class distributions
+            logger.info("Counting Class distribution.")
+            counter_classes = Counter()
+            for batch in train_data_loader:
+                counter_classes.update(batch["label"].tolist())
+
+            # Compute label weights
+            message: List[str] = []
+            weights = torch.empty((n_labels,))
+            for label_id in range(n_labels):
+                if counter_classes[label_id] != 0:
+                    weights[label_id] = 1 / counter_classes[label_id]
+                else:
+                    weights[label_id] = 0
+                message.append(f"{label_id:2}: {counter_classes[label_id]};")
+            weights = (weights / torch.sum(weights))
+            weights.to(args.device)
+            logger.info(f"Distribution: {' '.join(message)}")
+            logger.info(f"Label weights: {weights.tolist()}")
+        else:
+            weights=None
+
 
         # Init Model
         # can only build model here, because vocabulary is needed, and the
         # vocabulary is loaded in only after choosing what to do (train/eval)
-        model = build_model(args, vocabulary)
+        model = build_model(args, vocabulary, weights)
 
         train(args, train_data_loader, valid_data_loader, model)
 

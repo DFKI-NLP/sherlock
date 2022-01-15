@@ -17,7 +17,7 @@ from allennlp.models import Model
 from allennlp.modules.seq2vec_encoders import BertPooler
 from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import PretrainedTransformerEmbedder
-from allennlp.training.metrics import CategoricalAccuracy, FBetaMultiLabelMeasure
+from allennlp.training.metrics import CategoricalAccuracy, FBetaMeasure
 
 
 logger = logging.getLogger(__name__)
@@ -58,9 +58,8 @@ class TransformerRelationClassifier(Model):
     f1_average : ``str```, optional (default=``macro``)
         Averaging method ("micro", "macro", "weighted" or "none") to compute
         the aggregated F1 score.
-    f1_threshold: `float`, optional (default = `0.5`)
-        Logits over this threshold will be considered predictions for the
-        corresponding class.
+    weights: ``torch.Tensor``, optional (default = None)
+        Weights for class labels. Useful for unbalanced training sets.
     """
 
     def __init__(
@@ -74,7 +73,7 @@ class TransformerRelationClassifier(Model):
         pooler_dropout: float = 0.1,
         ignore_label : Optional[str] = None,
         f1_average: str = "macro",
-        f1_threshold: float = 0.5,
+        weights: torch.Tensor = None,
         **kwargs,
     ) -> None:
         super().__init__(vocab, **kwargs)
@@ -99,17 +98,17 @@ class TransformerRelationClassifier(Model):
         self.fc_out.weight.data.normal_(mean=0.0, std=0.02)
         self.fc_out.bias.data.zero_()
 
-        self.loss = torch.nn.CrossEntropyLoss()
+        self.loss = torch.nn.CrossEntropyLoss(weights)
         self.acc = CategoricalAccuracy()
         self.f1_average = f1_average
-        self.f1 = FBetaMultiLabelMeasure(
+        self.f1 = FBetaMeasure(
             average=f1_average,
             labels=[
-                k for k, v in self.label_tokens.items() if v != ignore_label],
-            threshold=f1_threshold,
+                label_id
+                for label_id, label in self.label_tokens.items()
+                if label != ignore_label
+            ],
         )
-        # For FBetaMultiLabelMeasure correct label format computation.
-        self.eye = torch.eye(num_labels)
 
 
     def forward(  # type: ignore
@@ -145,9 +144,7 @@ class TransformerRelationClassifier(Model):
         if label is not None:
             result["loss"] = self.loss(logits, label)
             self.acc(logits, label)
-            # FBetaMultiLabelMeasure requires boolean labels
-            bool_labels = self.eye[label]
-            self.f1(logits.detach().cpu(), bool_labels.cpu())
+            self.f1(logits.detach().cpu(), label.cpu())
 
         return result
 
