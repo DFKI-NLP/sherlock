@@ -173,9 +173,12 @@ class BinaryRcConverter(FeatureConverter):
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
             tokens = self.tokenizer.tokenize(input_string)
-            # TODO: head or tail may have been truncated, check!
-            # see https://github.com/DFKI-NLP/RelEx/blob/master/relex/dataset_readers/tacred.py#text_to_instance()
-            # for example handling of this
+            # If head or tail have been cutoff: ignore this Instance
+            if (
+                document.ments[head_idx].end > self.max_length
+                or document.ments[tail_idx].end > self.max_length
+            ):
+                continue
             text_tokens_field = TextField(tokens[: self.max_length],
                                           self.token_indexers)
 
