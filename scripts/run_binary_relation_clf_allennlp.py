@@ -88,17 +88,6 @@ def train(
 
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
 
-    # TODO: cache for allennlp
-    # train_dataset = load_and_cache_examples(
-    #     args, dataset_reader, converter, tokenizer, split="train"
-    # )
-    # train_sampler = (
-    #     RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
-    # )
-    # train_dataloader = DataLoader(
-    #     train_dataset, sampler=train_sampler, batch_size=args.train_batch_size
-    # )
-
     if args.max_steps > 0:
         t_total = args.max_steps
         args.num_train_epochs = (
@@ -303,6 +292,14 @@ def load_and_chache_data(
         + f"_{args.tokenizer_name}",
     )
 
+    # Batch size
+    if split == "train":
+        batch_size = args.per_gpu_train_batch_size
+    elif split == "dev" or split in "validation":
+        batch_size = args.per_gpu_eval_batch_size
+    elif split == "test":
+        batch_size = args.per_gpu_eval_batch_size
+
     if os.path.exists(cache_file) and not args.overwrite_cache:
         logger.info(
             f"Loading features for split {split} from cached file {cache_file}",
@@ -312,16 +309,13 @@ def load_and_chache_data(
         # TODO: paths as direct paths in args
         if split == "train":
             path_to_data = os.path.join(args.data_dir, "train.json")
-            batch_size = args.per_gpu_train_batch_size
         elif split == "dev" or split in "validation":
             path_to_data = os.path.join(args.data_dir, "dev.json")
-            batch_size = args.per_gpu_eval_batch_size
         elif split == "test":
             path_to_data = os.path.join(args.data_dir, "test.json")
-            batch_size = args.per_gpu_eval_batch_size
 
         dataset: List[Instance] = list(dataset_reader.read(path_to_data))
-        if args.local_rank not in [-1, 0]:
+        if args.local_rank in [-1, 0]:
             torch.save(dataset, cache_file)
 
 
