@@ -23,7 +23,7 @@ import os
 import random
 import shutil
 from collections import Counter
-from typing import Iterable, List, Union, Tuple
+from typing import Iterable, List, Union, Tuple, Optional
 
 import numpy as np
 import torch
@@ -377,7 +377,8 @@ def _build_basic_model(
 
 
 
-def build_model(args, vocabulary: Vocabulary, weights: torch.Tensor) -> Model:
+def build_model(
+    args, vocabulary: Vocabulary, weights: Optional[torch.Tensor]=None) -> Model:
     """Returns specified Allennlp Model."""
 
     if args.model_type == "transformers":
