@@ -43,6 +43,7 @@ from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
 from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
 from allennlp.modules import FeedForward
+from allennlp.training.learning_rate_schedulers import LinearWithWarmup
 from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
 from allennlp.training import GradientDescentTrainer
 from allennlp.training.util import evaluate as evaluateAllennlp
@@ -91,38 +92,13 @@ def train(
 
     if args.max_steps > 0:
         t_total = args.max_steps
+        # TODO: this looks sketchy, gradient_accumulation_steps should be multiplied.
         args.num_train_epochs = (
             args.max_steps // (len(train_data_loader) // args.gradient_accumulation_steps) + 1
         )
     else:
+        # t_total is the amount of gradient update/backwards steps
         t_total = len(train_data_loader) // args.gradient_accumulation_steps * args.num_train_epochs
-
-    # Prepare optimizer and schedule (linear warmup and decay)
-    # no_decay = ["bias", "LayerNorm.weight"]
-    # optimizer_grouped_parameters = [
-    #     {
-    #         "params": [
-    #             p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)
-    #         ],
-    #         "weight_decay": args.weight_decay,
-    #     },
-    #     {
-    #         "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-    #         "weight_decay": 0.0,
-    #     },
-    # ]
-    # optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-    # scheduler = get_linear_schedule_with_warmup(
-    #     optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total
-    # )
-    # if args.fp16:
-    #     try:
-    #         from apex import amp
-    #     except ImportError:
-    #         raise ImportError(
-    #             "Please install apex from https://www.github.com/nvidia/apex to use fp16 training."
-    #         )
-    #     model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
     # multi-gpu training (should be after apex fp16 initialization)
     # if args.n_gpu > 1:
@@ -138,10 +114,23 @@ def train(
     #     )
 
     # Prepare training allennlp
-    # TODO: warmup and decay
-    logger.info("Building Trainer")
-    params = [(n, p) for (n, p) in model.named_parameters() if p.requires_grad]
-    optimizer = HuggingfaceAdamWOptimizer(params)
+    logger.info("Building Trainer.")
+    groups = [
+        (["(?<!LayerNorm\.)weight"], {"weight_decay": args.weight_decay}),
+        (["bias", "LayerNorm.weight"], {"weight_decay": 0.0}),
+    ]
+    optimizer = HuggingfaceAdamWOptimizer(
+        model_parameters=model.named_parameters(),
+        parameter_groups=groups,
+        lr=args.learning_rate,
+        eps=args.adam_epsilon,
+    )
+    scheduler = LinearWithWarmup(
+        optimizer=optimizer,
+        num_epochs=args.num_train_epochs,
+        num_steps_per_epoch=len(train_data_loader) // args.gradient_accumulation_steps,
+        warmup_steps=args.warmup_steps,
+    )
     # object to decide when to save checkpoints
     checkpointer = Checkpointer(
         serialization_dir=args.output_dir,
@@ -157,7 +146,10 @@ def train(
         validation_data_loader=valid_data_loader,
         num_epochs=args.num_train_epochs,
         checkpointer=checkpointer,
+        learning_rate_scheduler=scheduler,
         cuda_device=-1 if ("cpu" in str(args.device)) else args.device,
+        # local_rank=args.local_rank,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
         use_amp=args.fp16,
     )
 
@@ -177,97 +169,6 @@ def train(
 
     trainer.train()
     return
-
-    global_step = 0
-    tr_loss, logging_loss = 0.0, 0.0
-    model.zero_grad()
-    train_iterator = trange(
-        int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0]
-    )
-    set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
-    for epoch in train_iterator:
-        epoch_iterator = tqdm(
-            train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0]
-        )
-        for step, batch in enumerate(epoch_iterator):
-            model.train()
-            batch = {k: t.to(args.device) for k, t in batch.items()}
-
-            outputs = model(**batch)
-            loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
-
-            if args.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu parallel training
-            if args.gradient_accumulation_steps > 1:
-                loss = loss / args.gradient_accumulation_steps
-
-            if args.fp16:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
-                torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
-            else:
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-
-            tr_loss += loss.item()
-            if (step + 1) % args.gradient_accumulation_steps == 0 and not args.tpu:
-                optimizer.step()
-                scheduler.step()  # Update learning rate schedule
-                model.zero_grad()
-                global_step += 1
-
-                if (
-                    args.local_rank in [-1, 0]
-                    and args.logging_steps > 0
-                    and global_step % args.logging_steps == 0
-                ):
-                    # Log metrics
-                    if (
-                        args.local_rank == -1 and args.evaluate_during_training
-                    ):  # Only evaluate when single GPU otherwise metrics may not average well
-                        results, _ = evaluate(
-                            args, dataset_reader, converter, model, tokenizer, split="dev"
-                        )
-                        for key, value in results.items():
-                            tb_writer.add_scalar("eval_{}".format(key), value, global_step)
-                    tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
-                    tb_writer.add_scalar(
-                        "loss", (tr_loss - logging_loss) / args.logging_steps, global_step
-                    )
-                    logging_loss = tr_loss
-
-                if (
-                    args.local_rank in [-1, 0]
-                    and args.save_steps > 0
-                    and global_step % args.save_steps == 0
-                ):
-                    # Save model checkpoint
-                    output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
-                    if not os.path.exists(output_dir):
-                        os.makedirs(output_dir)
-                    model_to_save = (
-                        model.module if hasattr(model, "module") else model
-                    )  # Take care of distributed/parallel training
-                    model_to_save.save_pretrained(output_dir)
-                    torch.save(args, os.path.join(output_dir, "training_args.bin"))
-                    logger.info("Saving model checkpoint to %s", output_dir)
-
-            if args.tpu:
-                args.xla_model.optimizer_step(optimizer, barrier=True)
-                model.zero_grad()
-                global_step += 1
-
-            if args.max_steps > 0 and global_step > args.max_steps:
-                epoch_iterator.close()
-                break
-        if args.max_steps > 0 and global_step > args.max_steps:
-            train_iterator.close()
-            break
-
-    if args.local_rank in [-1, 0]:
-        tb_writer.close()
-
-    return global_step, tr_loss / global_step
 
 
 def load_and_chache_data(
@@ -402,7 +303,7 @@ def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
         tokenizer_kwargs={"do_lower_case": args.do_lower_case},
     )
 
-    logger.info("Loading Transformer Indexer")
+    logger.info("Loading Transformer Indexer.")
     token_indexer = PretrainedTransformerIndexer(
         args.model_name_or_path,
         max_length=args.max_seq_length,
@@ -445,7 +346,6 @@ def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
 def build_dataset_reader(args) -> allennlp.data.DatasetReader:
     """Returns appropriate DatasetReader for model_type."""
 
-    # TODO: accept all transformers supported model_types
     if args.model_type == "transformers":
         return _build_transformers_dataset_reader(args)
     elif args.model_type == "basic":
