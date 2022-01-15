@@ -77,6 +77,10 @@ class BinaryRcConverter(FeatureConverter):
                     logger.warn("Overwriting transformer sep_token leads to undefined behavior!")
                 self.sep_token = sep_token
 
+            # Some tokenizer lowercase or not, to compare the head/tail tokens
+            # later this seems to be the easiest way to do it
+            lower_cases = "a" in " ".join(self.tokenizer.tokenize("A"))
+
         elif framework == "allennlp":
             sep_token = kwargs.get("sep_token")
             if isinstance(self.tokenizer, PretrainedTransformerTokenizer):
@@ -98,6 +102,16 @@ class BinaryRcConverter(FeatureConverter):
                         + "lead to undefined behavior.")
                 else:
                     self.sep_token = sep_token
+
+            lower_cases = "a" in " ".join(
+                [token.text for token in self.tokenizer.tokenize("A")])
+
+        if lower_cases:
+            self.marker_tokens = [
+                "[head_start]","[head_end]", "[tail_start]", "[tail_end]"]
+        else:
+            self.marker_tokens = [
+                "[HEAD_START]","[HEAD_END]", "[TAIL_START]", "[TAIL_END]"]
 
     @property
     def name(self) -> str:
@@ -173,13 +187,42 @@ class BinaryRcConverter(FeatureConverter):
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
             tokens = self.tokenizer.tokenize(input_string)
+
             # If head or tail have been cutoff: ignore this Instance
-            if (
-                document.ments[head_idx].end > self.max_length
-                or document.ments[tail_idx].end > self.max_length
-            ):
+            # There is no good way to know whether the tokenizer has cutoff
+            # the instance itself or if the indices of head/tail stayed the
+            # same in the tokenized sequence: thus have to loop through tokens
+            # TODO: talk to Leo about this
+
+            marker_counter = 0
+
+            # TODO: different modes of entity masking.
+            print(tokens)
+
+            if self.framework == "allennlp":
+                for token in tokens:
+                    if token.text in self.marker_tokens:
+                        marker_counter += 1
+            elif self.framework == "transformers":
+                for token in tokens:
+                    if token in self.marker_tokens:
+                        marker_counter += 1
+            else:
+                raise NotImplementedError(
+                    "Framwork needs to implement marker_token counter to determine cutoff")
+
+            if marker_counter < 4:
+                # Head/Tail token was cut off
                 continue
-            text_tokens_field = TextField(tokens[: self.max_length],
+            elif marker_counter > 4:
+                logger.critical(
+                    f"Input string has more than 4 entity marker tokens:\n"
+                    + "Check whether Tokenizer is tokenizing properly."
+                    + f"Tokens: {tokens}\n"
+                    + f"Input String: {input_string}"
+                )
+
+            text_tokens_field = TextField(tokens[:self.max_length],
                                           self.token_indexers)
 
             fields = {"text": text_tokens_field}
@@ -196,9 +239,13 @@ class BinaryRcConverter(FeatureConverter):
             #    fields["metadata"]["id"] = instance_id
             instance = Instance(fields)
 
+            # Cannot know for sure if tokenizer truncated, use heuristic:
+            # if tokens is max_length, it is very likely that truncation
+            # happened. TODO: dicuss with Leo
+
             metadata = dict(
                 guid=document.guid,
-                truncated=len(tokens) > self.max_length,
+                truncated=len(tokens) >= self.max_length,
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )

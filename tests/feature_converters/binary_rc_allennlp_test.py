@@ -89,7 +89,7 @@ def test_convert_documents_to_features():
 def test_convert_documents_to_features_truncate():
     reader = TacredDatasetReader()
 
-    max_length = 10
+    max_length = 24
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
         + """, "tokenizer_kwargs": {"use_fast": false}}""")))
@@ -113,29 +113,49 @@ def test_convert_documents_to_features_truncate():
 
     input_features = converter.documents_to_features(documents)
 
-    assert len(input_features) == 3
+    # For the first two examples the tail or head have been cut of.
+    # => only want one output example.
+    assert len(input_features) == 1
 
     features = input_features[0]
 
     expected_tokens = [
-        "[CLS]",
-        "at",
-        "the",
-        "same",
-        "time",
-        ",",
-        "chief",
-        "financial",
-        "officer",
-        "[SEP]",
+        '[CLS]',
+        'at',
+        'the',
+        'same',
+        'time',
+        ',',
+        'chief',
+        'financial',
+        'officer',
+        '[head_start]',
+        'douglas',
+        'flint',
+        '[head_end]',
+        'will',
+        'become',
+        '[tail_start]',
+        'chairman',
+        '[tail_end]',
+        ',',
+        'succeeding',
+        'stephen',
+        'green',
+        'who',
+        '[SEP]',
     ]
 
     tokens = [i.text for i in features.instance["text"].tokens]
     assert tokens == expected_tokens
+    assert features.metadata["truncated"]
+    assert features.metadata["guid"] == "e7798fb926b9403cfcd2"
+    assert features.metadata["head_idx"] == 0
+    assert features.metadata["tail_idx"] == 1
 
     # use <= since in AllenNLP, Instance objects are not padded, this happens later in
     # https://docs.allennlp.org/main/api/data/batch/
-    assert len(features.instance["text"]) == converter.max_length
+    assert len(features.instance["text"]) <= converter.max_length
 
 
 def test_entity_handling_mark_entity():
