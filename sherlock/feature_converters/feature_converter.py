@@ -156,8 +156,10 @@ class FeatureConverter(Registrable):
             return FeatureConverter._from_pretrained_allennlp(path, config, **kwargs)
 
     def save_vocabulary(self, vocab_path: str) -> None:
+        raise DeprecationWarning("Deprecated. Use 'save_label_vocabulary'.")
+
+    def save_label_vocabulary(self, vocab_path: str) -> None:
         """Save the converters label vocabulary to a directory or file."""
-        # TODO: maybe rename this to save_label_vocabulary
         index = 0
         if os.path.isdir(vocab_path):
             vocab_file = os.path.join(vocab_path, "converter_label_vocab.txt")
@@ -167,9 +169,9 @@ class FeatureConverter(Registrable):
             for label, label_index in self.label_to_id_map.items():
                 if index != label_index:
                     logger.warning(
-                        "Saving vocabulary to %s: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!",
-                        vocab_file,
+                        f"Saving label vocabulary to {vocab_file}: vocabulary"
+                        + " indices are not consecutive. Please check that"
+                        + " the vocabulary is not corrupted!",
                     )
                     index = label_index
                 writer.write(label + "\n")
@@ -178,7 +180,7 @@ class FeatureConverter(Registrable):
     def save(self, save_directory: str) -> None:
         if not os.path.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
-        self.save_vocabulary(save_directory)
+        self.save_label_vocabulary(save_directory)
         config = dict(
             name=self.name,
             framework=self.framework,

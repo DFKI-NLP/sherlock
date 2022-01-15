@@ -182,14 +182,12 @@ class BinaryRcConverter(FeatureConverter):
             fields = {"text": text_tokens_field}
 
             if label is not None:
-                #label_id = self.label_to_id_map[label]
                 label_field = LabelField(label)
-                # label_field = LabelField(label_id, skip_indexing=True)
                 # skip_indexing=True leads to allennlp not creating a vocabulary
-                # for labels. Thus vocabulary.get_vocab_size("labels") will be 0
-                # TODO: is it necessary to skip this? Or can it be reverted later
-                # again into the sherlock int index space?
-                # e.g. some models use vocabulary.get_vocab_size("labels")
+                # for labels. Then vocabulary.get_vocab_size("labels") will be 0
+                # but some models use vocabulary.get_vocab_size("labels")
+                # For that reason labels are given as strings to the vocabulary
+                # so that allennlp can handle it in its own way.
                 fields["label"] = label_field
             #if instance_id is not None:
             #    fields["metadata"]["id"] = instance_id
