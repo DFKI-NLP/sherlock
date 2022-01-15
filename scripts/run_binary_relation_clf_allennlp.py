@@ -409,6 +409,7 @@ def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
         tokenizer=tokenizer,
         token_indexers={"tokens": token_indexer},
         max_tokens=args.max_seq_length,
+        feature_converter_kwargs={"entity_handling": args.entity_handling},
     )
     return dataset_reader
 
@@ -428,6 +429,7 @@ def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
         tokenizer=tokenizer,
         token_indexers=token_indexers,
         max_tokens=args.max_seq_length,
+        feature_converter_kwargs={"entity_handling": args.entity_handling},
     )
     return dataset_reader
 
@@ -620,7 +622,7 @@ def main():
         + " shortcut name selected in the transformers hub:"
         + " https://huggingface.co/models",
     )
-    parser.add_argument("--negative_label", default="no_relation", type=str)
+    # parser.add_argument("--negative_label", default="no_relation", type=str)
     parser.add_argument(
         "--entity_handling",
         type=str,
