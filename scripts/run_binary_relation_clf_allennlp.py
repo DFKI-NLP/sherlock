@@ -338,7 +338,7 @@ def _build_transformers_model(args, vocabulary: Vocabulary) -> Model:
         vocab=vocabulary,
         model_name=args.model_name_or_path,
         max_length=args.max_seq_length,
-        ignore_label="no_relation",
+        ignore_label=args.negative_label,
     )
 
 
@@ -616,7 +616,7 @@ def main():
         + " shortcut name selected in the transformers hub:"
         + " https://huggingface.co/models",
     )
-    # parser.add_argument("--negative_label", default="no_relation", type=str)
+    parser.add_argument("--negative_label", default="no_relation", type=str)
     parser.add_argument(
         "--entity_handling",
         type=str,
