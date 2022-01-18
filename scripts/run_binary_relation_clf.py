@@ -638,7 +638,9 @@ def main():
     TacredDatasetReader = DatasetReader.by_name("tacred")
 
     dataset_reader = TacredDatasetReader(
-        data_dir=args.data_dir, add_inverse_relations=args.add_inverse_relations
+        data_dir=args.data_dir,
+        add_inverse_relations=args.add_inverse_relations,
+        negative_label_re=args.negative_label,
     )
     labels = dataset_reader.get_labels(task=IETask.BINARY_RC)
     num_labels = len(labels)
