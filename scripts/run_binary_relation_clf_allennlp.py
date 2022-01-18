@@ -235,7 +235,7 @@ def load_and_chache_data(
 
 
 def _build_transformers_model(
-    args, vocabulary: Vocabulary, weights: torch.Tensor) -> Model:
+    args, vocabulary: Vocabulary, weights: Optional[torch.Tensor]) -> Model:
     """Returns Transformers model within AllenNLP framework."""
     return TransformerRelationClassifier(
         vocab=vocabulary,
@@ -247,7 +247,7 @@ def _build_transformers_model(
 
 
 def _build_basic_model(
-    args, vocabulary: Vocabulary, weights: torch.Tensor) -> Model:
+    args, vocabulary: Vocabulary, weights: Optional[torch.Tensor]) -> Model:
     """Returns basic AllenNLP model"""
 
     vocab_size = vocabulary.get_vocab_size()
@@ -872,8 +872,15 @@ def main():
         valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
         valid_data_loader.index_with(vocabulary)
 
+        # Handle label weights
+        if args.weighted_labels:
+            # placeholder weights
+            weights = torch.empty((vocabulary.get_vocab_size("labels"),))
+        else:
+            weights = None
+
         # Init model
-        model = build_model(args, vocabulary)
+        model = build_model(args, vocabulary, weights)
 
         # Load checkpooints to evaluate
         checkpoints = [os.path.join(args.output_dir, "best.th")]
@@ -907,8 +914,15 @@ def main():
         test_data_loader = load_and_chache_data(args, dataset_reader, "test")
         test_data_loader.index_with(vocabulary)
 
+        # Handle label weights
+        if args.weighted_labels:
+            # placeholder weights
+            weights = torch.empty((vocabulary.get_vocab_size("labels"),))
+        else:
+            weights = None
+
         # Init model
-        model = build_model(args, vocabulary)
+        model = build_model(args, vocabulary, weights)
 
         # Load best model
         best_model_path = os.path.join(args.output_dir, "best.th")
