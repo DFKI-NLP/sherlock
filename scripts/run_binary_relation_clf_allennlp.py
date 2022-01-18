@@ -338,6 +338,7 @@ def _get_reader(
         tokenizer=tokenizer,
         token_indexers=token_indexers,
         max_tokens=args.max_seq_length,
+        dataset_reader_kwargs={"negative_label_re": args.negative_label},
         feature_converter_kwargs={"entity_handling": args.entity_handling},
         max_instances=None if args.max_instances == -1 else args.max_instances,
     )

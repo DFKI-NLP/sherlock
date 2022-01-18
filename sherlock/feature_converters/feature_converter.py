@@ -52,7 +52,7 @@ class FeatureConverter(Registrable):
 
         if framework == "transformers":
             logger.info("Initializing Transformers FeatureConverter")
-            self._init_feature_converter_transformer(
+            self._init_feature_converter_transformers(
                 **{k: v for k, v in kwargs.items() if k in ["tokenizer"]}
             )
         elif framework == "allennlp":
@@ -62,7 +62,7 @@ class FeatureConverter(Registrable):
         else:
             raise NotImplementedError(f"Framework not supported: {framework}")
 
-    def _init_feature_converter_transformer(
+    def _init_feature_converter_transformers(
         self, tokenizer: PreTrainedTokenizer
     ) -> None:
         self.tokenizer = tokenizer

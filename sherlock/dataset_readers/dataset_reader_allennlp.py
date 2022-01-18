@@ -5,16 +5,21 @@ the Dataset reader.
 Accomplished through the sherlock DatasetReader and
 FeatureConverter
 """
+import logging
 from typing import Iterable, Optional, Dict
 
 from allennlp.data import Instance
-from allennlp.data.tokenizers import Tokenizer
+from allennlp.data.tokenizers import Tokenizer, PretrainedTransformerTokenizer
 from allennlp.data.token_indexers import TokenIndexer
 from allennlp.data import DatasetReader
 
 import sherlock
 from sherlock.tasks import IETask
 from sherlock.feature_converters import FeatureConverter
+from sherlock.dataset_readers import DatasetReader as DatasetReaderSherlock
+
+
+logger = logging.getLogger(__name__)
 
 
 @DatasetReader.register("sherlock_reader")
@@ -45,6 +50,8 @@ class DatasetReaderAllennlp(DatasetReader):
         allennlp TokenIndexer to index Instances.
     max_tokens : ``int``, optional (default=`None`)
         If set to a number, will limit sequences of tokens to maximum length.
+    dataset_reader_kwargs : ``Dict[str, any]]``, optional (default=`None`)
+        Additional keyword arguments for DatasetReader.
     feature_converter_kwargs : ``Dict[str, any]]``, optional (default=`None`)
         Additional keyword arguments for FeatureConverter.
     **kwargs : ``Dict[str, any]]``, optional (default=`None`)
@@ -59,6 +66,7 @@ class DatasetReaderAllennlp(DatasetReader):
         tokenizer: Tokenizer,
         token_indexers: Dict[str, TokenIndexer],
         max_tokens: int=None,
+        dataset_reader_kwargs: Optional[Dict[str, any]]=None,
         feature_converter_kwargs: Optional[Dict[str, any]]=None,
         **kwargs
     ) -> None:
@@ -73,10 +81,9 @@ class DatasetReaderAllennlp(DatasetReader):
         else:
             raise NotImplementedError("Task not implemented")
 
-        DatasetReaderClass = \
-            sherlock.dataset_readers.DatasetReader.by_name(dataset_reader_name)
-        self.dataset_reader: sherlock.dataset_readers.DatasetReader = \
-            DatasetReaderClass()
+        DatasetReaderClass = DatasetReaderSherlock.by_name(dataset_reader_name)
+        self.dataset_reader: DatasetReaderSherlock = DatasetReaderClass(
+            dataset_reader_kwargs)
 
         # can only initialize FeatureConverter with labels, but labels are only
         # retrievable given data. Thus, initialize FeatureConverter later
@@ -95,7 +102,32 @@ class DatasetReaderAllennlp(DatasetReader):
     ) -> Iterable[Instance]:
 
         # Initialize FeatureConverter if that did not happen yet
+        # Use opportunity to expand special tokens from tokenizer
         if self.feature_converter is None:
+
+            # Expand Tokenizer with additional Tokens
+            # TODO: Issue #41
+            additional_tokens = self.dataset_reader.get_additional_tokens(
+                self.task,
+                file_path,
+            )
+            logger.info(additional_tokens)
+            print(self.feature_converter_kwargs["tokenizer"])
+            # TODO: find a clean way to prevent every possible tokenizer from
+            # splitting extra tokens: (probably do not feed them into "encode")
+            if (
+                additional_tokens
+                and isinstance(
+                    self.feature_converter_kwargs["tokenizer"],
+                    PretrainedTransformerTokenizer
+                )
+            ):
+                # Allennlp does not have a direct interface to add extra tokens,
+                # thus access underlying transformer Tokenizer
+                print(additional_tokens)
+                self.feature_converter_kwargs["tokenizer"].tokenizer.add_tokens(
+                    additional_tokens
+                )
             # Get class
             FeatureConverterClass = \
                 FeatureConverter.by_name(

@@ -681,8 +681,10 @@ def main():
         log_num_input_features=20,
     )
 
+    # TODO: Issue #41
     additional_tokens = dataset_reader.get_additional_tokens(
         IETask.BINARY_RC, train_path)
+    print(additional_tokens)
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
         model.resize_token_embeddings(len(tokenizer))

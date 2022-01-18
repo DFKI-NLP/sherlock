@@ -138,6 +138,9 @@ class BinaryRcConverter(FeatureConverter):
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
             tokens = self.tokenizer.tokenize(input_string)
 
+            print(input_string)
+            print(tokens)
+
             inputs = self.tokenizer.encode_plus(
                 text=tokens,
                 add_special_tokens=True,
@@ -187,6 +190,8 @@ class BinaryRcConverter(FeatureConverter):
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
             tokens = self.tokenizer.tokenize(input_string)
+
+            print(tokens)
 
             # If head or tail have been cutoff: ignore this Instance
             # There is no good way to know whether the tokenizer has cutoff
