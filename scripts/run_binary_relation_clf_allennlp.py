@@ -444,56 +444,6 @@ def _reset_output_dir(args, default_vocab_dir) -> None:
 #     return result, preds
 
 
-def load_and_cache_examples(args, dataloader, split):
-    if args.local_rank not in [-1, 0] and split not in ["dev", "test"]:
-        # Make sure only the first process in distributed training process
-        # the dataset, and the others will use the cache
-        torch.distributed.barrier()
-
-    # Load data features from cache or dataset file
-    cached_features_file = os.path.join(
-        args.cache_dir,
-        "cached_rc_{}_{}_{}".format(
-            split,
-            list(filter(None, args.model_name_or_path.split("/"))).pop(),
-            str(args.max_seq_length),
-        ),
-    )
-    if os.path.exists(cached_features_file) and not args.overwrite_cache:
-        logger.info(
-            "Loading features for split %s from cached file %s",
-            split,cached_features_file)
-        input_features = torch.load(cached_features_file)
-    else:
-        logger.info(
-            "Creating features for split %s from dataset file at %s",
-            split, args.data_dir)
-        documents = dataset_reader.get_documents(split)
-        input_features = converter.documents_to_features(documents)
-
-        if args.local_rank in [-1, 0]:
-            logger.info("Saving features into cached file %s", cached_features_file)
-            torch.save(input_features, cached_features_file)
-
-    if args.local_rank == 0 and split not in ["dev", "test"]:
-        torch.distributed.barrier()
-
-    tensor_dicts = []
-    for features in input_features:
-        tensor_dict = {
-            "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
-            "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
-        }
-        if features.token_type_ids is not None:
-            tensor_dict["token_type_ids"] = torch.tensor(features.token_type_ids, dtype=torch.long)
-        if features.labels is not None:
-            tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
-        tensor_dicts.append(tensor_dict)
-
-    dataset = TensorDictDataset(tensor_dicts)
-    return dataset
-
-
 def main():
     parser = argparse.ArgumentParser()
 
