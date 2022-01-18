@@ -40,7 +40,7 @@ class DatasetReader(Registrable):
         raise NotImplementedError("DatasetReader must implement 'get_documents'")
 
 
-    def get_labels(self, task: IETask, file_path: str) -> Iterable[str]:
+    def get_labels(self, task: IETask, file_path: str) -> List[str]:
         """
         Returns labels from data in given file_path for a task.
 

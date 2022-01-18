@@ -82,12 +82,12 @@ class Conll2003DatasetReader(DatasetReader):
             self._read_txt(file_path=file_path))
 
 
-    def get_labels(self, task: IETask, file_path: str=None) -> Iterable[str]:
+    def get_labels(self, task: IETask, file_path: str=None) -> List[str]:
         if self.data_dir is not None:
             return list(self._labels_generator(task))
         elif file_path is None:
             raise AttributeError("get_labels requires file_path as argument")
-        return self._labels_generator(task, file_path)
+        return list(self._labels_generator(task, file_path))
 
 
     def get_additional_tokens(self, task: IETask, file_path: str=None) -> List[str]:
