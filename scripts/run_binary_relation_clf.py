@@ -337,8 +337,15 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         logger.info("Loading features for split %s from cached file %s", split, cached_features_file)
         input_features = torch.load(cached_features_file)
     else:
+        if split == "train":
+            file_path = os.path.join(args.data_dir, "train.json")
+        elif split == "dev":
+            file_path = os.path.join(args.data_dir, "dev.json")
+        elif split == "test":
+            file_path = os.path.join(args.data_dir, "test.json")
+
         logger.info("Creating features for split %s from dataset file at %s", split, args.data_dir)
-        documents = dataset_reader.get_documents(split)
+        documents = list(dataset_reader.get_documents(file_path))
         input_features = converter.documents_to_features(documents)
 
         if args.local_rank in [-1, 0]:
@@ -638,11 +645,11 @@ def main():
     TacredDatasetReader = DatasetReader.by_name("tacred")
 
     dataset_reader = TacredDatasetReader(
-        data_dir=args.data_dir,
         add_inverse_relations=args.add_inverse_relations,
         negative_label_re=args.negative_label,
     )
-    labels = dataset_reader.get_labels(task=IETask.BINARY_RC)
+    train_path = os.path.join(args.data_dir, "train.json")
+    labels = dataset_reader.get_labels(IETask.BINARY_RC, train_path)
     num_labels = len(labels)
 
     # Load pretrained model and tokenizer
@@ -674,7 +681,8 @@ def main():
         log_num_input_features=20,
     )
 
-    additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
+    additional_tokens = dataset_reader.get_additional_tokens(
+        IETask.BINARY_RC, train_path)
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
         model.resize_token_embeddings(len(tokenizer))
