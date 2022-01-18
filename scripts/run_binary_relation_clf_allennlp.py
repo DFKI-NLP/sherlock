@@ -23,7 +23,7 @@ import os
 import random
 import shutil
 from collections import Counter
-from typing import Iterable, List, Union, Tuple, Optional
+from typing import Dict, List, Union, Tuple, Optional
 
 import numpy as np
 import torch
@@ -35,9 +35,9 @@ import allennlp
 from allennlp.data import Vocabulary, Instance
 from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
 from allennlp.data.tokenizers import (
-    WhitespaceTokenizer, PretrainedTransformerTokenizer)
+    Tokenizer, WhitespaceTokenizer, PretrainedTransformerTokenizer)
 from allennlp.data.token_indexers import (
-    SingleIdTokenIndexer, PretrainedTransformerIndexer)
+    TokenIndexer, SingleIdTokenIndexer, PretrainedTransformerIndexer)
 from allennlp.models import Model
 from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
@@ -308,19 +308,10 @@ def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
         args.model_name_or_path,
         max_length=args.max_seq_length,
     )
+    token_indexers = {"tokens": token_indexer}
 
     # Allennlp DatasetReader
-    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
-    dataset_reader = AllennlpDatasetReader(
-        task="binary_rc",
-        dataset_reader_name="tacred",
-        feature_converter_name = "binary_rc",
-        tokenizer=tokenizer,
-        token_indexers={"tokens": token_indexer},
-        max_tokens=args.max_seq_length,
-        feature_converter_kwargs={"entity_handling": args.entity_handling},
-    )
-    return dataset_reader
+    return _get_reader(args, tokenizer, token_indexers)
 
 
 def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
@@ -330,6 +321,15 @@ def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
     token_indexers = {"tokens": SingleIdTokenIndexer()}
 
     # Allennlp DatasetReader
+    return _get_reader(args, tokenizer, token_indexers)
+
+
+def _get_reader(
+    args,
+    tokenizer: Tokenizer,
+    token_indexers: Dict[str, TokenIndexer]
+) -> allennlp.data.DatasetReader:
+
     AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
     dataset_reader = AllennlpDatasetReader(
         task="binary_rc",
@@ -339,6 +339,7 @@ def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
         token_indexers=token_indexers,
         max_tokens=args.max_seq_length,
         feature_converter_kwargs={"entity_handling": args.entity_handling},
+        max_instances=None if args.max_instances == -1 else args.max_instances,
     )
     return dataset_reader
 
@@ -629,6 +630,10 @@ def main():
     )
     parser.add_argument(
         "--local_rank", type=int, default=-1, help="For distributed training: local_rank"
+    )
+    parser.add_argument(
+        "--max_instances", type=int, default=-1,
+        help="Only use this number of first instances in dataset (e.g. for debugging)."
     )
     args = parser.parse_args()
 

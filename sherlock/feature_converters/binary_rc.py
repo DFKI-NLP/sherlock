@@ -194,33 +194,33 @@ class BinaryRcConverter(FeatureConverter):
             # same in the tokenized sequence: thus have to loop through tokens
             # TODO: talk to Leo about this
 
-            marker_counter = 0
+            # marker_counter = 0
 
             # TODO: different modes of entity masking.
-            print(tokens)
+            # print(tokens)
 
-            if self.framework == "allennlp":
-                for token in tokens:
-                    if token.text in self.marker_tokens:
-                        marker_counter += 1
-            elif self.framework == "transformers":
-                for token in tokens:
-                    if token in self.marker_tokens:
-                        marker_counter += 1
-            else:
-                raise NotImplementedError(
-                    "Framwork needs to implement marker_token counter to determine cutoff")
+            # if self.framework == "allennlp":
+            #     for token in tokens:
+            #         if token.text in self.marker_tokens:
+            #             marker_counter += 1
+            # elif self.framework == "transformers":
+            #     for token in tokens:
+            #         if token in self.marker_tokens:
+            #             marker_counter += 1
+            # else:
+            #     raise NotImplementedError(
+            #         "Framwork needs to implement marker_token counter to determine cutoff")
 
-            if marker_counter < 4:
-                # Head/Tail token was cut off
-                continue
-            elif marker_counter > 4:
-                logger.critical(
-                    f"Input string has more than 4 entity marker tokens:\n"
-                    + "Check whether Tokenizer is tokenizing properly."
-                    + f"Tokens: {tokens}\n"
-                    + f"Input String: {input_string}"
-                )
+            # if marker_counter < 4:
+            #     # Head/Tail token was cut off
+            #     continue
+            # elif marker_counter > 4:
+            #     logger.critical(
+            #         f"Input string has more than 4 entity marker tokens:\n"
+            #         + "Check whether Tokenizer is tokenizing properly."
+            #         + f"Tokens: {tokens}\n"
+            #         + f"Input String: {input_string}"
+            #     )
 
             text_tokens_field = TextField(tokens[:self.max_length],
                                           self.token_indexers)
