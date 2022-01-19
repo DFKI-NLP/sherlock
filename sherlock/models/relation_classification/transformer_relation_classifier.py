@@ -139,17 +139,18 @@ class TransformerRelationClassifier(Model):
         logits : ``torch.FloatTensor``
             The logits for every possible answer choice
         """
+
         embedded = self.embedder(text)
 
         pooled = self.pooler(embedded)
 
-        logits = F.softmax(self.fc_out(pooled), dim=-1)
+        logits = self.fc_out(pooled)
 
         result = {"logits": logits}
 
         if label is not None:
             result["loss"] = self.loss(logits, label)
-            self.acc(logits, label)
+            self.acc(logits.detach(), label)
             self.f1(logits.detach().cpu(), label.cpu())
 
         return result
