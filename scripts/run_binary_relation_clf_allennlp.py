@@ -304,6 +304,7 @@ def build_model(
         raise NotImplementedError(
             f"No Model for model_type: {args.model_type}")
     model.to(args.device)
+    logger.info(model)
     return model
 
 
@@ -797,6 +798,8 @@ def main():
 
         train_data_loader.index_with(vocabulary)
         valid_data_loader.index_with(vocabulary)
+
+        logger.debug(vocabulary.get_token_to_index_vocabulary("labels"))
 
         if args.weighted_labels:
             # Compute class distributions
