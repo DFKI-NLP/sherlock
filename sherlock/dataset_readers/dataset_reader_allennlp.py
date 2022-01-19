@@ -105,29 +105,6 @@ class DatasetReaderAllennlp(DatasetReader):
         # Use opportunity to expand special tokens from tokenizer
         if self.feature_converter is None:
 
-            # Expand Tokenizer with additional Tokens
-            # TODO: Issue #41
-            additional_tokens = self.dataset_reader.get_additional_tokens(
-                self.task,
-                file_path,
-            )
-            logger.info(additional_tokens)
-            print(self.feature_converter_kwargs["tokenizer"])
-            # TODO: find a clean way to prevent every possible tokenizer from
-            # splitting extra tokens: (probably do not feed them into "encode")
-            if (
-                additional_tokens
-                and isinstance(
-                    self.feature_converter_kwargs["tokenizer"],
-                    PretrainedTransformerTokenizer
-                )
-            ):
-                # Allennlp does not have a direct interface to add extra tokens,
-                # thus access underlying transformer Tokenizer
-                print(additional_tokens)
-                self.feature_converter_kwargs["tokenizer"].tokenizer.add_tokens(
-                    additional_tokens
-                )
             # Get class
             FeatureConverterClass = \
                 FeatureConverter.by_name(

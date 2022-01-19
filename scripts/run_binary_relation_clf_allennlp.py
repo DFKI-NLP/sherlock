@@ -23,7 +23,7 @@ import os
 import random
 import shutil
 from collections import Counter
-from typing import Dict, List, Union, Tuple, Optional
+from typing import Dict, List, Union, Tuple, Optional, Any
 
 import numpy as np
 import torch
@@ -235,7 +235,11 @@ def load_and_chache_data(
 
 
 def _build_transformers_model(
-    args, vocabulary: Vocabulary, weights: Optional[torch.Tensor]) -> Model:
+    args,
+    vocabulary: Vocabulary,
+    weights: Optional[torch.Tensor],
+    **kwargs,
+) -> Model:
     """Returns Transformers model within AllenNLP framework."""
     return TransformerRelationClassifier(
         vocab=vocabulary,
@@ -243,11 +247,16 @@ def _build_transformers_model(
         max_length=args.max_seq_length,
         ignore_label=args.negative_label,
         weights=weights,
+        **kwargs,
     )
 
 
 def _build_basic_model(
-    args, vocabulary: Vocabulary, weights: Optional[torch.Tensor]) -> Model:
+    args,
+    vocabulary: Vocabulary,
+    weights: Optional[torch.Tensor],
+    **kwargs,
+) -> Model:
     """Returns basic AllenNLP model"""
 
     vocab_size = vocabulary.get_vocab_size()
@@ -274,16 +283,21 @@ def _build_basic_model(
         feedforward,
         ignore_label=args.negative_label,
         weights=weights,
+        **kwargs,
     )
 
 
 
 def build_model(
-    args, vocabulary: Vocabulary, weights: Optional[torch.Tensor]=None) -> Model:
+    args,
+    vocabulary: Vocabulary,
+    weights: Optional[torch.Tensor]=None,
+    **kwargs,
+) -> Model:
     """Returns specified Allennlp Model."""
 
     if args.model_type == "transformers":
-        model = _build_transformers_model(args, vocabulary, weights)
+        model = _build_transformers_model(args, vocabulary, weights, **kwargs)
     elif args.model_type == "basic":
         model = _build_basic_model(args, vocabulary, weights)
     else:
@@ -293,14 +307,17 @@ def build_model(
     return model
 
 
-def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
+def _build_transformers_dataset_reader(
+    args,
+    tokenizer_kwargs: Dict[str, Any],
+) -> allennlp.data.DatasetReader:
     """Returns appropriate DatasetReader for transformers model."""
 
     logger.info("Loading Transformer Tokenizer.")
     tokenizer = PretrainedTransformerTokenizer(
         args.tokenizer_name or args.model_name_or_path,
         max_length=args.max_seq_length,
-        tokenizer_kwargs={"do_lower_case": args.do_lower_case},
+        tokenizer_kwargs=tokenizer_kwargs,
     )
 
     logger.info("Loading Transformer Indexer.")
@@ -314,10 +331,13 @@ def _build_transformers_dataset_reader(args) -> allennlp.data.DatasetReader:
     return _get_reader(args, tokenizer, token_indexers)
 
 
-def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
+def _build_basic_dataset_reader(
+    args,
+    tokenizer_kwargs: Dict[str, Any],
+) -> allennlp.data.DatasetReader:
     """Returns most basic version of a DatasetReader."""
 
-    tokenizer = WhitespaceTokenizer()
+    tokenizer = WhitespaceTokenizer(**tokenizer_kwargs)
     token_indexers = {"tokens": SingleIdTokenIndexer()}
 
     # Allennlp DatasetReader
@@ -327,7 +347,7 @@ def _build_basic_dataset_reader(args) -> allennlp.data.DatasetReader:
 def _get_reader(
     args,
     tokenizer: Tokenizer,
-    token_indexers: Dict[str, TokenIndexer]
+    token_indexers: Dict[str, TokenIndexer],
 ) -> allennlp.data.DatasetReader:
 
     AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
@@ -345,13 +365,16 @@ def _get_reader(
     return dataset_reader
 
 
-def build_dataset_reader(args) -> allennlp.data.DatasetReader:
+def build_dataset_reader(
+    args,
+    tokenizer_kwargs: Optional[Dict[str, Any]]=None,
+) -> allennlp.data.DatasetReader:
     """Returns appropriate DatasetReader for model_type."""
 
     if args.model_type == "transformers":
-        return _build_transformers_dataset_reader(args)
+        return _build_transformers_dataset_reader(args, tokenizer_kwargs)
     elif args.model_type == "basic":
-        return _build_basic_dataset_reader(args)
+        return _build_basic_dataset_reader(args, tokenizer_kwargs)
     else:
         raise NotImplementedError(
             f"No DatasetReader for model_type: {args.model_type}")
@@ -715,7 +738,21 @@ def main():
 
     # dataset reader
     logger.info("Loading DatasetReader.")
-    dataset_reader = build_dataset_reader(args)
+    tokenizer_kwargs = {"do_lower_case": args.do_lower_case}
+    # Need to get special tokens for Tokenizer with sherlock DatasetReader
+    # TODO: Issue #41
+    dataset_reader = TacredDatasetReader(
+        add_inverse_relations=args.add_inverse_relations,
+        negative_label_re=args.negative_label,
+    )
+    additional_tokens = dataset_reader.get_additional_tokens(
+        IETask.BINARY_RC,
+        os.path.join(args.data_dir, "train.json"),
+    )
+    if additional_tokens:
+        tokenizer_kwargs["additional_special_tokens"] = additional_tokens
+    # Get allennlp DatasetReader
+    dataset_reader = build_dataset_reader(args, tokenizer_kwargs)
 
     # vocabulary dir
     default_vocab_dir = os.path.join(args.output_dir, "vocabulary")
@@ -788,7 +825,8 @@ def main():
         # Init Model
         # can only build model here, because vocabulary is needed, and the
         # vocabulary is loaded in only after choosing what to do (train/eval)
-        model = build_model(args, vocabulary, weights)
+        model = build_model(
+            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs)
 
         train(args, train_data_loader, valid_data_loader, model)
 

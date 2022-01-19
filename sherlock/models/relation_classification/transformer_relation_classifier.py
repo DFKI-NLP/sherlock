@@ -7,7 +7,7 @@
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 import torch
 import torch.nn.functional as F
@@ -58,8 +58,12 @@ class TransformerRelationClassifier(Model):
     f1_average : ``str```, optional (default=``macro``)
         Averaging method ("micro", "macro", "weighted" or "none") to compute
         the aggregated F1 score.
-    weights: ``torch.Tensor``, optional (default = None)
+    weights : ``torch.Tensor``, optional (default = ``None``)
         Weights for class labels. Useful for unbalanced training sets.
+    tokenizer_kwargs : ``Dict``, optional (default = ``None``)
+        Arguments to initialize a tokenizer to potentially resize
+        embedding layer for the Transformer. This is the only way allennlp
+        allows you to do that.
     """
 
     def __init__(
@@ -74,6 +78,7 @@ class TransformerRelationClassifier(Model):
         ignore_label : Optional[str] = None,
         f1_average: str = "macro",
         weights: torch.Tensor = None,
+        tokenizer_kwargs: Dict[str, Any] = None,
         **kwargs,
     ) -> None:
         super().__init__(vocab, **kwargs)
@@ -83,6 +88,7 @@ class TransformerRelationClassifier(Model):
                 model_name=model_name,
                 max_length=max_length,
                 override_weights_file=override_weights_file,
+                tokenizer_kwargs=tokenizer_kwargs,
             )}
         )
 
