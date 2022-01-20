@@ -877,7 +877,8 @@ def main():
             weights = None
 
         # Init model
-        model = build_model(args, vocabulary, weights)
+        model = build_model(
+            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs)
 
         # Load checkpooints to evaluate
         checkpoints = [os.path.join(args.output_dir, "best.th")]
@@ -919,7 +920,8 @@ def main():
             weights = None
 
         # Init model
-        model = build_model(args, vocabulary, weights)
+        model = build_model(
+            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs)
 
         # Load best model
         best_model_path = os.path.join(args.output_dir, "best.th")
