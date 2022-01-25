@@ -187,19 +187,20 @@ class BinaryRcConverter(FeatureConverter):
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
             # Append 2 sep_tokens
-            # input_string = input_string + self.sep_token + self.sep_token
+            input_string = input_string + f" {self.sep_token} {self.sep_token}"
 
             tokens = self.tokenizer.tokenize(input_string)
 
             # If head or tail have been cutoff: ignore this Instance
             # There is no good way to know whether the tokenizer has cutoff
             # the instance itself or if the indices of head/tail stayed the
-            # same in the tokenized sequence: thus have to loop through tokens
-            # TODO: talk to Leo about this
+            # same in the tokenized sequence: thus mark the sequence at the
+            # end with two sep tokens. Look if they are still there afterwards.
 
-            # marker_counter = 0
+            if tokens[-1].text != self.sep_token or tokens[-2].text != self.sep_token:
+                continue
 
-            text_tokens_field = TextField(tokens[:self.max_length],
+            text_tokens_field = TextField(tokens[:-2],
                                           self.token_indexers)
 
             fields = {"text": text_tokens_field}
@@ -212,17 +213,18 @@ class BinaryRcConverter(FeatureConverter):
                 # For that reason labels are given as strings to the vocabulary
                 # so that allennlp can handle it in its own way.
                 fields["label"] = label_field
-            #if instance_id is not None:
-            #    fields["metadata"]["id"] = instance_id
+
             instance = Instance(fields)
 
-            # Cannot know for sure if tokenizer truncated, use heuristic:
-            # if tokens is max_length, it is very likely that truncation
-            # happened. TODO: dicuss with Leo
+            print(instance)
+
+            # truncated sequences are filtered out.
+            # TODO: proper tokenizer special token handling, then
+            # truncated can be set adaptively again
 
             metadata = dict(
                 guid=document.guid,
-                truncated=len(tokens) >= self.max_length,
+                truncated=False,
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )
