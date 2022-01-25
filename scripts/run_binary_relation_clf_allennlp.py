@@ -354,7 +354,7 @@ def _get_reader(
     token_indexers: Dict[str, TokenIndexer],
 ) -> allennlp.data.DatasetReader:
 
-    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock_reader")
+    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock")
     dataset_reader = AllennlpDatasetReader(
         task="binary_rc",
         dataset_reader_name="tacred",

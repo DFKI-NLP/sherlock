@@ -22,8 +22,8 @@ from sherlock.dataset_readers import DatasetReader as DatasetReaderSherlock
 logger = logging.getLogger(__name__)
 
 
-@DatasetReader.register("sherlock_reader")
-class DatasetReaderAllennlp(DatasetReader):
+@DatasetReader.register("sherlock")
+class SherlockDatasetReader(DatasetReader):
     """
     Allennlp DatasetReader. Is realized by using a sherlock DatasetReader
     and sherlock FeatureConverter.
