@@ -185,6 +185,9 @@ def load_and_chache_data(
         # the dataset, and the others will use the cache
         torch.distributed.barrier()
 
+    if not os.path.isdir(args.cache_dir):
+        os.mkdir(args.cache_dir)
+
     # chache_file name has to be sensitive to differences in dataloading.
     cache_file = os.path.join(
         args.cache_dir,
