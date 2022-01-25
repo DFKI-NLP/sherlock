@@ -773,6 +773,8 @@ def main():
             args, dataset_reader, "train", return_dataset=True)
         valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
 
+        # debug
+        tokenizer_kwargs["tokenizer"] = dataset_reader.feature_converter.tokenizer
         # load vocabulary
         if args.vocab_dir:
             # If given, use a custom vocabulary
@@ -794,10 +796,7 @@ def main():
             vocabulary.extend_from_vocab(vocabulary_t)
 
         n_labels = vocabulary.get_vocab_size("labels")
-        logger.info(
-            f"Vocabulary: Tokens: {vocabulary.get_vocab_size()}"
-            + f" Labels: {n_labels}"
-        )
+        logger.info(f"Vocabulary: Labels: {n_labels}")
 
         train_data_loader.index_with(vocabulary)
         valid_data_loader.index_with(vocabulary)
