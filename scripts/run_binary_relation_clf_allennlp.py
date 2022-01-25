@@ -50,7 +50,7 @@ from allennlp.training.util import evaluate as evaluateAllennlp
 from allennlp.training import Checkpointer
 from sherlock.models.relation_classification import TransformerRelationClassifier
 
-from sherlock import dataset
+from sherlock.allennlp import SherlockDatasetReader
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.dataset_readers import dataset_reader
@@ -354,8 +354,7 @@ def _get_reader(
     token_indexers: Dict[str, TokenIndexer],
 ) -> allennlp.data.DatasetReader:
 
-    AllennlpDatasetReader = allennlp.data.DatasetReader.by_name("sherlock")
-    dataset_reader = AllennlpDatasetReader(
+    dataset_reader = SherlockDatasetReader(
         task="binary_rc",
         dataset_reader_name="tacred",
         feature_converter_name="binary_rc",
