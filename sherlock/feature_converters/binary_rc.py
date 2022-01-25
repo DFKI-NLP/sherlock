@@ -216,8 +216,6 @@ class BinaryRcConverter(FeatureConverter):
 
             instance = Instance(fields)
 
-            print(instance)
-
             # truncated sequences are filtered out.
             # TODO: proper tokenizer special token handling, then
             # truncated can be set adaptively again

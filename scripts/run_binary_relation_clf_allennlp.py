@@ -143,6 +143,7 @@ def train(
         serialization_dir=args.output_dir,
         optimizer=optimizer,
         data_loader=train_data_loader,
+        validation_metric="+fscore",
         validation_data_loader=valid_data_loader,
         num_epochs=args.num_train_epochs,
         checkpointer=checkpointer,
