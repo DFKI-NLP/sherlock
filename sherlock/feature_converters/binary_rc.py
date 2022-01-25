@@ -186,6 +186,9 @@ class BinaryRcConverter(FeatureConverter):
         for head_idx, tail_idx, label, sent_id in mention_combinations:
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
+            # Append 2 sep_tokens
+            # input_string = input_string + self.sep_token + self.sep_token
+
             tokens = self.tokenizer.tokenize(input_string)
 
             # If head or tail have been cutoff: ignore this Instance
@@ -195,32 +198,6 @@ class BinaryRcConverter(FeatureConverter):
             # TODO: talk to Leo about this
 
             # marker_counter = 0
-
-            # TODO: different modes of entity masking.
-            # print(tokens)
-
-            # if self.framework == "allennlp":
-            #     for token in tokens:
-            #         if token.text in self.marker_tokens:
-            #             marker_counter += 1
-            # elif self.framework == "transformers":
-            #     for token in tokens:
-            #         if token in self.marker_tokens:
-            #             marker_counter += 1
-            # else:
-            #     raise NotImplementedError(
-            #         "Framwork needs to implement marker_token counter to determine cutoff")
-
-            # if marker_counter < 4:
-            #     # Head/Tail token was cut off
-            #     continue
-            # elif marker_counter > 4:
-            #     logger.critical(
-            #         f"Input string has more than 4 entity marker tokens:\n"
-            #         + "Check whether Tokenizer is tokenizing properly."
-            #         + f"Tokens: {tokens}\n"
-            #         + f"Input String: {input_string}"
-            #     )
 
             text_tokens_field = TextField(tokens[:self.max_length],
                                           self.token_indexers)
