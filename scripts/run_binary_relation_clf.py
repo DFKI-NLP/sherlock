@@ -300,7 +300,7 @@ def train(args, dataset_reader, converter, model, tokenizer):
 
 
 def evaluate(
-    args, dataset_reader, converter, model, tokenizer, split, filename=None):
+    args, dataset_reader, converter, model, tokenizer, split, filename="eval_results.txt"):
     eval_output_dir = args.output_dir
 
     eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
@@ -352,12 +352,14 @@ def evaluate(
     out_label_ids = np.concatenate(out_label_ids, axis=0)
     result = compute_f1(preds, out_label_ids)
 
+    logger.info("***** Eval results {} *****".format(name))
+    for key in sorted(result.keys()):
+        logger.info("  %s = %s", key, str(result[key]))
+
     if filename is not None:
         output_eval_file = os.path.join(eval_output_dir, filename)
         with open(output_eval_file, "w") as writer:
-            logger.info(f"***** Eval results {name} *****")
             for key in sorted(result.keys()):
-                logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
     return result, preds
