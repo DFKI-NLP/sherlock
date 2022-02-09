@@ -1,3 +1,9 @@
+# -*- coding: utf8 -*-
+"""
+
+@date: 09.02.22
+@author: christoph.alt@posteo.de, gabriel.kressin@dfki.de
+"""
 import logging
 from typing import List
 

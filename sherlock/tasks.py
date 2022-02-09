@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 from enum import Enum
 
 from transformers import (

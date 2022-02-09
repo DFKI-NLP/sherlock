@@ -1,22 +1,25 @@
+# -*- coding: utf8 -*-
 """
-Wrapper class implementing allennlp's own concept of
-the Dataset reader.
 
-Accomplished through the sherlock DatasetReader and
-FeatureConverter
+@date: 09.02.22
+@author: gabriel.kressin@dfki.de
+
+@description:
+    Wrapper class implementing allennlp's own concept of
+    the Dataset reader by using the sherlock DatasetReader and
+    sherlock FeatureConverter.
 """
 import logging
 from typing import Iterable, Optional, Dict
 
 from allennlp.data import Instance
-from allennlp.data.tokenizers import Tokenizer, PretrainedTransformerTokenizer
+from allennlp.data.tokenizers import Tokenizer
 from allennlp.data.token_indexers import TokenIndexer
 from allennlp.data import DatasetReader
 
-import sherlock
-from sherlock.tasks import IETask
-from sherlock.feature_converters import FeatureConverter
 from sherlock.dataset_readers import DatasetReader as DatasetReaderSherlock
+from sherlock.feature_converters import FeatureConverter
+from sherlock.tasks import IETask
 
 
 logger = logging.getLogger(__name__)

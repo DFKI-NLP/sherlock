@@ -1,7 +1,8 @@
+# -*- coding: utf8 -*-
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from transformers import PreTrainedModel, PreTrainedTokenizer
+from transformers import PreTrainedModel
 
 from sherlock.document import Document, Relation
 from sherlock.feature_converters import FeatureConverter

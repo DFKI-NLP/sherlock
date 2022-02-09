@@ -1,21 +1,21 @@
-#!/usr/bin/python
 # -*- coding: utf8 -*-
 """
 
-@date: 08.12.21
-@author: leonhard.hennig@dfki.de
+@date: 09.02.22
+@author: leonhard.hennig@dfki.de, gabriel.kressin@dfki.de
 """
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from allennlp.models.model import Model
 from allennlp.data import Vocabulary
+from allennlp.models.model import Model
 
+from sherlock.annotators.allennlp.allennlp_annotator import AllenNLPAnnotator
+from sherlock.annotators.annotator import Annotator
 from sherlock.document import Document, Relation
 from sherlock.feature_converters import FeatureConverter
-from sherlock.annotators.annotator import Annotator
-from sherlock.annotators.allennlp.allennlp_annotator import AllenNLPAnnotator
 from sherlock.tasks import NLPTask
+
 
 @Annotator.register("allennlp_binary_rc")
 class AllenNLPBinaryRcAnnotator(AllenNLPAnnotator):

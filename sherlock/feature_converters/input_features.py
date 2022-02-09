@@ -1,3 +1,9 @@
+# -*- coding: utf8 -*-
+"""
+
+@date: 09.02.22
+@author: gabriel.kressin@dfki.de, leonhard.hennig@dfki.de
+"""
 import copy
 import json
 from typing import List, Dict, Union, Optional, Any

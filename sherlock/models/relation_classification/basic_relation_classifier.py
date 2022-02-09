@@ -1,4 +1,10 @@
-# from here: https://github.com/DFKI-NLP/RelEx/blob/master/relex/models/relation_classification/basic_relation_classifier.py
+# -*- coding: utf8 -*-
+"""
+
+@date: 09.02.22
+@source: https://github.com/DFKI-NLP/RelEx/blob/master/relex/models/relation_classification/basic_relation_classifier.py
+@author: christoph.alt@posteo.de, gabriel.kressin@dfki.de
+"""
 
 from typing import Dict, Optional, List, Any, Set, Tuple
 from collections import defaultdict
@@ -16,9 +22,6 @@ from allennlp.nn import InitializerApplicator, RegularizerApplicator
 from allennlp.nn import util
 from allennlp.training.metrics import CategoricalAccuracy, Metric
 
-# from relex.modules.offset_embedders import OffsetEmbedder
-# from relex.modules.nn import WordDropout
-# from relex.metrics import F1Measure
 
 # TODO: THIS IS TEMPORARY.
 # from: https://github.com/DFKI-NLP/RelEx/blob/master/relex/modules/nn.py

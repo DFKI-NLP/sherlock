@@ -1,11 +1,16 @@
+# -*- coding: utf8 -*-
+"""
+
+@date: 09.02.22
+@author: christoph.alt@posteo.de, gabriel.kressin@dfki.de, leonhard.hennig@dfki.de
+"""
 import itertools
 import logging
 from typing import List, Optional, Tuple
 
-from allennlp.data.fields import TextField, LabelField, MetadataField
+from allennlp.data.fields import TextField, LabelField
 from allennlp.data.instance import Instance
 from allennlp.data.tokenizers import Tokenizer, PretrainedTransformerTokenizer
-from allennlp.data.token_indexers import TokenIndexer
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
@@ -25,19 +30,29 @@ class BinaryRcConverter(FeatureConverter):
 
     Attributes
     ----------
-    labels
-    max_length
-    framework
-    entity_handling
+    labels : ``List[str]``
+        List of all labels as strings.
+    max_length : ``int``, optional (default=`512`)
+        Will limit sequences of tokens to maximum length.
+    framework : ``"allennlp" | "transformers"``, optional (default=`transformers`)
+        String indicating to use allennlp or transformers library.
+    entity_handling : ``str``, optional (default=`mark_entity`)
+        Strategy to specifically mark entities in sentences. Has to be between
+        `"mark_entity", "mark_entity_append_ner", "mask_entity", "mask_entity_append_text"`.
     pad_token_segment_id    # TODO: probably move into `transformers` kwargs
-    log_num_input_features
+        unclear what this does.
+    log_num_input_features : ``int``, optional (default=`-1`)
+        Amount of example Instances which are logged.
     kwargs : ``Dict[str, any]``
-        framwork specific keywords.
+        Framework specific keywords.
         `transformers`:
             tokenizer  : `PreTrainedTokenizer`
+                Huggingface tokenizer to tokenize input-sentences.
         `allennlp`:
             tokenizer : ``Tokenizer``
+                AllenNLP tokenizer to tokenize input-sentences.
             token_indexers : ``Dict[str,TokenIndexer]``
+                AllenNLP token indexer to index vocabulary with.
             sep_token : ``str``, optional (default=`None`)
                 model-specific separator token used to separate
                 relations at the end of sentence. Is automatically

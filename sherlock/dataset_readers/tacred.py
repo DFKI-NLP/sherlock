@@ -1,3 +1,9 @@
+# -*- coding: utf8 -*-
+"""
+
+@date: 09.02.22
+@author: christoph.alt@posteo.de, gabriel.kressin@dfki.de, leonhard.hennig@dfki.de
+"""
 import json
 import logging
 import os
@@ -45,6 +51,8 @@ class TacredDatasetReader(DatasetReader):
         tagging scheme for charactes in sentences. Only supports `"bio"`.
     add_inverse_relations: ``bool``, optional (default=`False`)
         for any relation in TACRED, add the inversion as another instance.
+    max_instances: ``int``, optional (default=`None`)
+        Only use this number of first instances in dataset (e.g. for debugging).
     **kwargs: ``Dict[str, Any]``
         Catches keywords for backwards compability
         (`data_dir`, `train_file`, `dev_file`, `test_file`).

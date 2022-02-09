@@ -1,9 +1,8 @@
-#!/usr/bin/python
 # -*- coding: utf8 -*-
 """
 
-@date: 08.12.21
-@author: leonhard.hennig@dfki.de
+@date: 09.02.22
+@author: leonhard.hennig@dfki.de, gabriel.kressin@dfki.de
 """
 import os
 import json
@@ -12,19 +11,16 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
 # from torch.utils.data import DataLoader, SequentialSampler
+from allennlp.data import Vocabulary
+from allennlp.data.data_loaders import SimpleDataLoader
 from allennlp.data.tokenizers import Tokenizer
 from allennlp.data.token_indexers import TokenIndexer
-from allennlp.data.data_loaders import SimpleDataLoader
-from allennlp.data import Vocabulary
 from allennlp.models.model import Model
-from allennlp.models.archival import load_archive
-from allennlp.common.file_utils import cached_path
 from allennlp.nn.util import move_to_device
 
 from sherlock import Document
-from sherlock.dataset import InstancesDataset
-from sherlock.feature_converters import FeatureConverter
 from sherlock.annotators.annotator import Annotator
+from sherlock.feature_converters import FeatureConverter
 from sherlock.tasks import NLP_TASK_CLASSES, NLPTask
 
 

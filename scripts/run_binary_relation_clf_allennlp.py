@@ -27,9 +27,7 @@ from typing import Dict, List, Union, Tuple, Optional, Any
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-from torch.utils.data.distributed import DistributedSampler
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 import allennlp
 from allennlp.data import Vocabulary, Instance
@@ -50,13 +48,9 @@ from allennlp.training import GradientDescentTrainer
 from allennlp.training.util import evaluate as evaluateAllennlp
 from allennlp.training import Checkpointer
 
-from sherlock.models.relation_classification import TransformerRelationClassifier
 from sherlock.allennlp import SherlockDatasetReader
-from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.dataset_readers import dataset_reader
-from sherlock.dataset_readers.dataset_reader import DatasetReader
-from sherlock.feature_converters import BinaryRcConverter
+from sherlock.models.relation_classification import TransformerRelationClassifier
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
 from sherlock.models.relation_classification import BasicRelationClassifier

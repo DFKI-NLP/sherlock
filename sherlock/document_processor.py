@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 from typing import List
 
 from sherlock import Document

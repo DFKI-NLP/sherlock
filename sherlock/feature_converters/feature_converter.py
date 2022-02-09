@@ -1,13 +1,19 @@
+# -*- coding: utf8 -*-
+"""
+
+@date: 09.02.22
+@author: christoph.alt@posteo.de, gabriel.kressin@dfki.de, leonhard.hennig@dfki.de
+"""
 import json
 import logging
 import os
 from typing import List, Optional, Dict, Union, Iterable
 
-from registrable import Registrable
-from transformers import PreTrainedTokenizer
 from allennlp.data.tokenizers import Tokenizer
 from allennlp.data.tokenizers.token_class import Token
 from allennlp.data.token_indexers import TokenIndexer
+from registrable import Registrable
+from transformers import PreTrainedTokenizer
 
 from sherlock import Document
 from sherlock.feature_converters.input_features import (

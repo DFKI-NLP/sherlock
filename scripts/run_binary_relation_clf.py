@@ -18,10 +18,10 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 import glob
+import json
 import logging
 import os
 import random
-import json
 
 import numpy as np
 import torch

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf8 -*-
 """
 
@@ -10,7 +9,6 @@ import logging
 from typing import Dict, Optional, Any
 
 import torch
-import torch.nn.functional as F
 
 from allennlp.data import Vocabulary
 from allennlp.models import Model
