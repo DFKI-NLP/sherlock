@@ -43,13 +43,14 @@ from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
 from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
 from allennlp.modules import FeedForward
+from allennlp.nn.util import move_to_device
 from allennlp.training.learning_rate_schedulers import LinearWithWarmup
 from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
 from allennlp.training import GradientDescentTrainer
 from allennlp.training.util import evaluate as evaluateAllennlp
 from allennlp.training import Checkpointer
-from sherlock.models.relation_classification import TransformerRelationClassifier
 
+from sherlock.models.relation_classification import TransformerRelationClassifier
 from sherlock.allennlp import SherlockDatasetReader
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
@@ -411,67 +412,60 @@ def _reset_output_dir(args, default_vocab_dir) -> None:
         shutil.rmtree(default_vocab_dir)
 
 
-# def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""):
-#     eval_output_dir = args.output_dir
+def evaluate(
+    args,
+    eval_dataloader,
+    model,
+    filename=None,
+):
+    eval_output_dir = args.output_dir
 
-#     eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
+    # eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
 
-#     if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
-#         os.makedirs(eval_output_dir)
+    if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
+        os.makedirs(eval_output_dir)
 
-#     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-#     # Note that DistributedSampler samples randomly
-#     eval_sampler = (
-#         SequentialSampler(eval_dataset)
-#         if args.local_rank == -1
-#         else DistributedSampler(eval_dataset)
-#     )
-#     eval_dataloader = DataLoader(
-#         eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size
-#     )
+    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
 
-#     # Eval!
-#     logger.info("***** Running evaluation {} *****".format(prefix))
-#     logger.info("  Num examples = %d", len(eval_dataset))
-#     logger.info("  Batch size = %d", args.eval_batch_size)
-#     eval_loss = 0.0
-#     nb_eval_steps = 0
-#     preds = None
-#     out_label_ids = None
-#     for batch in tqdm(eval_dataloader, desc="Evaluating"):
-#         model.eval()
-#         batch = {k: t.to(args.device) for k, t in batch.items()}
-#         if args.model_type not in ["bert", "xlnet"]:
-#             batch["token_type_ids"] = None
+    # Eval!
+    name = filename or ""
+    logger.info("***** Running evaluation {} *****".format(name))
+    eval_loss = 0.0
+    nb_eval_steps = 0
+    preds = []
+    out_label_ids = []
+    for batch in tqdm(eval_dataloader, desc="Evaluating"):
+        model.eval()
 
-#         if args.model_type == "distilbert":
-#             del batch["token_type_ids"]
+        batch = move_to_device(batch, args.device)
 
-#         with torch.no_grad():
-#             outputs = model(**batch)
-#             tmp_eval_loss, logits = outputs[:2]
+        with torch.no_grad():
+            outputs = model(**batch)
+            tmp_eval_loss, logits = outputs["loss"], outputs["logits"]
 
-#             eval_loss += tmp_eval_loss.mean().item()
-#         nb_eval_steps += 1
-#         if preds is None:
-#             preds = logits.detach().cpu().numpy()
-#             out_label_ids = batch["labels"].detach().cpu().numpy()
-#         else:
-#             preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-#             out_label_ids = np.append(out_label_ids, batch["labels"].detach().cpu().numpy(), axis=0)
+            eval_loss += tmp_eval_loss.mean().item()
+        nb_eval_steps += 1
 
-#     eval_loss = eval_loss / nb_eval_steps
-#     preds = np.argmax(preds, axis=1)
-#     result = compute_f1(preds, out_label_ids)
+        preds.append(logits.detach().cpu().numpy())
+        out_label_ids.append(batch["label"].detach().cpu().numpy())
 
-#     output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
-#     with open(output_eval_file, "w") as writer:
-#         logger.info("***** Eval results {} *****".format(prefix))
-#         for key in sorted(result.keys()):
-#             logger.info("  %s = %s", key, str(result[key]))
-#             writer.write("%s = %s\n" % (key, str(result[key])))
+    eval_loss = eval_loss / nb_eval_steps
+    preds = np.concatenate(preds, axis=0)
+    preds = np.argmax(preds, axis=1)
+    out_label_ids = np.concatenate(out_label_ids, axis=0)
+    result = compute_f1(preds, out_label_ids)
 
-#     return result, preds
+    logger.info("***** Eval results {} *****".format(name))
+    for key in sorted(result.keys()):
+        logger.info("  %s = %s", key, str(result[key]))
+
+    if filename is not None:
+        output_eval_file = os.path.join(eval_output_dir, filename)
+        with open(output_eval_file, "w") as writer:
+            for key in sorted(result.keys()):
+                writer.write("%s = %s\n" % (key, str(result[key])))
+
+    return result, preds
 
 
 def main():
@@ -936,15 +930,20 @@ def main():
         output_test_predictions_file = os.path.join(
             args.output_dir, "test_predictions.txt")
 
-        result = evaluateAllennlp(
-            model,
+        result, predictions = evaluate(
+            args,
             test_data_loader,
-            cuda_device=args.device,
-            output_file=output_test_results_file,
-            predictions_output_file=output_test_predictions_file,
+            model,
+            filename=output_test_results_file,
         )
-        # Technically, the predictions are missing in results vs the
-        # transformers version of this code TODO: include argmax preds
+
+        idx_to_label = vocabulary.get_index_to_token_vocabulary("labels")
+
+        predictions = [ idx_to_label[idx] for idx in predictions]
+        with open(output_test_predictions_file, "w") as writer:
+            for prediction in predictions:
+                writer.write(prediction + "\n")
+
         results.update(result)
 
     return results
