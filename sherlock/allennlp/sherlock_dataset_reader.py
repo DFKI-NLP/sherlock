@@ -50,6 +50,8 @@ class SherlockDatasetReader(DatasetReader):
         allennlp TokenIndexer to index Instances.
     max_tokens : ``int``, optional (default=`None`)
         If set to a number, will limit sequences of tokens to maximum length.
+    log_num_input_features : ``int``, optional (default=`None`)
+        Amount of input features to be logged in logger.
     dataset_reader_kwargs : ``Dict[str, any]]``, optional (default=`None`)
         Additional keyword arguments for DatasetReader.
     feature_converter_kwargs : ``Dict[str, any]]``, optional (default=`None`)
@@ -66,12 +68,15 @@ class SherlockDatasetReader(DatasetReader):
         tokenizer: Tokenizer,
         token_indexers: Dict[str, TokenIndexer],
         max_tokens: int=None,
+        log_num_input_features: Optional[int]=None,
         dataset_reader_kwargs: Optional[Dict[str, any]]=None,
         feature_converter_kwargs: Optional[Dict[str, any]]=None,
         **kwargs
     ) -> None:
 
         super().__init__(**kwargs)
+
+        self.log_num_input_features = log_num_input_features or 0
 
         # TODO: make this clean: is it enough to just take the string???
         if task == "binary_rc":
@@ -120,9 +125,12 @@ class SherlockDatasetReader(DatasetReader):
         # Get Document generator
         document_generator = self.dataset_reader.get_documents(file_path)
 
-        for document in document_generator:
+        for idx, document in enumerate(document_generator):
             # TODO: Make return type of document_to_features to iterable
             # (lazy loading -> performance boost)
-            input_features = self.feature_converter.document_to_features(document)
+            verbose = idx < self.log_num_input_features
+            input_features = self.feature_converter.document_to_features(
+                document, verbose
+            )
             for input_feature in input_features:
                 yield input_feature.instance
