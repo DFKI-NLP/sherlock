@@ -209,7 +209,7 @@ class BinaryRcConverter(FeatureConverter):
             # same in the tokenized sequence: thus mark the sequence at the
             # end with two sep tokens. Look if they are still there afterwards.
 
-            if tokens[-1].text != self.sep_token or tokens[-2].text != self.sep_token:
+            if tokens[-2].text != self.sep_token or tokens[-3].text != self.sep_token:
                 continue
 
             tokens = tokens[:-2]
