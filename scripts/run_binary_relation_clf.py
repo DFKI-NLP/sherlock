@@ -21,6 +21,7 @@ import glob
 import logging
 import os
 import random
+import json
 
 import numpy as np
 import torch
@@ -164,7 +165,7 @@ def train(args, dataset_reader, converter, model, tokenizer):
     logger.info("  Total optimization steps = %d", t_total)
 
     global_step = 0
-    tr_loss, logging_loss = 0.0, 0.0
+    tr_loss, logging_loss, logging_loss2 = 0.0, 0.0, 0.0
     model.zero_grad()
     train_iterator = trange(
         int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0]
@@ -174,12 +175,17 @@ def train(args, dataset_reader, converter, model, tokenizer):
         epoch_iterator = tqdm(
             train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0]
         )
+        preds = []
+        out_label_ids = []
         for step, batch in enumerate(epoch_iterator):
             model.train()
             batch = {k: t.to(args.device) for k, t in batch.items()}
 
             outputs = model(**batch)
-            loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
+            loss, logits = outputs[:2]  # model outputs are always tuple in transformers (see doc)
+
+            preds.append(logits.detach().cpu().numpy())
+            out_label_ids.append(batch["labels"].detach().cpu().numpy())
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -214,10 +220,10 @@ def train(args, dataset_reader, converter, model, tokenizer):
                             args, dataset_reader, converter, model, tokenizer, split="dev"
                         )
                         for key, value in results.items():
-                            tb_writer.add_scalar("eval_{}".format(key), value, global_step)
-                    tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
+                            tb_writer.add_scalar("Steps/Eval/{}".format(key), value, global_step)
+                    tb_writer.add_scalar("Steps/lr", scheduler.get_lr()[0], global_step)
                     tb_writer.add_scalar(
-                        "loss", (tr_loss - logging_loss) / args.logging_steps, global_step
+                        "Steps/Train/loss", (tr_loss - logging_loss) / args.logging_steps, global_step
                     )
                     logging_loss = tr_loss
 
@@ -245,6 +251,44 @@ def train(args, dataset_reader, converter, model, tokenizer):
             if args.max_steps > 0 and global_step > args.max_steps:
                 epoch_iterator.close()
                 break
+
+
+        # Evaluate at end of epoch
+        if args.local_rank == -1:
+            # Only evaluate when single GPU otherwise metrics may not average well
+
+            preds = np.concatenate(preds, axis=0)
+            preds = np.argmax(preds, axis=1)
+            out_label_ids = np.concatenate(out_label_ids, axis=0)
+            train_results = compute_f1(preds, out_label_ids)
+            for key, value in train_results.items():
+                tb_writer.add_scalar(f"Epoch/Train/{key}", value, epoch)
+
+            test_results, _ = evaluate(
+                args,
+                dataset_reader,
+                converter,
+                model,
+                tokenizer,
+                split="dev",
+            )
+
+            for key, value in test_results.items():
+                tb_writer.add_scalar(f"Epoch/Eval/{key}", value, epoch)
+
+            # Save results to file
+            log_file_dir = os.path.join(args.output_dir, f"metrics_epoch_{epoch}.json")
+            results = {f"training_{k}": v for k, v in train_results.items()}
+            results.update({f"validation_{k}": v for k, v in test_results.items()})
+            with open(log_file_dir, "w", encoding="utf-8") as result_out:
+                json.dump(results, result_out, indent=4)
+
+        # tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
+        tb_writer.add_scalar(
+            "Train/Epoch/loss", (tr_loss - logging_loss2) / len(train_dataloader), epoch
+        )
+        logging_loss2 = tr_loss
+
         if args.max_steps > 0 and global_step > args.max_steps:
             train_iterator.close()
             break
@@ -255,7 +299,8 @@ def train(args, dataset_reader, converter, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""):
+def evaluate(
+    args, dataset_reader, converter, model, tokenizer, split, filename=None):
     eval_output_dir = args.output_dir
 
     eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
@@ -275,13 +320,14 @@ def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""
     )
 
     # Eval!
-    logger.info("***** Running evaluation {} *****".format(prefix))
+    name = filename or ""
+    logger.info(f"***** Running evaluation {name} *****")
     logger.info("  Num examples = %d", len(eval_dataset))
     logger.info("  Batch size = %d", args.eval_batch_size)
     eval_loss = 0.0
     nb_eval_steps = 0
-    preds = None
-    out_label_ids = None
+    preds = []
+    out_label_ids = []
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         model.eval()
         batch = {k: t.to(args.device) for k, t in batch.items()}
@@ -297,23 +343,22 @@ def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""
 
             eval_loss += tmp_eval_loss.mean().item()
         nb_eval_steps += 1
-        if preds is None:
-            preds = logits.detach().cpu().numpy()
-            out_label_ids = batch["labels"].detach().cpu().numpy()
-        else:
-            preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-            out_label_ids = np.append(out_label_ids, batch["labels"].detach().cpu().numpy(), axis=0)
+        preds.append(logits.detach().cpu().numpy())
+        out_label_ids.append(batch["labels"].detach().cpu().numpy())
 
     eval_loss = eval_loss / nb_eval_steps
+    preds = np.concatenate(preds, axis=0)
     preds = np.argmax(preds, axis=1)
+    out_label_ids = np.concatenate(out_label_ids, axis=0)
     result = compute_f1(preds, out_label_ids)
 
-    output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
-    with open(output_eval_file, "w") as writer:
-        logger.info("***** Eval results {} *****".format(prefix))
-        for key in sorted(result.keys()):
-            logger.info("  %s = %s", key, str(result[key]))
-            writer.write("%s = %s\n" % (key, str(result[key])))
+    if filename is not None:
+        output_eval_file = os.path.join(eval_output_dir, filename)
+        with open(output_eval_file, "w") as writer:
+            logger.info(f"***** Eval results {name} *****")
+            for key in sorted(result.keys()):
+                logger.info("  %s = %s", key, str(result[key]))
+                writer.write("%s = %s\n" % (key, str(result[key])))
 
     return result, preds
 
