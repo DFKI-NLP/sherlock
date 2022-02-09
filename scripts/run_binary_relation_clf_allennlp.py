@@ -246,6 +246,7 @@ def _build_transformers_model(
         max_length=args.max_seq_length,
         ignore_label=args.negative_label,
         weights=weights,
+        f1_average="micro",
         **kwargs,
     )
 
