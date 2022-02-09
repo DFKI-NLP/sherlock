@@ -191,9 +191,6 @@ class BinaryRcConverter(FeatureConverter):
 
         mention_combinations = self._create_mention_combinations(document)
 
-        if verbose:
-            logger.warning("Logging function for Allennlp FeatureConverter not implemented yet")
-
         input_features = []
         for head_idx, tail_idx, label, sent_id in mention_combinations:
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
