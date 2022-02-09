@@ -200,7 +200,9 @@ class BinaryRcConverter(FeatureConverter):
             if tokens[-1].text != self.sep_token or tokens[-2].text != self.sep_token:
                 continue
 
-            text_tokens_field = TextField(tokens[:-2],
+            tokens = tokens[:-2]
+
+            text_tokens_field = TextField(tokens,
                                           self.token_indexers)
 
             fields = {"text": text_tokens_field}

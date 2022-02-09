@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Union, Iterable
 from registrable import Registrable
 from transformers import PreTrainedTokenizer
 from allennlp.data.tokenizers import Tokenizer
+from allennlp.data.tokenizers.token_class import Token
 from allennlp.data.token_indexers import TokenIndexer
 
 from sherlock import Document
@@ -209,17 +210,23 @@ class FeatureConverter(Registrable):
 
     @staticmethod
     def _log_input_features_allennlp(
-            tokens: List[str],
+            tokens: List[Token],
             document: Document,
             features: InputFeatures,
             labels: Optional[Union[str, List[str]]] = None,
     ) -> None:
+        # Examples are unpadded and not "officially" tokenized by allennlp yet
         logger.info("*** Example ***")
-        logger.info("guid: %s", document.guid)
-        logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
-        logger.info("input_tokens: %s", " ".join([x.text for x in features.instance["text"].tokens]))
+        logger.info(f"guid: {document.guid}", )
+        logger.info(f"tokens: {' '.join([x.text for x in tokens])}")
+        if len(tokens) > 0:
+            if tokens[0].text_id is not None:
+                logger.info(f"token_ids: {' '.join([str(x.text_id) for x in tokens])}")
+            if tokens[0].type_id is not None:
+                logger.info(f"token_type_ids: {' '.join([str(x.type_id) for x in tokens])}")
         if labels:
-            logger.info("labels: %s (ids = %s)", labels, features.labels)
+            logger.info(f"labels: {labels}")
+        logger.info(features.instance)
 
     def _log_input_features(
         self,
