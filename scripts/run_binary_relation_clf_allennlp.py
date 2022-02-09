@@ -287,6 +287,7 @@ def _build_basic_model(
         feedforward,
         ignore_label=args.negative_label,
         weights=weights,
+        f1_average="micro",
         **kwargs,
     )
 
