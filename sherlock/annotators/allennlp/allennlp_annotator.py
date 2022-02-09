@@ -19,6 +19,7 @@ from allennlp.data import Vocabulary
 from allennlp.models.model import Model
 from allennlp.models.archival import load_archive
 from allennlp.common.file_utils import cached_path
+from allennlp.nn.util import move_to_device
 
 from sherlock import Document
 from sherlock.dataset import InstancesDataset
@@ -111,12 +112,10 @@ class AllenNLPAnnotator(Annotator):
         annot_list = []
         label_ids_list = []
         for batch in eval_dataloader:
-            # Device handling:
-            # This does not work, would need a function that checks if
-            # something is a tensor and depending on that moves it around
-            # if even needed
-            # batch = {k: t.to(self.device) for k, t in batch.items()}
             self.model.eval()
+
+            batch = move_to_device(batch)
+
             with torch.no_grad():
                 outputs = self.model(**batch)
 
