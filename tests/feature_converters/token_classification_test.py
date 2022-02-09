@@ -151,7 +151,6 @@ def test_save_and_load(tmpdir):
         tokenizer=tokenizer,
         labels=reader.get_labels(IETask.NER, file_path=TRAIN_FILE),
         max_length=1,
-        pad_token_segment_id=2,
         pad_token_label_id=3,
         log_num_input_features=4,
     )
@@ -160,7 +159,6 @@ def test_save_and_load(tmpdir):
     loaded_converter = TokenClassificationConverter.from_pretrained(
         path=tmpdir, tokenizer=tokenizer)
     assert loaded_converter.max_length == converter.max_length
-    assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
     assert loaded_converter.pad_token_label_id == converter.pad_token_label_id
     assert loaded_converter.label_to_id_map == converter.label_to_id_map
     assert loaded_converter.id_to_label_map == converter.id_to_label_map

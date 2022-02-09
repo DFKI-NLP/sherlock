@@ -665,7 +665,6 @@ def main():
         labels=labels,
         max_length=args.max_seq_length,
         pad_token_label_id=CrossEntropyLoss().ignore_index,
-        pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
         log_num_input_features=20,
         tokenizer=tokenizer,
     )

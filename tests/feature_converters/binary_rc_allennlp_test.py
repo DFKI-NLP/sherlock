@@ -443,7 +443,6 @@ def test_save_and_load(tmpdir):
         framework="allennlp",
         tokenizer=tokenizer,
         token_indexers={"tokens": token_indexer},
-        pad_token_segment_id=2,
         log_num_input_features=3,
         entity_handling="mask_entity_append_text",
     )
@@ -452,7 +451,6 @@ def test_save_and_load(tmpdir):
     loaded_converter = BinaryRcConverter.from_pretrained(
         tmpdir, tokenizer=tokenizer, token_indexers={"tokens": token_indexer})
     assert loaded_converter.max_length == converter.max_length
-    assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
     assert loaded_converter.entity_handling == converter.entity_handling
     assert loaded_converter.label_to_id_map == converter.label_to_id_map
     assert loaded_converter.id_to_label_map == converter.id_to_label_map

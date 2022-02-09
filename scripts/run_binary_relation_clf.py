@@ -729,7 +729,6 @@ def main():
         max_length=args.max_seq_length,
         tokenizer=tokenizer,
         entity_handling=args.entity_handling,
-        pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
         log_num_input_features=3,
     )
 

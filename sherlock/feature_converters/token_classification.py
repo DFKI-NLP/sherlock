@@ -53,13 +53,11 @@ class TokenClassificationConverter(FeatureConverter):
         labels: List[str],
         max_length: int=512,
         framework: str="transformers",
-        pad_token_segment_id: int=0,
         pad_token_label_id: int=CrossEntropyLoss().ignore_index,
         log_num_input_features: int=-1,
         **kwargs,
     ) -> None:
         super().__init__(labels, max_length, framework, **kwargs)
-        self.pad_token_segment_id = pad_token_segment_id
         self.pad_token_label_id = pad_token_label_id
         self.log_num_input_features = log_num_input_features
 
@@ -71,7 +69,7 @@ class TokenClassificationConverter(FeatureConverter):
 
     @property
     def persist_attributes(self) -> List[str]:
-        return ["max_length", "pad_token_segment_id", "pad_token_label_id"]
+        return ["max_length", "pad_token_label_id"]
 
 
     def document_to_features_transformers(

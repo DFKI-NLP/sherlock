@@ -39,7 +39,6 @@ class BinaryRcConverter(FeatureConverter):
     entity_handling : ``str``, optional (default=`mark_entity`)
         Strategy to specifically mark entities in sentences. Has to be between
         `"mark_entity", "mark_entity_append_ner", "mask_entity", "mask_entity_append_text"`.
-    pad_token_segment_id    # TODO: probably move into `transformers` kwargs
         unclear what this does.
     log_num_input_features : ``int``, optional (default=`-1`)
         Amount of example Instances which are logged.
@@ -65,7 +64,6 @@ class BinaryRcConverter(FeatureConverter):
         max_length: int = 512,
         framework: str = "transformers",
         entity_handling: str = "mark_entity",
-        pad_token_segment_id: int = 0,      # TODO: Remove? Never used.
         log_num_input_features: int = -1,
         **kwargs,
     ) -> None:
@@ -79,7 +77,6 @@ class BinaryRcConverter(FeatureConverter):
             raise ValueError("Unknown entity handling '%s'." % entity_handling)
 
         self.entity_handling = entity_handling
-        self.pad_token_segment_id = pad_token_segment_id
         self.log_num_input_features = log_num_input_features
 
         if framework == "transformers":
@@ -135,9 +132,9 @@ class BinaryRcConverter(FeatureConverter):
     @property
     def persist_attributes(self) -> List[str]:
         if self.framework == "transformers":
-            return ["max_length", "entity_handling", "pad_token_segment_id", "sep_token"]
+            return ["max_length", "entity_handling", "sep_token"]
         elif self.framework == "allennlp":
-            return ["max_length", "entity_handling", "pad_token_segment_id", "sep_token"]
+            return ["max_length", "entity_handling", "sep_token"]
 
     def document_to_features_transformers(
         self, document: Document, verbose: bool = False
