@@ -804,11 +804,12 @@ def main():
         for checkpoint in checkpoints:
             global_step = checkpoint.split("-")[-1] if len(checkpoints) > 1 else ""
             prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
+            filename = f"{prefix}_eval_result.txt"
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
             result, _ = evaluate(
-                args, dataset_reader, converter, model, tokenizer, split="dev", prefix=prefix
+                args, dataset_reader, converter, model, tokenizer, split="dev", filename=filename
             )
             result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
             results.update(result)
@@ -820,7 +821,7 @@ def main():
         model = model_class.from_pretrained(args.output_dir)
         model.to(args.device)
         result, predictions = evaluate(
-            args, dataset_reader, converter, model, tokenizer, split="test"
+            args, dataset_reader, converter, model, tokenizer, split="test", filename=None
         )
         predictions = [converter.id_to_label_map[i] for i in predictions]
 
