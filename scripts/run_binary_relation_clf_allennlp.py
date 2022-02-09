@@ -49,11 +49,11 @@ from allennlp.training.util import evaluate as evaluateAllennlp
 from allennlp.training import Checkpointer
 
 from sherlock.allennlp import SherlockDatasetReader
+from sherlock.allennlp.models.relation_classification import BasicRelationClassifier
+from sherlock.allennlp.models.relation_classification import TransformerRelationClassifier
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.models.relation_classification import TransformerRelationClassifier
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
-from sherlock.models.relation_classification import BasicRelationClassifier
 
 
 try:

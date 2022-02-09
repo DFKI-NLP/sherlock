@@ -17,8 +17,6 @@ from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import PretrainedTransformerEmbedder
 from allennlp.training.metrics import CategoricalAccuracy, FBetaMeasure
 
-from transformers import BertForSequenceClassification, BertConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -83,32 +81,26 @@ class TransformerRelationClassifier(Model):
     ) -> None:
         super().__init__(vocab, **kwargs)
 
-        # self.embedder = BasicTextFieldEmbedder(
-        #     {"tokens": PretrainedTransformerEmbedder(
-        #         model_name=model_name,
-        #         max_length=max_length,
-        #         override_weights_file=override_weights_file,
-        #         tokenizer_kwargs=tokenizer_kwargs,
-        #     )}
-        # )
+        self.embedder = BasicTextFieldEmbedder(
+            {"tokens": PretrainedTransformerEmbedder(
+                model_name=model_name,
+                max_length=max_length,
+                override_weights_file=override_weights_file,
+                tokenizer_kwargs=tokenizer_kwargs,
+            )}
+        )
 
-        # self.pooler = BertPooler(
-        #     pretrained_model=model_name,
-        #     dropout=pooler_dropout,
-        # )
-
+        self.pooler = BertPooler(
+            pretrained_model=model_name,
+            dropout=pooler_dropout,
+        )
 
         self.label_tokens = vocab.get_index_to_token_vocabulary(label_namespace)
         if num_labels is None:
             num_labels = len(self.label_tokens)
-        # self.fc_out = torch.nn.Linear(self.pooler.get_output_dim(), num_labels)
-        # self.fc_out.weight.data.normal_(mean=0.0, std=0.02)
-        # self.fc_out.bias.data.zero_()
-        config = BertConfig.from_pretrained(model_name, num_labels=num_labels)
-        self.model = BertForSequenceClassification.from_pretrained(
-            model_name, config=config
-        )
-        self.model.resize_token_embeddings(len(tokenizer_kwargs["tokenizer"].tokenizer))
+        self.fc_out = torch.nn.Linear(self.pooler.get_output_dim(), num_labels)
+        self.fc_out.weight.data.normal_(mean=0.0, std=0.02)
+        self.fc_out.bias.data.zero_()
 
         self.loss = torch.nn.CrossEntropyLoss(weights)
         self.acc = CategoricalAccuracy()
@@ -146,37 +138,18 @@ class TransformerRelationClassifier(Model):
             The logits for every possible answer choice
         """
 
-        unpacked = text["tokens"]
-        # embedded = self.embedder(text)
+        embedded = self.embedder(text)
 
-        # pooled = self.pooler(embedded)
+        pooled = self.pooler(embedded)
 
-        # logits = self.fc_out(pooled)
+        logits = self.fc_out(pooled)
 
-        # result = {"logits": logits}
-
-        # if label is not None:
-        #     result["loss"] = self.loss(logits, label)
-        #     self.acc(logits.detach(), label)
-        #     self.f1(logits.detach().cpu(), label.cpu())
-
-        # return result
-
-        inputs_ = {
-            "input_ids": unpacked["token_ids"],
-            "attention_mask": unpacked["mask"],
-            "token_type_ids": unpacked["type_ids"],
-            "labels": label,
-        }
-
-        output = self.model(**inputs_)
-
-        result = {"logits": output[1]}
+        result = {"logits": logits}
 
         if label is not None:
-            result["loss"] = output[0]
-            self.acc(output[1].detach(), label)
-            self.f1(output[1].detach().cpu(), label.cpu())
+            result["loss"] = self.loss(logits, label)
+            self.acc(logits.detach(), label)
+            self.f1(logits.detach().cpu(), label.cpu())
 
         return result
 
