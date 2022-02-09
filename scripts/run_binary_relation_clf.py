@@ -730,7 +730,7 @@ def main():
         tokenizer=tokenizer,
         entity_handling=args.entity_handling,
         pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
-        log_num_input_features=20,
+        log_num_input_features=3,
     )
 
     # TODO: Issue #41
