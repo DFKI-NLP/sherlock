@@ -619,6 +619,10 @@ def main():
     )
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
+    parser.add_argument(
+        "--max_instances", type=int, default=-1,
+        help="Only use this number of first instances in dataset (e.g. for debugging)."
+    )
     args = parser.parse_args()
 
     if (
@@ -694,6 +698,7 @@ def main():
     dataset_reader = TacredDatasetReader(
         add_inverse_relations=args.add_inverse_relations,
         negative_label_re=args.negative_label,
+        max_instances=args.max_instances if args.max_instances != -1 else None
     )
     train_path = os.path.join(args.data_dir, "train.json")
     labels = dataset_reader.get_labels(IETask.BINARY_RC, train_path)

@@ -57,6 +57,7 @@ class TacredDatasetReader(DatasetReader):
         convert_ptb_tokens: bool=True,
         tagging_scheme: str="bio",
         add_inverse_relations: bool=False,
+        max_instances: Optional[int]=None,
         **kwargs,
     ) -> None:
         # for backward compability handle data_dir and train_file args
@@ -84,6 +85,7 @@ class TacredDatasetReader(DatasetReader):
         self.convert_ptb_tokens = convert_ptb_tokens
         self.tagging_scheme = tagging_scheme.lower()
         self.add_inverse_relations = add_inverse_relations
+        self.max_instances = max_instances
 
 
     def get_documents(
@@ -146,7 +148,7 @@ class TacredDatasetReader(DatasetReader):
                 additional_tokens.add(head_type)
                 additional_tokens.add(tail_type)
 
-        return list(additional_tokens)
+        return sorted(list(additional_tokens))
 
 
     def get_available_splits(self) -> List[str]:
@@ -246,6 +248,7 @@ class TacredDatasetReader(DatasetReader):
 
 
     def _documents_generator(self, dataset: List[Dict[str, Any]]) -> Iterable[Document]:
+        read_instances = 0
         for example in dataset:
             document = self._example_to_document(example)
             if document is None:
@@ -253,6 +256,12 @@ class TacredDatasetReader(DatasetReader):
                 continue
 
             yield document
+            read_instances += 1
+            if (
+                self.max_instances is not None
+                and read_instances >= self.max_instances
+            ):
+                break
 
 
     def _labels_generator(self, task: IETask, file_path: str=None) -> Iterable[str]:
