@@ -114,7 +114,7 @@ class FeatureConverter(Registrable):
     ) -> List[List[InputFeatures]]:
         input_features = []
         for document in documents:
-            input_features.extend(self.document_to_features(document), verbose)
+            input_features.extend(self.document_to_features(document, verbose))
         return input_features
 
     @staticmethod
