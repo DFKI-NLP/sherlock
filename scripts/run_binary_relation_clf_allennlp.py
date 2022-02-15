@@ -416,8 +416,6 @@ def evaluate(
 ):
     eval_output_dir = args.output_dir
 
-    # eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
-
     if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
         os.makedirs(eval_output_dir)
 
@@ -704,33 +702,6 @@ def main():
     # Set seed
     set_seed(args)
 
-    # if args.local_rank not in [-1, 0]:
-    #     # Make sure only the first process in distributed training will download model & vocab
-    #     torch.distributed.barrier()
-
-    # args.model_type = args.model_type.lower()
-    # config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    # config = config_class.from_pretrained(
-    #     args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels
-    # )
-    # tokenizer = tokenizer_class.from_pretrained(
-    #     args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
-    #     do_lower_case=args.do_lower_case,
-    # )
-    # model = model_class.from_pretrained(
-    #     args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
-    # )
-
-
-    # additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
-    # if additional_tokens:
-    #     tokenizer.add_tokens(additional_tokens)
-    #     model.resize_token_embeddings(len(tokenizer))
-
-    # if args.local_rank == 0:
-    #     # Make sure only the first process in distributed training will download model & vocab
-    #     torch.distributed.barrier()
-
     # dataset reader
     logger.info("Loading DatasetReader.")
     tokenizer_kwargs = {"do_lower_case": args.do_lower_case}
@@ -764,9 +735,10 @@ def main():
             args, dataset_reader, "train", return_dataset=True)
         valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
 
-        # debug
-        tokenizer_kwargs["tokenizer"] = dataset_reader.feature_converter.tokenizer
+
         # load vocabulary
+        # This technically is useless. As transformer models use a different
+        # vocabulary namespace anyways.
         if args.vocab_dir:
             # If given, use a custom vocabulary
             logger.info(f"Loading Vocabulary from {args.vocab_dir}")
@@ -817,7 +789,6 @@ def main():
         else:
             weights=None
 
-
         # Init Model
         # can only build model here, because vocabulary is needed, and the
         # vocabulary is loaded in only after choosing what to do (train/eval)
@@ -826,16 +797,12 @@ def main():
 
         train(args, train_data_loader, valid_data_loader, model)
 
-    # # Saving best-practices: if you use defaults names for the model,
-    # # you can reload it using from_pretrained()
-    # if (
-    #     args.do_train
-    #     and (args.local_rank == -1 or torch.distributed.get_rank() == 0)
-    #     and not args.tpu
-    # ):
-    #     # Create output directory if needed
-    #     if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
-    #         os.makedirs(args.output_dir)
+        # Saving best-practices: if you use defaults names for the model,
+        # you can reload it using from_pretrained()
+
+        # Create output directory if needed
+        if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
+            os.makedirs(args.output_dir)
 
         # Save vocabulary if not given
         if not args.vocab_dir:
