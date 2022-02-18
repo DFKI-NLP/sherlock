@@ -21,7 +21,7 @@ from allennlp.training.metrics import CategoricalAccuracy, FBetaMeasure
 logger = logging.getLogger(__name__)
 
 
-@Model.register("transformer_relation_classificatier")
+@Model.register("transformer_relation_classifier")
 class TransformerRelationClassifier(Model):
     """
     This ``Model`` performs relation classification on a given input.

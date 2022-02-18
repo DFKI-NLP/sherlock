@@ -326,6 +326,7 @@ def _build_transformers_dataset_reader(
     token_indexer = PretrainedTransformerIndexer(
         args.model_name_or_path,
         max_length=args.max_seq_length,
+        tokenizer_kwargs=tokenizer_kwargs,
     )
     token_indexers = {"tokens": token_indexer}
 
