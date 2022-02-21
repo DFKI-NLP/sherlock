@@ -17,7 +17,6 @@ function (
     cuda_device = -1,
     max_instances = null,
 ) {
-    local task = "binary_rc",
     local tokenizer_kwargs = {
         "do_lower_case": do_lower_case,
         "additional_special_tokens": if do_lower_case then [
@@ -34,7 +33,7 @@ function (
     "dataset_reader": {
         "type": "sherlock",
         "dataset_reader_name": "tacred",
-        "task": task,
+        "task": "binary_rc",
         "feature_converter_name": "binary_rc",
         "tokenizer": {
             "type": "pretrained_transformer",
@@ -60,8 +59,10 @@ function (
         },
         "max_instances": max_instances,
     },
+
     "train_data_path": train_data_path,
     "validation_data_path": validation_data_path,
+
     "model": {
         "type": "transformer_relation_classifier",
         "model_name": model_name,
