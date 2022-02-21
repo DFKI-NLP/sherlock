@@ -196,7 +196,7 @@ class BinaryRcConverter(FeatureConverter):
             input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
 
             # Append 2 sep_tokens
-            input_string = input_string + f" {self.sep_token} {self.sep_token}"
+            # input_string = input_string + f" {self.sep_token} {self.sep_token}"
 
             tokens = self.tokenizer.tokenize(input_string)
 
@@ -206,8 +206,9 @@ class BinaryRcConverter(FeatureConverter):
             # same in the tokenized sequence: thus mark the sequence at the
             # end with two sep tokens. Look if they are still there afterwards.
 
-            if tokens[-2].text != self.sep_token or tokens[-3].text != self.sep_token:
-                continue
+            # TODO: find a better way
+            # if tokens[-2].text != self.sep_token or tokens[-3].text != self.sep_token:
+            #     continue
 
             tokens = tokens[:-2]
 
