@@ -20,10 +20,9 @@ from allennlp.modules import FeedForward, Seq2VecEncoder, TextFieldEmbedder
 from allennlp.models.model import Model
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
 from allennlp.nn import util
-from allennlp.training.metrics import CategoricalAccuracy, Metric
+from allennlp.training.metrics import CategoricalAccuracy, FBetaMeasure
 
 
-# TODO: THIS IS TEMPORARY.
 # from: https://github.com/DFKI-NLP/RelEx/blob/master/relex/modules/nn.py
 class WordDropout(torch.nn.Module):
     """
@@ -47,169 +46,6 @@ class WordDropout(torch.nn.Module):
         dropout_mask = dropout_mask * mask
         dropout_mask = dropout_mask.expand_as(inputs)
         return inputs.masked_fill_(dropout_mask.byte(), self.fill_idx)
-
-
-# TODO: THIS IS TEMPORARY.
-# from: https://github.com/DFKI-NLP/RelEx/blob/master/relex/metrics/f1_measure.py
-class F1Measure(Metric):
-    """
-    Computes Precision, Recall and F1 with respect to a given ``positive_label``.
-    For example, for a BIO tagging scheme, you would pass the classification index of
-    the tag you are interested in, resulting in the Precision, Recall and F1 score being
-    calculated for this tag only.
-    """
-
-    def __init__(self,
-                 vocabulary: Vocabulary,
-                 average: str = "macro",
-                 label_namespace: str = "labels",
-                 ignore_label: str = None) -> None:
-        self._label_vocabulary = vocabulary.get_index_to_token_vocabulary(label_namespace)
-        self._average = average
-        self._ignore_label = ignore_label
-        self._true_positives: Dict[str, int] = defaultdict(int)
-        self._true_negatives: Dict[str, int] = defaultdict(int)
-        self._false_positives: Dict[str, int] = defaultdict(int)
-        self._false_negatives: Dict[str, int] = defaultdict(int)
-
-    def __call__(self,
-                 predictions: torch.Tensor,
-                 gold_labels: torch.Tensor,
-                 mask: Optional[torch.Tensor] = None):
-        """
-        Parameters
-        ----------
-        predictions : ``torch.Tensor``, required.
-            A tensor of predictions of shape (batch_size, ..., num_classes).
-        gold_labels : ``torch.Tensor``, required.
-            A tensor of integer class label of shape (batch_size, ...). It must be the same
-            shape as the ``predictions`` tensor without the ``num_classes`` dimension.
-        mask: ``torch.Tensor``, optional (default = None).
-            A masking tensor the same size as ``gold_labels``.
-        """
-        # TODO: debug
-        # predictions, gold_labels, mask = self.unwrap_to_tensors(predictions,
-        #                                                         gold_labels,
-        #                                                         mask)
-
-        num_classes = predictions.size(-1)
-        if (gold_labels >= num_classes).any():
-            msg = ("A gold label passed to F1Measure contains an "
-                   "id >= {}, the number of classes.".format(num_classes))
-            raise ConfigurationError(msg)
-
-        if mask is None:
-            mask = torch.ones_like(gold_labels)
-        mask = mask.float()
-        gold_labels = gold_labels.float()
-
-        argmax_predictions = predictions.max(-1)[1].float().squeeze(-1)
-
-        for label_index, label_token in self._label_vocabulary.items():
-
-            positive_label_mask = gold_labels.eq(label_index).float()
-            negative_label_mask = 1.0 - positive_label_mask
-
-            # True Negatives: correct non-positive predictions.
-            correct_null_predictions = (argmax_predictions != label_index).float() * negative_label_mask
-            self._true_negatives[label_token] += (correct_null_predictions.float() * mask).sum()
-
-            # True Positives: correct positively labeled predictions.
-            correct_non_null_predictions = (argmax_predictions == label_index).float() * positive_label_mask
-            self._true_positives[label_token] += (correct_non_null_predictions * mask).sum()
-
-            # False Negatives: incorrect negatively labeled predictions.
-            incorrect_null_predictions = (argmax_predictions != label_index).float() * positive_label_mask
-            self._false_negatives[label_token] += (incorrect_null_predictions * mask).sum()
-
-            # False Positives: incorrect positively labeled predictions
-            incorrect_non_null_predictions = (argmax_predictions == label_index).float() * negative_label_mask
-            self._false_positives[label_token] += (incorrect_non_null_predictions * mask).sum()
-
-    def get_metric(self, reset: bool = False):
-        """
-        Returns
-        -------
-        A tuple of the following metrics based on the accumulated count statistics:
-        precision : float
-        recall : float
-        f1-measure : float
-        """
-        all_tags: Set[str] = set()
-        all_tags.update(self._true_positives.keys())
-        all_tags.update(self._false_positives.keys())
-        all_tags.update(self._false_negatives.keys())
-        all_metrics = {}
-
-        for tag in all_tags:
-            precision, recall, f1_measure = self._compute_metrics(
-                    self._true_positives[tag],
-                    self._false_positives[tag],
-                    self._false_negatives[tag],
-            )
-            precision_key = "precision" + "-" + tag
-            recall_key = "recall" + "-" + tag
-            f1_key = "f1-measure" + "-" + tag
-            all_metrics[precision_key] = precision
-            all_metrics[recall_key] = recall
-            all_metrics[f1_key] = f1_measure
-
-        if self._average == "micro":
-            if self._ignore_label is not None:
-                precision, recall, f1_measure = self._compute_metrics(
-                        sum([val for l, val in self._true_positives.items()
-                             if l != self._ignore_label]),
-                        sum([val for l, val in self._false_positives.items()
-                             if l != self._ignore_label]),
-                        sum([val for l, val in self._false_negatives.items()
-                             if l != self._ignore_label]))
-            else:
-                precision, recall, f1_measure = self._compute_metrics(
-                        sum(self._true_positives.values()),
-                        sum(self._false_positives.values()),
-                        sum(self._false_negatives.values()),
-                )
-        elif self._average == "macro":
-            precision = 0.0
-            recall = 0.0
-            n_precision = 0
-            n_recall = 0
-
-            for tag in all_tags:
-                precision_key = "precision" + "-" + tag
-                recall_key = "recall" + "-" + tag
-                precision += all_metrics[precision_key]
-                recall += all_metrics[recall_key]
-                n_precision += 1
-                n_recall += 1
-
-            if n_precision:
-                precision /= n_precision
-            if n_recall:
-                recall /= n_recall
-            f1_measure = 2.0 * ((precision * recall) / (precision + recall + 1e-13))
-
-        all_metrics["precision-overall"] = precision
-        all_metrics["recall-overall"] = recall
-        all_metrics["f1-measure-overall"] = f1_measure
-        if reset:
-            self.reset()
-        return all_metrics
-
-    @staticmethod
-    def _compute_metrics(true_positives: int,
-                         false_positives: int,
-                         false_negatives: int) -> Tuple[float, float, float]:
-        precision = float(true_positives) / float(true_positives + false_positives + 1e-13)
-        recall = float(true_positives) / float(true_positives + false_negatives + 1e-13)
-        f1_measure = 2.0 * ((precision * recall) / (precision + recall + 1e-13))
-        return precision, recall, f1_measure
-
-    def reset(self):
-        self._true_positives = defaultdict(int)
-        self._true_negatives = defaultdict(int)
-        self._false_positives = defaultdict(int)
-        self._false_negatives = defaultdict(int)
 
 
 @Model.register("basic_relation_classifier")
@@ -259,31 +95,35 @@ class BasicRelationClassifier(Model):
         If true, head and tail spans are passed to the text encoder.
     weights: ``torch.Tensor``, optional (default = None)
         Weights for class labels. Useful for unbalanced training sets.
+    label_namespace : ``str``, optional (default=``"labels"``)
+        Gives Namespace for labels within vocabulary.
     """
 
-    def __init__(self,
-                 vocab: Vocabulary,
-                 text_field_embedder: TextFieldEmbedder,
-                 text_encoder: Seq2VecEncoder,
-                 classifier_feedforward: FeedForward,
-                 word_dropout: float = 0.,
-                 embedding_dropout: float = 0.,
-                 encoding_dropout: float = 0.,
-                #  offset_embedder_head: Optional[OffsetEmbedder] = None,
-                #  offset_embedder_tail: Optional[OffsetEmbedder] = None,
-                 initializer: InitializerApplicator = InitializerApplicator(),
-                 regularizer: Optional[RegularizerApplicator] = None,
-                 verbose_metrics: bool = False,
-                 ignore_label: str = None,
-                 f1_average: str = "macro",
-                 use_adjacency: bool = False,
-                 use_entity_offsets: bool = False,
-                 weights: torch.Tensor = None,
+    def __init__(
+        self,
+        vocab: Vocabulary,
+        text_field_embedder: TextFieldEmbedder,
+        text_encoder: Seq2VecEncoder,
+        classifier_feedforward: FeedForward,
+        word_dropout: float = 0.,
+        embedding_dropout: float = 0.,
+        encoding_dropout: float = 0.,
+        #  offset_embedder_head: Optional[OffsetEmbedder] = None,
+        #  offset_embedder_tail: Optional[OffsetEmbedder] = None,
+        initializer: InitializerApplicator = InitializerApplicator(),
+        regularizer: Optional[RegularizerApplicator] = None,
+        verbose_metrics: bool = False,
+        ignore_label: str = None,
+        f1_average: str = "macro",
+        use_adjacency: bool = False,
+        use_entity_offsets: bool = False,
+        weights: torch.Tensor = None,
+        label_namespace: str = "labels",
     ) -> None:
         super(BasicRelationClassifier, self).__init__(vocab, regularizer)
 
         self.text_field_embedder = text_field_embedder
-        self.num_classes = self.vocab.get_vocab_size("labels")
+        self.num_classes = self.vocab.get_vocab_size(label_namespace)
         self.text_encoder = text_encoder
 
         self.word_dropout = (
@@ -339,22 +179,31 @@ class BasicRelationClassifier(Model):
         #                                    self.num_classes))
 
         self.metrics = {"accuracy": CategoricalAccuracy()}
-        self._f1_measure = F1Measure(vocabulary=self.vocab,
-                                     average=f1_average,
-                                     ignore_label=ignore_label)
+        self.f1_average = f1_average
+        self.label_tokens = vocab.get_index_to_token_vocabulary(label_namespace)
+        self.f1 = FBetaMeasure(
+            average=f1_average,
+            labels=[
+                label_id
+                for label_id, label in self.label_tokens.items()
+                if label != ignore_label
+            ],
+        )
 
         self.loss = torch.nn.CrossEntropyLoss(weights)
 
         initializer(self)
 
     @overrides
-    def forward(self,  # type: ignore
-                text: Dict[str, torch.LongTensor],
-                # head: torch.LongTensor,
-                # tail: torch.LongTensor,
-                adjacency: torch.LongTensor = None,
-                metadata: Optional[List[Dict[str, Any]]] = None,
-                label: Optional[torch.LongTensor] = None) -> Dict[str, torch.Tensor]:
+    def forward(
+        self,  # type: ignore
+        text: Dict[str, torch.LongTensor],
+        # head: torch.LongTensor,
+        # tail: torch.LongTensor,
+        adjacency: torch.LongTensor = None,
+        metadata: Optional[List[Dict[str, Any]]] = None,
+        label: Optional[torch.LongTensor] = None
+    ) -> Dict[str, torch.Tensor]:
         # pylint: disable=arguments-differ,unused-argument
         """
         Parameters
@@ -379,7 +228,7 @@ class BasicRelationClassifier(Model):
 
         # TODO: make this generic
         if "tokens" in text:
-            text["tokens"] = self.word_dropout(text["tokens"], text_mask)  # type: ignore
+            text["tokens"]["tokens"] = self.word_dropout(text["tokens"]["tokens"], text_mask)  # type: ignore
 
         embedded_text = self.text_field_embedder(text)
 
@@ -421,7 +270,7 @@ class BasicRelationClassifier(Model):
             loss = self.loss(logits, label)
             for metric in self.metrics.values():
                 metric(logits, label)
-            self._f1_measure(logits, label)
+            self.f1(logits.detach().cpu(), label.cpu())
             output_dict["loss"] = loss
 
         return output_dict
@@ -447,11 +296,11 @@ class BasicRelationClassifier(Model):
         metrics_to_return = {metric_name: metric.get_metric(reset)
                              for metric_name, metric in self.metrics.items()}
 
-        f1_dict = self._f1_measure.get_metric(reset=reset)
+        f1_dict = self.f1.get_metric(reset=reset)
         if self._verbose_metrics:
             metrics_to_return.update(f1_dict)
         else:
             metrics_to_return.update({x: y for x, y in f1_dict.items()
-                                      if "overall" in x})
+                                      if "fscore" in x})
 
         return metrics_to_return
