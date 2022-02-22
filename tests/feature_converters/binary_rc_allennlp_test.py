@@ -19,11 +19,11 @@ def test_convert_documents_to_features():
     reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
-        """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
+        """{"model_name": "bert-base-uncased", "max_length": 512, "add_special_tokens": false,"tokenizer_kwargs": {"use_fast": false}}""")))
     tokenizer.tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
-        """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
+        """{"model_name": "bert-base-uncased", "max_length": 512,"tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
         labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
@@ -87,12 +87,14 @@ def test_convert_documents_to_features():
 
 
 def test_convert_documents_to_features_truncate():
+    ## Expected behavior: cut off all instances where an entity is cut off,
+    ## but allow cut off of non-entity tokens.
     reader = TacredDatasetReader()
 
-    max_length = 34
+    max_length = 19
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
         """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
-        + """, "tokenizer_kwargs": {"use_fast": false}}""")))
+        + """, "add_special_tokens": false, "tokenizer_kwargs": {"use_fast": false}}""")))
     tokenizer.tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
@@ -138,25 +140,12 @@ def test_convert_documents_to_features_truncate():
         '[tail_start]',
         'chairman',
         '[tail_end]',
-        ',',
-        'succeeding',
-        'stephen',
-        'green',
-        'who',
-        'is',
-        'leaving',
-        'to',
-        'take',
-        'a',
-        'government',
-        'job',
-        '.',
         '[SEP]',
     ]
 
     tokens = [i.text for i in features.instance["text"].tokens]
     assert tokens == expected_tokens
-    assert not features.metadata["truncated"]
+    assert features.metadata["truncated"]
     assert features.metadata["guid"] == "e7798fb926b9403cfcd2"
     assert features.metadata["head_idx"] == 0
     assert features.metadata["tail_idx"] == 1
@@ -165,12 +154,71 @@ def test_convert_documents_to_features_truncate():
     # https://docs.allennlp.org/main/api/data/batch/
     assert len(features.instance["text"]) <= converter.max_length
 
+    ## Now check if it truncates if tail is cut off.
+    reader = TacredDatasetReader()
+
+    max_length = 18
+    tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
+        """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
+        + """, "add_special_tokens": false, "tokenizer_kwargs": {"use_fast": false}}""")))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
+    token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
+        """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
+        + """, "tokenizer_kwargs": {"use_fast": false}}""")))
+
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=max_length,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexers={"tokens": token_indexer},
+        log_num_input_features=1,
+    )
+
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
+
+    input_features = converter.documents_to_features(documents)
+
+    assert len(input_features) == 0
+
+    ## Now check for "mark_entity_append_ner" mode
+    reader = TacredDatasetReader()
+
+    max_length = 19
+    tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
+        """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
+        + """, "add_special_tokens": false, "tokenizer_kwargs": {"use_fast": false}}""")))
+    tokenizer.tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
+    token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
+        """{"model_name": "bert-base-uncased", "max_length": """ + str(max_length)
+        + """, "tokenizer_kwargs": {"use_fast": false}}""")))
+
+    converter = BinaryRcConverter(
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=max_length,
+        framework="allennlp",
+        tokenizer=tokenizer,
+        token_indexers={"tokens": token_indexer},
+        entity_handling="mark_entity_append_ner",
+        log_num_input_features=1,
+    )
+
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
+
+    input_features = converter.documents_to_features(documents)
+
+    assert len(input_features) == 0
+
 
 def test_entity_handling_mark_entity():
     reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
-        """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
+        """{"model_name": "bert-base-uncased", "max_length": 512, "add_special_tokens": false,"tokenizer_kwargs": {"use_fast": false}}""")))
     tokenizer.tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
@@ -236,7 +284,7 @@ def test_entity_handling_mark_entity_append_ner():
     reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
-        """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
+        """{"model_name": "bert-base-uncased", "max_length": 512, "add_special_tokens": false,"tokenizer_kwargs": {"use_fast": false}}""")))
     tokenizer.tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
@@ -308,7 +356,7 @@ def test_entity_handling_mask_entity():
     reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
-        """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
+        """{"model_name": "bert-base-uncased", "max_length": 512, "add_special_tokens": false,"tokenizer_kwargs": {"use_fast": false}}""")))
     tokenizer.tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
@@ -371,7 +419,7 @@ def test_entity_handling_mask_entity_append_text():
     reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
-        """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
+        """{"model_name": "bert-base-uncased", "max_length": 512, "add_special_tokens": false,"tokenizer_kwargs": {"use_fast": false}}""")))
     tokenizer.tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(
@@ -439,7 +487,7 @@ def test_save_and_load(tmpdir):
     reader = TacredDatasetReader()
 
     tokenizer = PretrainedTransformerTokenizer.from_params(Params(json.loads(
-        """{"model_name": "bert-base-uncased", "max_length": 10, "tokenizer_kwargs": {"use_fast": false}}""")))
+        """{"model_name": "bert-base-uncased", "max_length": 10, "add_special_tokens": false, "tokenizer_kwargs": {"use_fast": false}}""")))
     tokenizer.tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     token_indexer = PretrainedTransformerIndexer.from_params(Params(json.loads(

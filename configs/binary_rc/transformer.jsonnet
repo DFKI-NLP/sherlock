@@ -39,6 +39,7 @@ function (
             "type": "pretrained_transformer",
             "model_name": model_name,
             "max_length": max_length,
+            "add_special_tokens": false,
             "tokenizer_kwargs": tokenizer_kwargs,
         },
         "token_indexers": {

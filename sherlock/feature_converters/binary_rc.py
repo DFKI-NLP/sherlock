@@ -6,11 +6,13 @@
 """
 import itertools
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
+from allennlp.common.checks import ConfigurationError
 from allennlp.data.fields import TextField, LabelField
 from allennlp.data.instance import Instance
-from allennlp.data.tokenizers import Tokenizer, PretrainedTransformerTokenizer
+from allennlp.data.tokenizers import (
+    Tokenizer, PretrainedTransformerTokenizer, Token)
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
@@ -42,6 +44,16 @@ class BinaryRcConverter(FeatureConverter):
         unclear what this does.
     log_num_input_features : ``int``, optional (default=`-1`)
         Amount of example Instances which are logged.
+    tokenize_special_tokens : ``bool``, optional (default=`None`)
+        Flag to decide whether to tokenize special tokens or not: if set to
+        `None` will determine automatically what to do.
+        This flag is needed because some tokenizers in allennlp split the
+        [head_start]/[head_end] tokens (within eachother, e.g. SpacyTokenizer)
+        without the option to make exceptions for some tokens. This requires
+        not tokenizing the special tokens at.
+        On the other hand some other tokenizers (e.g. Transformer tokenizer)
+        *require* the tokenizer to run on the tokens, because they (secretely)
+        do the indexing as well.
     kwargs : ``Dict[str, any]``
         Framework specific keywords.
         `transformers`:
@@ -65,6 +77,7 @@ class BinaryRcConverter(FeatureConverter):
         framework: str = "transformers",
         entity_handling: str = "mark_entity",
         log_num_input_features: int = -1,
+        tokenize_special_tokens: Optional[bool] = None,
         **kwargs,
     ) -> None:
         super().__init__(labels, max_length, framework, **kwargs)
@@ -89,9 +102,13 @@ class BinaryRcConverter(FeatureConverter):
                     logger.warn("Overwriting transformer sep_token leads to undefined behavior!")
                 self.sep_token = sep_token
 
-            # Some tokenizer lowercase or not, to compare the head/tail tokens
-            # later this seems to be the easiest way to do it
-            lower_cases = "a" in " ".join(self.tokenizer.tokenize("A"))
+            if tokenize_special_tokens is not None:
+                self.tokenize_special_tokens = tokenize_special_tokens
+            else:
+                self.tokenize_special_tokens = True
+
+            tokenizer_test_string = " ".join(self.tokenizer.tokenize("A"))
+            self.n_special_tokens = self.tokenizer.num_special_tokens_to_add()
 
         elif framework == "allennlp":
             sep_token = kwargs.get("sep_token")
@@ -105,6 +122,18 @@ class BinaryRcConverter(FeatureConverter):
                     if sep_token != self.tokenizer.tokenizer.sep_token:
                         logger.warn("Overwriting transformer sep_token leads to undefined behavior!")
                     self.sep_token = sep_token
+
+                if tokenize_special_tokens is not None:
+                    if not tokenize_special_tokens:
+                        logger.warn(
+                            "Not tokenizing special tokens with PretrainedTransformerTokenizer"
+                            + "can lead to problems later. Consider unsetting"
+                            + "`tokenize_special_tokens` in `feature_converter.BinaryRcConverter`"
+                            + " arguments."
+                        )
+                    self.tokenize_special_tokens = tokenize_special_tokens
+                else:
+                    self.tokenize_special_tokens = True
             else:
                 if sep_token is None:
                     self.sep_token = "[SEP]"
@@ -115,10 +144,31 @@ class BinaryRcConverter(FeatureConverter):
                 else:
                     self.sep_token = sep_token
 
-            lower_cases = "a" in " ".join(
-                [token.text for token in self.tokenizer.tokenize("A")])
+                if tokenize_special_tokens is None:
+                    self.tokenize_special_tokens = False
+                else:
+                    self.tokenize_special_tokens = tokenize_special_tokens
 
-        if lower_cases:
+            tokenizer_test_tokens = [token.text for token in self.tokenizer.tokenize("A")]
+            tokenizer_test_string = " ".join(
+                tokenizer_test_tokens
+            )
+            # Need to make sure tokenizer does not add special tokens.
+            special_tokens = self.tokenizer.add_special_tokens([])
+            for special_token in special_tokens:
+                if special_token.text in tokenizer_test_string:
+                    raise ConfigurationError(
+                        f"Tokenizer adds special token `{special_token}`, but "
+                        + "is not allowed to do so. Make sure `add_special_tokens`"
+                        + "is set to `False` in Tokenizer initialization."
+                    )
+
+            self.n_special_tokens = len(special_tokens)
+
+        # Need to find out whether the tokenizer lowercases.
+        self.lower_cases = "a" in tokenizer_test_string
+
+        if self.lower_cases:
             self.marker_tokens = [
                 "[head_start]","[head_end]", "[tail_start]", "[tail_end]"]
         else:
@@ -147,8 +197,12 @@ class BinaryRcConverter(FeatureConverter):
 
         input_features = []
         for head_idx, tail_idx, label, sent_id in mention_combinations:
-            input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
-            tokens = self.tokenizer.tokenize(input_string)
+            tokens, entity_cutoff, truncated = self._tokenize_with_entities(
+                document, head_idx, tail_idx, sent_id
+            )
+            # If head or tail have been cutoff: ignore this Instance
+            if entity_cutoff:
+                continue
 
             inputs = self.tokenizer.encode_plus(
                 text=tokens,
@@ -161,7 +215,7 @@ class BinaryRcConverter(FeatureConverter):
 
             metadata = dict(
                 guid=document.guid,
-                truncated="overflowing_tokens" in inputs and len(inputs["overflowing_tokens"]) > 0,
+                truncated=truncated,
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )
@@ -193,24 +247,15 @@ class BinaryRcConverter(FeatureConverter):
 
         input_features = []
         for head_idx, tail_idx, label, sent_id in mention_combinations:
-            input_string = self._handle_entities(document, head_idx, tail_idx, sent_id)
-
-            # Append 2 sep_tokens
-            # input_string = input_string + f" {self.sep_token} {self.sep_token}"
-
-            tokens = self.tokenizer.tokenize(input_string)
-
+            tokens, entity_cutoff, truncated = self._tokenize_with_entities(
+                document, head_idx, tail_idx, sent_id
+            )
             # If head or tail have been cutoff: ignore this Instance
-            # There is no good way to know whether the tokenizer has cutoff
-            # the instance itself or if the indices of head/tail stayed the
-            # same in the tokenized sequence: thus mark the sequence at the
-            # end with two sep tokens. Look if they are still there afterwards.
+            if entity_cutoff:
+                continue
 
-            # TODO: find a better way
-            # if tokens[-2].text != self.sep_token or tokens[-3].text != self.sep_token:
-            #     continue
-
-            tokens = tokens[:-2]
+            # Add special tokens
+            tokens = self.tokenizer.add_special_tokens(tokens)
 
             text_tokens_field = TextField(tokens,
                                           self.token_indexers)
@@ -228,13 +273,9 @@ class BinaryRcConverter(FeatureConverter):
 
             instance = Instance(fields)
 
-            # truncated sequences are filtered out.
-            # TODO: proper tokenizer special token handling, then
-            # truncated can be set adaptively again
-
             metadata = dict(
                 guid=document.guid,
-                truncated=False,
+                truncated=truncated,
                 head_idx=head_idx,
                 tail_idx=tail_idx,
             )
@@ -310,18 +351,48 @@ class BinaryRcConverter(FeatureConverter):
         return input_features
 
 
-    def _handle_entities(
-        self, document: Document, head_idx: int, tail_idx: int, sent_idx: Optional[int] = None
-    ) -> str:
-        """Apply entity handling strategy on Document and return string
-        ready to be tokenized.
+    def _handle_special_token(self, token: str) -> Union[List[str], List[Token]]:
+        if self.tokenize_special_tokens:
+            return self.tokenizer.tokenize(token)
+        if self.framework == "allennlp":
+            # Need to return Token class for allennlp
+            return [Token(text=token),]
+        return [token,]
+
+
+    def _handle_special_tokens(self, tokens: List[str]) -> Union[List[str], List[Token]]:
+        return list(
+            itertools.chain.from_iterable(
+                [self._handle_special_token(token) for token in tokens]
+            )
+        )
+
+
+    def _check_truncated_entity(self, tokens: Union[List[str], List[Token]]):
+        return len(tokens) + self.n_special_tokens > self.max_length
+
+
+    def _tokenize_with_entities(
+        self,
+        document: Document,
+        head_idx: int,
+        tail_idx: int,
+        sent_idx: Optional[int] = None,
+    ) -> Union[List[str], List[Token]]:
+        """Apply entity handling strategy on Document and tokenize
+        text.
         """
+        # assert no special tokens are added
+        # check transformers implementation
 
         head_mention = document.ments[head_idx]
         tail_mention = document.ments[tail_idx]
 
-        ner_head = "[HEAD=%s]" % head_mention.label
-        ner_tail = "[TAIL=%s]" % tail_mention.label
+        ner_head = f"[HEAD={head_mention.label}]"
+        ner_tail = f"[TAIL={tail_mention.label}]"
+        if self.lower_cases:
+            ner_head = ner_head.lower()
+            ner_tail = ner_tail.lower()
 
         sep_token = self.sep_token
 
@@ -332,20 +403,46 @@ class BinaryRcConverter(FeatureConverter):
             sent = document.sents[sent_idx]
             input_tokens = document.tokens[sent.start : sent.end]
 
+        truncated_entity = False
         tokens = []
+        # Save untokenized tokens in temporary list
+        temporary = []
         if self.entity_handling.startswith("mark_entity"):
             for i, token in enumerate(input_tokens):
                 if i == head_mention.start:
-                    tokens.append("[HEAD_START]")
+                    # tokenize temporary list jointly
+                    tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
+                    # clear temporary for next segment
+                    temporary = []
+                    # add segment to tokenized list
+                    tokens.extend(self._handle_special_token(self.marker_tokens[0]))
+                    # check if tokens will be truncated
+                    truncated_entity = self._check_truncated_entity(tokens)
                 if i == tail_mention.start:
-                    tokens.append("[TAIL_START]")
+                    tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
+                    temporary = []
+                    tokens.extend(self._handle_special_token(self.marker_tokens[2]))
+                    truncated_entity = self._check_truncated_entity(tokens)
                 if i == head_mention.end:
-                    tokens.append("[HEAD_END]")
+                    tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
+                    temporary = []
+                    tokens.extend(self._handle_special_token(self.marker_tokens[1]))
+                    truncated_entity = self._check_truncated_entity(tokens)
                 if i == tail_mention.end:
-                    tokens.append("[TAIL_END]")
-                tokens.append(token.text)
+                    tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
+                    temporary = []
+                    tokens.extend(self._handle_special_token(self.marker_tokens[3]))
+                    truncated_entity = self._check_truncated_entity(tokens)
+                temporary.append(token.text)
+            if len(temporary):
+                tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
             if self.entity_handling == "mark_entity_append_ner":
-                tokens = tokens + [sep_token, ner_head, sep_token, ner_tail]
+                tokens.extend(
+                    self._handle_special_tokens(
+                        [sep_token, ner_head, sep_token, ner_tail]
+                    )
+                )
+                truncated_entity = self._check_truncated_entity(tokens)
         else:
             # "mask_entity" case
             # Collect head_tokens, tail_tokens and other tokens separately
@@ -353,18 +450,29 @@ class BinaryRcConverter(FeatureConverter):
             tail_tokens = []
             for i, token in enumerate(input_tokens):
                 if i == head_mention.start:
-                    tokens.append(ner_head)
+                    tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
+                    temporary = []
+                    tokens.extend(self._handle_special_token(ner_head))
+                    truncated_entity = self._check_truncated_entity(tokens)
                 if i == tail_mention.start:
-                    tokens.append(ner_tail)
+                    tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
+                    temporary = []
+                    tokens.extend(self._handle_special_token(ner_tail))
+                    truncated_entity = self._check_truncated_entity(tokens)
                 if (i >= head_mention.start) and (i < head_mention.end):
                     head_tokens.append(token.text)
                 elif (i >= tail_mention.start) and (i < tail_mention.end):
                     tail_tokens.append(token.text)
                 else:
-                    tokens.append(token.text)
+                    temporary.append(token.text)
+            if len(temporary):
+                tokens.extend(self.tokenizer.tokenize(" ".join(temporary)))
             if self.entity_handling == "mask_entity_append_text":
-                tokens.append(sep_token)
-                tokens.extend(head_tokens)
-                tokens.append(sep_token)
-                tokens.extend(tail_tokens)
-        return " ".join(tokens)
+                tokens.extend(self._handle_special_token(sep_token))
+                tokens.extend(self.tokenizer.tokenize(" ".join(head_tokens)))
+                tokens.extend(self._handle_special_token(sep_token))
+                tokens.extend(self.tokenizer.tokenize(" ".join(tail_tokens)))
+                truncated_entity = self._check_truncated_entity(tokens)
+
+        truncated = len(tokens) > self.max_length
+        return tokens[:self.max_length - self.n_special_tokens], truncated_entity, truncated

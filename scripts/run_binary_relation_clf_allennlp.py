@@ -319,6 +319,7 @@ def _build_transformers_dataset_reader(
     tokenizer = PretrainedTransformerTokenizer(
         args.tokenizer_name or args.model_name_or_path,
         max_length=args.max_seq_length,
+        add_special_tokens=False,
         tokenizer_kwargs=tokenizer_kwargs,
     )
 

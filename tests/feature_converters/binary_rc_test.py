@@ -80,7 +80,7 @@ def test_convert_documents_to_features():
 def test_convert_documents_to_features_truncate():
     reader = TacredDatasetReader()
 
-    max_length = 10
+    max_length = 19
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
@@ -106,6 +106,15 @@ def test_convert_documents_to_features_truncate():
         "chief",
         "financial",
         "officer",
+        '[head_start]',
+        "douglas",
+        "flint",
+        "[head_end]",
+        "will",
+        "become",
+        "[tail_start]",
+        "chairman",
+        "[tail_end]",
         "[SEP]",
     ]
 
@@ -117,6 +126,25 @@ def test_convert_documents_to_features_truncate():
     assert len(features.input_ids) == max_length
     assert len(features.attention_mask) == max_length
     assert len(features.token_type_ids) == max_length
+
+
+    ## Check truncation boundary
+    max_length = 18
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
+    converter = BinaryRcConverter(
+        tokenizer=tokenizer,
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=max_length,
+    )
+
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
+
+    input_features = converter.documents_to_features(documents)
+
+    assert len(input_features) == 0
 
 
 def test_entity_handling_mark_entity():
