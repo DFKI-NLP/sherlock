@@ -7,8 +7,8 @@ function (
     weight_decay = 0.0,
     warmup_steps = 0,
     do_lower_case = true,
-    train_data_path = "/home/gkp/opt/dfki/ds/tacred/data/json/train.json",
-    validation_data_path = "/home/gkp/opt/dfki/ds/tacred/data/json/dev.json",
+    train_data_path = "../ds/tacred/data/json/train.json",
+    validation_data_path = "../ds/tacred/data/json/dev.json",
     negative_label = "no_relation",
     entity_handling = "mark_entity_append_ner",
     word_dropout = 0.04,
@@ -20,7 +20,7 @@ function (
     text_encoder_ngram_filter_sizes = [2, 3, 4, 5],
     num_classes = 42, // not clean
     fp16 = false,
-    cuda_device = -1,
+    cuda_device = 0,
     max_instances = 100,
 ) {
     local tokenizer_kwargs = {
@@ -76,7 +76,7 @@ function (
             "token_embedders": {
                 "tokens": {
                     "type": "embedding",
-                    //"pretrained_file": "https://s3-us-west-2.amazonaws.com/allennlp/datasets/glove/glove.840B.300d.txt.gz",
+                    "pretrained_file": "https://s3-us-west-2.amazonaws.com/allennlp/datasets/glove/glove.840B.300d.txt.gz",
                     "embedding_dim": embedding_dim,
                     "trainable": embedding_trainable,
                 },

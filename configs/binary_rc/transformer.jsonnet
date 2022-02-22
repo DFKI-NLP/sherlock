@@ -9,12 +9,12 @@ function (
     model_name = "bert-base-uncased",
     do_lower_case = true,
     max_length = 128,
-    train_data_path = "/home/gkp/opt/dfki/ds/tacred/data/json/train.json",
-    validation_data_path = "/home/gkp/opt/dfki/ds/tacred/data/json/dev.json",
+    train_data_path = "../ds/tacred/data/json/train.json",
+    validation_data_path = "../ds/tacred/data/json/dev.json",
     negative_label = "no_relation",
     entity_handling = "mark_entity_append_ner",
     fp16 = false,
-    cuda_device = -1,
+    cuda_device = 0,
     max_instances = null,
 ) {
     local tokenizer_kwargs = {
