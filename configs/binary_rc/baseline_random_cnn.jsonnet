@@ -23,14 +23,6 @@ function (
     cuda_device = 0,
     max_instances = 100,
 ) {
-    local tokenizer_kwargs = {
-        "do_lower_case": do_lower_case,
-        "additional_special_tokens": if do_lower_case then [
-                '[head=organization]', '[head=person]', '[head_end]', '[head_start]', '[tail=cause_of_death]', '[tail=city]', '[tail=country]', '[tail=criminal_charge]', '[tail=date]', '[tail=duration]', '[tail=ideology]', '[tail=location]', '[tail=misc]', '[tail=nationality]', '[tail=number]', '[tail=organization]', '[tail=person]', '[tail=religion]', '[tail=state_or_province]', '[tail=title]', '[tail=url]', '[tail_end]', '[tail_start]'
-            ] else [
-                '[HEAD=ORGANIZATION]', '[HEAD=PERSON]', '[HEAD_END]', '[HEAD_START]', '[TAIL=CAUSE_OF_DEATH]', '[TAIL=CITY]', '[TAIL=COUNTRY]', '[TAIL=CRIMINAL_CHARGE]', '[TAIL=DATE]', '[TAIL=DURATION]', '[TAIL=IDEOLOGY]', '[TAIL=LOCATION]', '[TAIL=MISC]', '[TAIL=NATIONALITY]', '[TAIL=NUMBER]', '[TAIL=ORGANIZATION]', '[TAIL=PERSON]', '[TAIL=RELIGION]', '[TAIL=STATE_OR_PROVINCE]', '[TAIL=TITLE]', '[TAIL=URL]', '[TAIL_END]', '[TAIL_START]'
-            ],
-    },
     local parameter_groups = if weight_decay > 0 then [
         [["(?<!LayerNorm\\.)weight",], {"weight_decay": weight_decay}],
         [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
