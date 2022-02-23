@@ -30,13 +30,16 @@ import torch
 from tqdm import tqdm
 
 import allennlp
-from allennlp.data import Vocabulary, Instance
+from allennlp.common import Params
+from allennlp.common.checks import ConfigurationError
+from allennlp.data import Vocabulary, Instance, DatasetReader
 from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
 from allennlp.data.tokenizers import (
     Tokenizer, WhitespaceTokenizer, PretrainedTransformerTokenizer)
 from allennlp.data.token_indexers import (
     TokenIndexer, SingleIdTokenIndexer, PretrainedTransformerIndexer)
 from allennlp.models import Model
+from allennlp.models.archival import load_archive
 from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
 from allennlp.modules.token_embedders import Embedding
 from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
@@ -654,37 +657,25 @@ def main():
         "--max_instances", type=int, default=-1,
         help="Only use this number of first instances in dataset (e.g. for debugging)."
     )
+    parser.add_argument(
+        "--archive_path", type=str, default=None,
+        help="path to archive file of trained model which is evaluated or"
+            + "predicted upon."
+    )
     args = parser.parse_args()
-
-    if (
-        os.path.exists(args.output_dir)
-        and os.listdir(args.output_dir)
-        and args.do_train
-        and not args.overwrite_output_dir
-    ):
-        raise ValueError(
-            "Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(
-                args.output_dir
-            )
-        )
-    elif os.path.exists(args.output_dir) and args.do_train:
-        logger.warn(f"Deleting content of output_dir: {args.output_dir}")
-        # delete all files in old dir
-        shutil.rmtree(args.output_dir)
-        os.mkdir(args.output_dir)
-    elif args.do_train:
-        os.mkdir(args.output_dir)
 
     # Setup CUDA, GPU & distributed training
     if args.no_cuda:
-        device = torch.device("cpu", index=0)
+        device = torch.device("cpu")
         if torch.cuda.is_available():
             logger.warn("Not using cuda although it is available.")
         args.n_gpu = 0
     elif args.local_rank == -1:
         # Set index, because if not, allennlp crashes ¯\_(ツ)_/¯
-        device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu", index=0)
+        if torch.cuda.is_available():
+            device = torch.device("cuda", index=0)
+        else:
+            device = torch.device("cpu")
         args.n_gpu = torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
@@ -711,43 +702,56 @@ def main():
     # Set seed
     set_seed(args)
 
-    # dataset reader
-    logger.info("Loading DatasetReader.")
-    tokenizer_kwargs = {"do_lower_case": args.do_lower_case}
-    # Need to get special tokens for Tokenizer with sherlock DatasetReader
-    # TODO: Issue #41
-    dataset_reader = TacredDatasetReader(
-        add_inverse_relations=args.add_inverse_relations,
-        negative_label_re=args.negative_label,
-    )
-    additional_tokens = dataset_reader.get_additional_tokens(
-        IETask.BINARY_RC,
-        os.path.join(args.data_dir, "train.json"),
-    )
-    if additional_tokens:
-        tokenizer_kwargs["additional_special_tokens"] = additional_tokens
-    # Get allennlp DatasetReader
-    dataset_reader = build_dataset_reader(args, tokenizer_kwargs)
-
-    # vocabulary dir
-    default_vocab_dir = os.path.join(args.output_dir, "vocabulary")
-
     logger.info("Training/evaluation parameters %s", args)
+
 
     # Training
     if args.do_train:
-        # output_dir is empty or overwrite_output_dir is True, if not there was
-        # an error beforehand -> remove previous checkpoints
-        _reset_output_dir(args, default_vocab_dir)
+        default_vocab_dir = os.path.join(args.output_dir, "vocabulary")
+
+        if (
+            os.path.exists(args.output_dir)
+            and os.listdir(args.output_dir)
+            and not args.overwrite_output_dir
+        ):
+            raise ValueError(
+                "Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(
+                    args.output_dir
+                )
+            )
+        elif os.path.exists(args.output_dir):
+            logger.warn(f"Deleting content of output_dir: {args.output_dir}")
+            # delete all files in old dir
+            _reset_output_dir(args, default_vocab_dir)
+        else:
+            os.mkdir(args.output_dir)
+
+
+        # dataset reader
+        logger.info("Loading DatasetReader.")
+        tokenizer_kwargs = {"do_lower_case": args.do_lower_case}
+        # Need to get special tokens for Tokenizer with sherlock DatasetReader
+        dataset_reader = TacredDatasetReader(
+            add_inverse_relations=args.add_inverse_relations,
+            negative_label_re=args.negative_label,
+        )
+        additional_tokens = dataset_reader.get_additional_tokens(
+            IETask.BINARY_RC,
+            os.path.join(args.data_dir, "train.json"),
+        )
+        if additional_tokens:
+            tokenizer_kwargs["additional_special_tokens"] = additional_tokens
+
+        # Get allennlp DatasetReader
+        dataset_reader = build_dataset_reader(args, tokenizer_kwargs)
+
         # Load data
         train_data_loader, train_dataset = load_and_chache_data(
-            args, dataset_reader, "train", return_dataset=True)
+            args, dataset_reader, "train", return_dataset=True
+        )
         valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
 
-
         # load vocabulary
-        # This technically is useless. As transformer models use a different
-        # vocabulary namespace anyways.
         if args.vocab_dir:
             # If given, use a custom vocabulary
             logger.info(f"Loading Vocabulary from {args.vocab_dir}")
@@ -761,7 +765,8 @@ def main():
             # PretrainedTransformers have their own vocabulary, extend
             # vocabulary with theirs.
             logger.info(
-                "Extending Vocabulary with pretrained Transformer Vocabulary")
+                "Extending Vocabulary with pretrained Transformer Vocabulary"
+            )
             vocabulary_t = Vocabulary.from_pretrained_transformer(
                 model_name=args.model_name_or_path,
             )
@@ -799,11 +804,12 @@ def main():
             weights=None
 
         # Init Model
-        # can only build model here, because vocabulary is needed, and the
-        # vocabulary is loaded in only after choosing what to do (train/eval)
+        # Vocab is necessary for model initialization.
         model = build_model(
-            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs)
+            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs
+        )
 
+        # Train!
         train(args, train_data_loader, valid_data_loader, model)
 
         # Saving best-practices: if you use defaults names for the model,
@@ -821,43 +827,70 @@ def main():
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
         logger.info(
-            f"Saved model checkpoints and vocabulary to {args.output_dir}")
+            f"Saved model checkpoints and vocabulary to {args.output_dir}"
+        )
 
-    # Need information beforehand whether vocab_dir!=default_vocab_dir, thus
-    # it only can be set here
-    if not args.vocab_dir:
-        args.vocab_dir = default_vocab_dir
+
+    # Determine right archive path
+    if args.archive_path and not os.path.exists(args.archive_path):
+        raise ConfigurationError(f"Invalid archive_path: {args.archive_path}")
+    else:
+        # Try default archive path
+        default_archive = os.path.join(args.output_dir, "model.tar.gz")
+        if os.path.exists(default_archive):
+            args.archive_path = default_archive
+        else:
+            ConfigurationError(
+                f"Cannot find archive at default position: {default_archive}."
+                + " please specify archive_path with --archive_path.")
+
+    # Load everything from archive
+    archive = load_archive(
+        args.archive_path,
+        cuda_device=-1 if args.device == torch.device("cpu") else args.device,
+    )
+    dataset_reader = archive.validation_dataset_reader
+    model = archive.model
+
+    # # If param_path is given or found automatically, use that to initialize
+    # # dataset_reader (here) and model (later) for consistency.
+    # if args.param_path and not os.path.exists(args.param_path):
+    #     raise ConfigurationError(f"Invalid param_path: {args.param_path}")
+    # else:
+    #     # try default location of param path.
+    #     if os.path.exists(os.path.join(args.output_dir, "config.json")):
+    #         args.param_path = os.path.join(args.output_dir, "config.json")
+
+    # if args.param_path:
+        # logger.info(f"Re-initializing Dataset-reader and Model from {args.param_path}")
+        # params = Params.from_file(args.param_path)
+
+        # dataset_reader = DatasetReader.from_params(
+        #     params.pop("dataset_reader"),
+        # )
+
 
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        # Load Vocabulary
-        vocabulary = Vocabulary.from_files(args.vocab_dir)
 
         # Load data
         valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
-        valid_data_loader.index_with(vocabulary)
+        valid_data_loader.index_with(model.vocab)
 
-        # Handle label weights
-        if args.weighted_labels:
-            # placeholder weights
-            weights = torch.empty((vocabulary.get_vocab_size("labels"),))
-        else:
-            weights = None
-
-        # Init model
-        model = build_model(
-            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs)
-
-        # Load checkpooints to evaluate
-        checkpoints = [os.path.join(args.output_dir, "best.th")]
+        # Load checkpoints to evaluate
+        checkpoints = []
         if args.eval_all_checkpoints:
             search_dir = args.output_dir + "/**/model_state*.th"
             checkpoints = list(
                 c for c in sorted(glob.glob(search_dir, recursive=True))
             )
 
-        logger.info("Evaluate the following checkpoints: %s", checkpoints)
+        logger.info(
+            f"Evaluate following checkpoints: archived model and {checkpoints}"
+        )
+        logger.info(f"Evaluating archived model")
+        evaluateAllennlp(model, valid_data_loader, args.device)
         for checkpoint in checkpoints:
             logger.info(f"Evaluating {checkpoint.split('/')[-1]}")
             splitted = checkpoint.split("_")
@@ -872,35 +905,32 @@ def main():
             result = {f"{k}_{epoch_and_step}": v for k, v in result.items()}
             results.update(result)
 
+
     # Prediction
     if args.do_predict and args.local_rank in [-1, 0]:
-        # Load Vocabulary
-        vocabulary = Vocabulary.from_files(args.vocab_dir)
 
         # Load data
         test_data_loader = load_and_chache_data(args, dataset_reader, "test")
-        test_data_loader.index_with(vocabulary)
+        test_data_loader.index_with(model.vocab)
 
-        # Handle label weights
-        if args.weighted_labels:
-            # placeholder weights
-            weights = torch.empty((vocabulary.get_vocab_size("labels"),))
-        else:
-            weights = None
-
-        # Init model
-        model = build_model(
-            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs)
-
-        # Load best model
-        best_model_path = os.path.join(args.output_dir, "best.th")
-        state_dict = torch.load(best_model_path, map_location=args.device)
-        model.load_state_dict(state_dict)
+        # # Init model
+        # if os.path.exists(args.param_path):
+        #     # Use params if possible
+        #     model = Model.from_params(
+        #         params.pop("model"),
+        #         vocab=vocabulary,
+        #     )
+        # else:
+        #     model = build_model(
+        #         args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs
+        #     )
 
         output_test_results_file = os.path.join(
-            args.output_dir, "test_results.txt")
+            args.output_dir, "test_results.txt"
+        )
         output_test_predictions_file = os.path.join(
-            args.output_dir, "test_predictions.txt")
+            args.output_dir, "test_predictions.txt"
+        )
 
         result, predictions = evaluate(
             args,
@@ -909,7 +939,7 @@ def main():
             filename=output_test_results_file,
         )
 
-        idx_to_label = vocabulary.get_index_to_token_vocabulary("labels")
+        idx_to_label = model.vocab.get_index_to_token_vocabulary("labels")
 
         predictions = [ idx_to_label[idx] for idx in predictions]
         with open(output_test_predictions_file, "w") as writer:
