@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import random
+import shutil
 
 import numpy as np
 import torch
@@ -636,6 +637,13 @@ def main():
                 args.output_dir
             )
         )
+    elif os.path.exists(args.output_dir) and args.do_train:
+        logger.warn(f"Deleting content of output_dir: {args.output_dir}")
+        # delete all files in old dir
+        shutil.rmtree(args.output_dir)
+        os.mkdir(args.output_dir)
+    elif args.do_train:
+        os.mkdir(args.output_dir)
 
     # Setup distant debugging if needed
     if args.server_ip and args.server_port:

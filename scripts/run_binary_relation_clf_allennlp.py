@@ -667,6 +667,13 @@ def main():
                 args.output_dir
             )
         )
+    elif os.path.exists(args.output_dir) and args.do_train:
+        logger.warn(f"Deleting content of output_dir: {args.output_dir}")
+        # delete all files in old dir
+        shutil.rmtree(args.output_dir)
+        os.mkdir(args.output_dir)
+    elif args.do_train:
+        os.mkdir(args.output_dir)
 
     # Setup CUDA, GPU & distributed training
     if args.no_cuda:
