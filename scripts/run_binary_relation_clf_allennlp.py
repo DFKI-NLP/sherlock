@@ -76,100 +76,6 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def train(
-    args,
-    train_data_loader,
-    valid_data_loader,
-    model,
-):
-    """Train the model."""
-    if args.local_rank in [-1, 0]:
-        tb_writer = SummaryWriter()
-
-    args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-
-    if args.max_steps > 0:
-        t_total = args.max_steps
-        # TODO: this looks sketchy, gradient_accumulation_steps should be multiplied.
-        args.num_train_epochs = (
-            args.max_steps // (len(train_data_loader) // args.gradient_accumulation_steps) + 1
-        )
-    else:
-        # t_total is the amount of gradient update/backwards steps
-        t_total = len(train_data_loader) // args.gradient_accumulation_steps * args.num_train_epochs
-
-    # multi-gpu training (should be after apex fp16 initialization)
-    # if args.n_gpu > 1:
-    #     model = torch.nn.DataParallel(model)
-
-    # Distributed training (should be after apex fp16 initialization)
-    # if args.local_rank != -1:
-    #     model = torch.nn.parallel.DistributedDataParallel(
-    #         model,
-    #         device_ids=[args.local_rank],
-    #         output_device=args.local_rank,
-    #         find_unused_parameters=True,
-    #     )
-
-    # Prepare training allennlp
-    logger.info("Building Trainer.")
-    groups = [
-        (["(?<!LayerNorm\.)weight"], {"weight_decay": args.weight_decay}),
-        (["bias", "LayerNorm.weight"], {"weight_decay": 0.0}),
-    ]
-    optimizer = HuggingfaceAdamWOptimizer(
-        model_parameters=model.named_parameters(),
-        parameter_groups=groups,
-        lr=args.learning_rate,
-        eps=args.adam_epsilon,
-    )
-    scheduler = LinearWithWarmup(
-        optimizer=optimizer,
-        num_epochs=args.num_train_epochs,
-        num_steps_per_epoch=len(train_data_loader) // args.gradient_accumulation_steps,
-        warmup_steps=args.warmup_steps,
-    )
-    # object to decide when to save checkpoints
-    checkpointer = Checkpointer(
-        serialization_dir=args.output_dir,
-        save_every_num_batches=args.save_steps,
-        keep_most_recent_by_count=None,
-    )
-    # object to train model, every device gets its own trainer
-    trainer = GradientDescentTrainer(
-        model=model,
-        serialization_dir=args.output_dir,
-        optimizer=optimizer,
-        data_loader=train_data_loader,
-        validation_metric="+fscore",
-        validation_data_loader=valid_data_loader,
-        num_epochs=args.num_train_epochs,
-        checkpointer=checkpointer,
-        learning_rate_scheduler=scheduler,
-        cuda_device=-1 if ("cpu" in str(args.device)) else args.device,
-        # local_rank=args.local_rank,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        use_amp=args.fp16,
-    )
-
-    # Train!
-    logger.info("***** Running training *****")
-    logger.info("  Num examples = %d", len(train_data_loader))
-    logger.info("  Num Epochs = %d", args.num_train_epochs)
-    logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
-    logger.info(
-        "  Total train batch size (w. parallel, distributed & accumulation) = %d",
-        args.train_batch_size
-        * args.gradient_accumulation_steps
-        * (torch.distributed.get_world_size() if args.local_rank != -1 else 1),
-    )
-    logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
-    logger.info("  Total optimization steps = %d", t_total)
-
-    trainer.train()
-    return
-
-
 def load_and_chache_data(
     args,
     dataset_reader: allennlp.data.DatasetReader,
@@ -234,183 +140,6 @@ def load_and_chache_data(
     if return_dataset:
         return data_loader, dataset
     return data_loader
-
-
-def _build_transformers_model(
-    args,
-    vocabulary: Vocabulary,
-    weights: Optional[torch.Tensor],
-    **kwargs,
-) -> Model:
-    """Returns Transformers model within AllenNLP framework."""
-    return TransformerRelationClassifier(
-        vocab=vocabulary,
-        model_name=args.model_name_or_path,
-        max_length=args.max_seq_length,
-        ignore_label=args.negative_label,
-        weights=weights,
-        f1_average="micro",
-        **kwargs,
-    )
-
-
-def _build_basic_model(
-    args,
-    vocabulary: Vocabulary,
-    weights: Optional[torch.Tensor],
-    **kwargs,
-) -> Model:
-    """Returns basic AllenNLP model"""
-
-    vocab_size = vocabulary.get_vocab_size()
-    label_size = vocabulary.get_vocab_size("labels")
-
-    embedder = BasicTextFieldEmbedder(
-        {"tokens": Embedding(embedding_dim=20, num_embeddings=vocab_size)}
-    )
-
-    encoder = BagOfEmbeddingsEncoder(embedding_dim=20)
-
-    feedforward = FeedForward(
-        input_dim=20,
-        num_layers=1,
-        hidden_dims=label_size,
-        activations=torch.nn.ReLU(),
-        dropout=0.5,
-    )
-
-    return BasicRelationClassifier(
-        vocabulary,
-        embedder,
-        encoder,
-        feedforward,
-        ignore_label=args.negative_label,
-        weights=weights,
-        f1_average="micro",
-        **kwargs,
-    )
-
-
-
-def build_model(
-    args,
-    vocabulary: Vocabulary,
-    weights: Optional[torch.Tensor]=None,
-    **kwargs,
-) -> Model:
-    """Returns specified Allennlp Model."""
-
-    if args.model_type == "transformers":
-        model = _build_transformers_model(args, vocabulary, weights, **kwargs)
-    elif args.model_type == "basic":
-        model = _build_basic_model(args, vocabulary, weights)
-    else:
-        raise NotImplementedError(
-            f"No Model for model_type: {args.model_type}")
-    model.to(args.device)
-    logger.info(model)
-    return model
-
-
-def _build_transformers_dataset_reader(
-    args,
-    tokenizer_kwargs: Dict[str, Any],
-) -> allennlp.data.DatasetReader:
-    """Returns appropriate DatasetReader for transformers model."""
-
-    logger.info("Loading Transformer Tokenizer.")
-    tokenizer = PretrainedTransformerTokenizer(
-        args.tokenizer_name or args.model_name_or_path,
-        max_length=args.max_seq_length,
-        add_special_tokens=False,
-        tokenizer_kwargs=tokenizer_kwargs,
-    )
-
-    logger.info("Loading Transformer Indexer.")
-    token_indexer = PretrainedTransformerIndexer(
-        args.model_name_or_path,
-        max_length=args.max_seq_length,
-        tokenizer_kwargs=tokenizer_kwargs,
-    )
-    token_indexers = {"tokens": token_indexer}
-
-    # Allennlp DatasetReader
-    return _get_reader(args, tokenizer, token_indexers)
-
-
-def _build_basic_dataset_reader(
-    args,
-    tokenizer_kwargs: Dict[str, Any],
-) -> allennlp.data.DatasetReader:
-    """Returns most basic version of a DatasetReader."""
-
-    tokenizer = WhitespaceTokenizer(**tokenizer_kwargs)
-    token_indexers = {"tokens": SingleIdTokenIndexer()}
-
-    # Allennlp DatasetReader
-    return _get_reader(args, tokenizer, token_indexers)
-
-
-def _get_reader(
-    args,
-    tokenizer: Tokenizer,
-    token_indexers: Dict[str, TokenIndexer],
-) -> allennlp.data.DatasetReader:
-
-    dataset_reader = SherlockDatasetReader(
-        task="binary_rc",
-        dataset_reader_name="tacred",
-        feature_converter_name="binary_rc",
-        tokenizer=tokenizer,
-        token_indexers=token_indexers,
-        max_tokens=args.max_seq_length,
-        log_num_input_features=3,
-        dataset_reader_kwargs={"negative_label_re": args.negative_label},
-        feature_converter_kwargs={"entity_handling": args.entity_handling},
-        max_instances=None if args.max_instances == -1 else args.max_instances,
-    )
-    return dataset_reader
-
-
-def build_dataset_reader(
-    args,
-    tokenizer_kwargs: Optional[Dict[str, Any]]=None,
-) -> allennlp.data.DatasetReader:
-    """Returns appropriate DatasetReader for model_type."""
-
-    if args.model_type == "transformers":
-        return _build_transformers_dataset_reader(args, tokenizer_kwargs)
-    elif args.model_type == "basic":
-        return _build_basic_dataset_reader(args, tokenizer_kwargs)
-    else:
-        raise NotImplementedError(
-            f"No DatasetReader for model_type: {args.model_type}")
-
-
-def _reset_output_dir(args, default_vocab_dir) -> None:
-    """Deletes old output_dir contents."""
-
-    old_files = (
-        glob.glob(os.path.join(args.output_dir, "model_state_*.th"))
-        + glob.glob(os.path.join(args.output_dir, "training_state_*.th"))
-        + glob.glob(os.path.join(args.output_dir, "metrics_epoch_*.json"))
-    )
-    for old_file in old_files:
-        if os.path.isfile(old_file):
-            os.remove(old_file)
-
-    # remove old vocabulary, make sure it is not the same as given in the param
-    if (
-        os.path.isdir(default_vocab_dir)
-        and (
-            not args.vocab_dir
-            or (
-                os.path.realpath(args.vocab_dir)
-                != os.path.realpath(default_vocab_dir)
-                )
-            )
-        ):
-        shutil.rmtree(default_vocab_dir)
 
 
 def evaluate(
@@ -479,31 +208,12 @@ def main():
         help="The input data dir. Should contain the .tsv files (or other data files) for the task.",
     )
     parser.add_argument(
-        "--model_type",
-        default=None,
-        type=str,
-        required=True,
-        choices=["transformers", "basic"],
-        help="Model type: ['transformers', 'basic']",
-    )
-    parser.add_argument(
         "--output_dir",
         default=None,
         type=str,
         required=True,
         help="The output directory where the model predictions and checkpoints will be written.",
     )
-
-    # Task-specific parameters
-    parser.add_argument(
-        "--model_name_or_path",
-        default=None,
-        type=str,
-        help="If model_type=='transformers': path to pre-trained model or"
-        + " shortcut name selected in the transformers hub:"
-        + " https://huggingface.co/models",
-    )
-    parser.add_argument("--negative_label", default="no_relation", type=str)
     parser.add_argument(
         "--entity_handling",
         type=str,
@@ -514,30 +224,6 @@ def main():
         "--do_predict", action="store_true", help="Whether to run predictions on the test set."
     )
     parser.add_argument(
-        "--add_inverse_relations",
-        action="store_true",
-        help="Whether to also add inverse relations to the document.",
-    )
-    parser.add_argument(
-        "--vocab_dir",
-        default=None,
-        help="Path to directory containing a vocabulary to be used."
-    )
-
-    # Other parameters
-    parser.add_argument(
-        "--config_name",
-        default="",
-        type=str,
-        help="Pretrained config name or path if not the same as model_name",
-    )
-    parser.add_argument(
-        "--tokenizer_name",
-        default="",
-        type=str,
-        help="For Transformers: Pretrained tokenizer name or path if not the same as model_name",
-    )
-    parser.add_argument(
         "--cache_dir",
         default=None,
         type=str,
@@ -545,80 +231,13 @@ def main():
         help="Where do you want to store the pre-trained models downloaded from s3 and cached features",
     )
     parser.add_argument(
-        "--max_seq_length",
-        default=128,
-        type=int,
-        help="The maximum total input sequence length after tokenization. Sequences longer "
-        "than this will be truncated, sequences shorter will be padded.",
-    )
-    parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
-    parser.add_argument(
         "--do_eval", action="store_true", help="Whether to run eval on the dev set."
     )
     parser.add_argument(
-        "--evaluate_during_training",
-        action="store_true",
-        help="Rul evaluation during training at each logging step.",
-    )
-    parser.add_argument(
-        "--do_lower_case",
-        action="store_true",
-        help="Set this flag if you are using an uncased model.",
-    )
-    parser.add_argument(
-        "--weighted_labels",
-        action="store_true",
-        help="Weight labels based on their number occurances, useful for"
-             + " unbalanced datasets.",
-    )
-    parser.add_argument(
-        "--per_gpu_train_batch_size",
-        default=8,
-        type=int,
-        help="Batch size per GPU/CPU for training.",
-    )
-    parser.add_argument(
-        "--per_gpu_eval_batch_size",
+        "--per_gpu_batch_size",
         default=8,
         type=int,
         help="Batch size per GPU/CPU for evaluation.",
-    )
-    parser.add_argument(
-        "--gradient_accumulation_steps",
-        type=int,
-        default=1,
-        help="Number of updates steps to accumulate before performing a backward/update pass.",
-    )
-    parser.add_argument(
-        "--learning_rate", default=5e-5, type=float, help="The initial learning rate for Adam."
-    )
-    parser.add_argument(
-        "--weight_decay", default=0.0, type=float, help="Weight deay if we apply some."
-    )
-    parser.add_argument(
-        "--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer."
-    )
-    parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
-    parser.add_argument(
-        "--num_train_epochs",
-        default=3,
-        type=int,
-        help="Total number of training epochs to perform.",
-    )
-    parser.add_argument(
-        "--max_steps",
-        default=-1,
-        type=int,
-        help="If > 0: set total number of training steps to perform. Override num_train_epochs.",
-    )
-    parser.add_argument(
-        "--warmup_steps", default=0, type=int, help="Linear warmup over warmup_steps."
-    )
-
-    parser.add_argument("--logging_steps", type=int, default=50, help="Log every X updates steps.")
-    parser.add_argument(
-        "--save_steps", type=int, default=50,
-        help="Save checkpoint every X updates steps (every X batches)."
     )
     parser.add_argument(
         "--eval_all_checkpoints",
@@ -627,31 +246,9 @@ def main():
     )
     parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
     parser.add_argument(
-        "--overwrite_output_dir",
-        action="store_true",
-        help="Overwrite the content of the output directory",
-    )
-    parser.add_argument(
         "--overwrite_cache",
         action="store_true",
         help="Overwrite the cached training and evaluation sets",
-    )
-    parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
-
-    parser.add_argument(
-        "--fp16",
-        action="store_true",
-        help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit",
-    )
-    parser.add_argument(
-        "--fp16_opt_level",
-        type=str,
-        default="O1",
-        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
-        "See details at https://nvidia.github.io/apex/amp.html",
-    )
-    parser.add_argument(
-        "--local_rank", type=int, default=-1, help="For distributed training: local_rank"
     )
     parser.add_argument(
         "--max_instances", type=int, default=-1,
@@ -702,134 +299,7 @@ def main():
     # Set seed
     set_seed(args)
 
-    logger.info("Training/evaluation parameters %s", args)
-
-
-    # Training
-    if args.do_train:
-        default_vocab_dir = os.path.join(args.output_dir, "vocabulary")
-
-        if (
-            os.path.exists(args.output_dir)
-            and os.listdir(args.output_dir)
-            and not args.overwrite_output_dir
-        ):
-            raise ValueError(
-                "Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(
-                    args.output_dir
-                )
-            )
-        elif os.path.exists(args.output_dir):
-            logger.warn(f"Deleting content of output_dir: {args.output_dir}")
-            # delete all files in old dir
-            _reset_output_dir(args, default_vocab_dir)
-        else:
-            os.mkdir(args.output_dir)
-
-
-        # dataset reader
-        logger.info("Loading DatasetReader.")
-        tokenizer_kwargs = {"do_lower_case": args.do_lower_case}
-        # Need to get special tokens for Tokenizer with sherlock DatasetReader
-        dataset_reader = TacredDatasetReader(
-            add_inverse_relations=args.add_inverse_relations,
-            negative_label_re=args.negative_label,
-        )
-        additional_tokens = dataset_reader.get_additional_tokens(
-            IETask.BINARY_RC,
-            os.path.join(args.data_dir, "train.json"),
-        )
-        if additional_tokens:
-            tokenizer_kwargs["additional_special_tokens"] = additional_tokens
-
-        # Get allennlp DatasetReader
-        dataset_reader = build_dataset_reader(args, tokenizer_kwargs)
-
-        # Load data
-        train_data_loader, train_dataset = load_and_chache_data(
-            args, dataset_reader, "train", return_dataset=True
-        )
-        valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
-
-        # load vocabulary
-        if args.vocab_dir:
-            # If given, use a custom vocabulary
-            logger.info(f"Loading Vocabulary from {args.vocab_dir}")
-            vocabulary = Vocabulary.from_files(args.vocab_dir)
-        else:
-            # Else Vocabulary from instances
-            logger.info("Creating Vocabulary from Dataset.")
-            vocabulary = Vocabulary.from_instances(train_dataset)
-
-        if args.model_type == "transformers":
-            # PretrainedTransformers have their own vocabulary, extend
-            # vocabulary with theirs.
-            logger.info(
-                "Extending Vocabulary with pretrained Transformer Vocabulary"
-            )
-            vocabulary_t = Vocabulary.from_pretrained_transformer(
-                model_name=args.model_name_or_path,
-            )
-            vocabulary.extend_from_vocab(vocabulary_t)
-
-        n_labels = vocabulary.get_vocab_size("labels")
-        logger.info(f"Vocabulary: Labels: {n_labels}")
-
-        train_data_loader.index_with(vocabulary)
-        valid_data_loader.index_with(vocabulary)
-
-        logger.debug(vocabulary.get_token_to_index_vocabulary("labels"))
-
-        if args.weighted_labels:
-            # Compute class distributions
-            logger.info("Counting Class distribution.")
-            counter_classes = Counter()
-            for batch in train_data_loader:
-                counter_classes.update(batch["label"].tolist())
-
-            # Compute label weights
-            message: List[str] = []
-            weights = torch.empty((n_labels,))
-            for label_id in range(n_labels):
-                if counter_classes[label_id] != 0:
-                    weights[label_id] = 1 / counter_classes[label_id]
-                else:
-                    weights[label_id] = 0
-                message.append(f"{label_id:2}: {counter_classes[label_id]};")
-            weights = (weights / torch.sum(weights))
-            weights.to(args.device)
-            logger.info(f"Distribution: {' '.join(message)}")
-            logger.info(f"Label weights: {weights.tolist()}")
-        else:
-            weights=None
-
-        # Init Model
-        # Vocab is necessary for model initialization.
-        model = build_model(
-            args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs
-        )
-
-        # Train!
-        train(args, train_data_loader, valid_data_loader, model)
-
-        # Saving best-practices: if you use defaults names for the model,
-        # you can reload it using from_pretrained()
-
-        # Create output directory if needed
-        if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
-            os.makedirs(args.output_dir)
-
-        # Save vocabulary if not given
-        if not args.vocab_dir:
-            vocabulary.save_to_files(default_vocab_dir)
-
-        # Save arguments
-        torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
-
-        logger.info(
-            f"Saved model checkpoints and vocabulary to {args.output_dir}"
-        )
-
+    logger.info("Evaluation parameters %s", args)
 
     # Determine right archive path
     if args.archive_path and not os.path.exists(args.archive_path):
@@ -851,23 +321,6 @@ def main():
     )
     dataset_reader = archive.validation_dataset_reader
     model = archive.model
-
-    # # If param_path is given or found automatically, use that to initialize
-    # # dataset_reader (here) and model (later) for consistency.
-    # if args.param_path and not os.path.exists(args.param_path):
-    #     raise ConfigurationError(f"Invalid param_path: {args.param_path}")
-    # else:
-    #     # try default location of param path.
-    #     if os.path.exists(os.path.join(args.output_dir, "config.json")):
-    #         args.param_path = os.path.join(args.output_dir, "config.json")
-
-    # if args.param_path:
-        # logger.info(f"Re-initializing Dataset-reader and Model from {args.param_path}")
-        # params = Params.from_file(args.param_path)
-
-        # dataset_reader = DatasetReader.from_params(
-        #     params.pop("dataset_reader"),
-        # )
 
 
     # Evaluation
@@ -912,18 +365,6 @@ def main():
         # Load data
         test_data_loader = load_and_chache_data(args, dataset_reader, "test")
         test_data_loader.index_with(model.vocab)
-
-        # # Init model
-        # if os.path.exists(args.param_path):
-        #     # Use params if possible
-        #     model = Model.from_params(
-        #         params.pop("model"),
-        #         vocab=vocabulary,
-        #     )
-        # else:
-        #     model = build_model(
-        #         args, vocabulary, weights, tokenizer_kwargs=tokenizer_kwargs
-        #     )
 
         output_test_results_file = os.path.join(
             args.output_dir, "test_results.txt"
