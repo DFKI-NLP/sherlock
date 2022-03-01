@@ -21,48 +21,21 @@ import glob
 import logging
 import os
 import random
-import shutil
-from collections import Counter
-from typing import Dict, List, Union, Tuple, Optional, Any
+from typing import List
 
 import numpy as np
 import torch
 from tqdm import tqdm
 
 import allennlp
-from allennlp.common import Params
 from allennlp.common.checks import ConfigurationError
-from allennlp.data import Vocabulary, Instance, DatasetReader
+from allennlp.data import Instance
 from allennlp.data.data_loaders.simple_data_loader import SimpleDataLoader
-from allennlp.data.tokenizers import (
-    Tokenizer, WhitespaceTokenizer, PretrainedTransformerTokenizer)
-from allennlp.data.token_indexers import (
-    TokenIndexer, SingleIdTokenIndexer, PretrainedTransformerIndexer)
-from allennlp.models import Model
 from allennlp.models.archival import load_archive
-from allennlp.modules.text_field_embedders import BasicTextFieldEmbedder
-from allennlp.modules.token_embedders import Embedding
-from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder
-from allennlp.modules import FeedForward
 from allennlp.nn.util import move_to_device
-from allennlp.training.learning_rate_schedulers import LinearWithWarmup
-from allennlp.training.optimizers import HuggingfaceAdamWOptimizer
-from allennlp.training import GradientDescentTrainer
 from allennlp.training.util import evaluate as evaluateAllennlp
-from allennlp.training import Checkpointer
 
-from sherlock.allennlp import SherlockDatasetReader
-from sherlock.allennlp.models.relation_classification import BasicRelationClassifier
-from sherlock.allennlp.models.relation_classification import TransformerRelationClassifier
-from sherlock.dataset_readers import TacredDatasetReader
 from sherlock.metrics import compute_f1
-from sherlock.tasks import IETask
-
-
-try:
-    from torch.utils.tensorboard import SummaryWriter
-except ImportError:
-    from tensorboardX import SummaryWriter
 
 
 logger = logging.getLogger(__name__)
