@@ -73,7 +73,7 @@ class BinaryRcConverter(FeatureConverter):
     def __init__(
         self,
         labels: List[str],
-        max_length: int = 512,
+        max_length: Optional[int] = None,
         framework: str = "transformers",
         entity_handling: str = "mark_entity",
         log_num_input_features: int = -1,
@@ -369,7 +369,9 @@ class BinaryRcConverter(FeatureConverter):
 
 
     def _check_truncated_entity(self, tokens: Union[List[str], List[Token]]):
-        return len(tokens) + self.n_special_tokens > self.max_length
+        if self.max_length:
+            return len(tokens) + self.n_special_tokens > self.max_length
+        return False
 
 
     def _tokenize_with_entities(
@@ -474,5 +476,8 @@ class BinaryRcConverter(FeatureConverter):
                 tokens.extend(self.tokenizer.tokenize(" ".join(tail_tokens)))
                 truncated_entity = self._check_truncated_entity(tokens)
 
-        truncated = len(tokens) > self.max_length
-        return tokens[:self.max_length - self.n_special_tokens], truncated_entity, truncated
+        if self.max_length:
+            truncated = len(tokens) > self.max_length
+            return tokens[:self.max_length - self.n_special_tokens], truncated_entity, truncated
+        else:
+            return tokens, truncated_entity, False

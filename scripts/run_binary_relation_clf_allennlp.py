@@ -78,67 +78,38 @@ def set_seed(args):
 
 def load_and_chache_data(
     args,
+    data_path,
     dataset_reader: allennlp.data.DatasetReader,
-    split: str,
-    return_dataset: bool=False,
-) -> Union[SimpleDataLoader, Tuple[SimpleDataLoader, List[Instance]]]:
+) -> SimpleDataLoader:
     """Returns Dataloader with unindexed Instances. Optionally returns
     dataset for e.g. vocabulary creation."""
 
-    if args.local_rank not in [-1, 0]:
-        # Make sure only the first process in distributed training process
-        # the dataset, and the others will use the cache
-        torch.distributed.barrier()
-
-    if not os.path.isdir(args.cache_dir):
-        os.mkdir(args.cache_dir)
-
-    # chache_file name has to be sensitive to differences in dataloading.
-    cache_file = os.path.join(
-        args.cache_dir,
-        f"cached_rc_{split}_{os.path.basename(args.model_name_or_path)}"
-        + f"_{args.max_seq_length}_{args.entity_handling}"
-        + f"_{args.add_inverse_relations}_{args.do_lower_case}"
-        + f"_{args.tokenizer_name}",
-    )
-
-    # Batch size
-    if split == "train":
-        batch_size = args.per_gpu_train_batch_size
-    elif split == "dev" or split in "validation":
-        batch_size = args.per_gpu_eval_batch_size
-    elif split == "test":
-        batch_size = args.per_gpu_eval_batch_size
-
-    if os.path.exists(cache_file) and not args.overwrite_cache:
-        logger.info(
-            f"Loading features for split {split} from cached file {cache_file}",
+    if args.cache_dir:
+        if not os.path.isdir(args.cache_dir):
+            os.mkdir(args.cache_dir)
+        # chache_file name has to be sensitive to differences in dataloading.
+        cache_file = os.path.join(
+            args.cache_dir,
+            f"cached_rc_{os.path.basename(data_path)}"
+            + f"_{args.archive_path}"
         )
-        dataset: List[Instance] = torch.load(cache_file)
-    else:
-        # TODO: paths as direct paths in args
-        if split == "train":
-            path_to_data = os.path.join(args.data_dir, "train.json")
-        elif split == "dev" or split in "validation":
-            path_to_data = os.path.join(args.data_dir, "dev.json")
-        elif split == "test":
-            path_to_data = os.path.join(args.data_dir, "test.json")
 
-        dataset: List[Instance] = list(dataset_reader.read(path_to_data))
-        if args.local_rank in [-1, 0]:
+        if os.path.exists(cache_file) and not args.overwrite_cache:
+            logger.info(
+                f"Loading features from cached file {cache_file}",
+            )
+            dataset: List[Instance] = torch.load(cache_file)
+        else:
+            dataset: List[Instance] = list(dataset_reader.read(data_path))
             torch.save(dataset, cache_file)
-
-
-    if args.local_rank == 0:
-        torch.distributed.barrier()
+    else:
+        dataset: List[Instance] = list(dataset_reader.read(data_path))
 
     data_loader = SimpleDataLoader(
         dataset,
-        batch_size=batch_size,
+        batch_size=args.per_gpu_batch_size,
     )
 
-    if return_dataset:
-        return data_loader, dataset
     return data_loader
 
 
@@ -150,7 +121,7 @@ def evaluate(
 ):
     eval_output_dir = args.output_dir
 
-    if not os.path.exists(eval_output_dir) and args.local_rank in [-1, 0]:
+    if not os.path.exists(eval_output_dir):
         os.makedirs(eval_output_dir)
 
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
@@ -201,24 +172,24 @@ def main():
 
     # Required parameters
     parser.add_argument(
-        "--data_dir",
+        "--eval_data_path",
         default=None,
         type=str,
-        required=True,
-        help="The input data dir. Should contain the .tsv files (or other data files) for the task.",
+        help="path to file containing the evaluation data.",
+    )
+    parser.add_argument(
+        "--test_data_path",
+        default=None,
+        type=str,
+        help="path to file containing the test data",
     )
     parser.add_argument(
         "--output_dir",
         default=None,
         type=str,
         required=True,
-        help="The output directory where the model predictions and checkpoints will be written.",
-    )
-    parser.add_argument(
-        "--entity_handling",
-        type=str,
-        default="mask_entity",
-        choices=["mark_entity", "mark_entity_append_ner", "mask_entity", "mask_entity_append_text"],
+        help="The output directory where the models evaluation results and test results will be written."
+             + " Also the directory in which the script searches for checkpoints to evaluate.",
     )
     parser.add_argument(
         "--do_predict", action="store_true", help="Whether to run predictions on the test set."
@@ -227,7 +198,6 @@ def main():
         "--cache_dir",
         default=None,
         type=str,
-        required=True,
         help="Where do you want to store the pre-trained models downloaded from s3 and cached features",
     )
     parser.add_argument(
@@ -259,47 +229,31 @@ def main():
         help="path to archive file of trained model which is evaluated or"
             + "predicted upon."
     )
+    parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
     args = parser.parse_args()
 
-    # Setup CUDA, GPU & distributed training
-    if args.no_cuda:
-        device = torch.device("cpu")
+    # Setup CUDA
+    if args.no_cuda or not torch.cuda.is_available():
+        args.device = torch.device("cpu")
         if torch.cuda.is_available():
             logger.warn("Not using cuda although it is available.")
         args.n_gpu = 0
-    elif args.local_rank == -1:
+    else:
         # Set index, because if not, allennlp crashes ¯\_(ツ)_/¯
-        if torch.cuda.is_available():
-            device = torch.device("cuda", index=0)
-        else:
-            device = torch.device("cpu")
+        args.device = torch.device("cuda", index=0)
         args.n_gpu = torch.cuda.device_count()
-    else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", index=args.local_rank)
-        torch.distributed.init_process_group(backend="nccl")
-        args.n_gpu = 1
-    args.device = device
 
     # Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
+        level=logging.INFO,
     )
-    logger.warning(
-        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
-        args.local_rank,
-        str(args.device),
-        args.n_gpu,
-        bool(args.local_rank != -1),
-        args.fp16,
-    )
+    logger.warning(f"Device: {str(args.device)}, n_gpu: {args.n_gpu}")
+    logger.info("Evaluation parameters %s", args)
 
     # Set seed
     set_seed(args)
-
-    logger.info("Evaluation parameters %s", args)
 
     # Determine right archive path
     if args.archive_path and not os.path.exists(args.archive_path):
@@ -314,7 +268,7 @@ def main():
                 f"Cannot find archive at default position: {default_archive}."
                 + " please specify archive_path with --archive_path.")
 
-    # Load everything from archive
+    # Load from archive
     archive = load_archive(
         args.archive_path,
         cuda_device=-1 if args.device == torch.device("cpu") else args.device,
@@ -322,13 +276,16 @@ def main():
     dataset_reader = archive.validation_dataset_reader
     model = archive.model
 
-
     # Evaluation
     results = {}
-    if args.do_eval and args.local_rank in [-1, 0]:
+    if args.do_eval:
 
         # Load data
-        valid_data_loader = load_and_chache_data(args, dataset_reader, "dev")
+        valid_data_loader = load_and_chache_data(
+            args,
+            args.eval_data_path,
+            dataset_reader,
+        )
         valid_data_loader.index_with(model.vocab)
 
         # Load checkpoints to evaluate
@@ -360,10 +317,14 @@ def main():
 
 
     # Prediction
-    if args.do_predict and args.local_rank in [-1, 0]:
+    if args.do_predict:
 
         # Load data
-        test_data_loader = load_and_chache_data(args, dataset_reader, "test")
+        test_data_loader = load_and_chache_data(
+            args,
+            args.test_data_path,
+            dataset_reader,
+        )
         test_data_loader.index_with(model.vocab)
 
         output_test_results_file = os.path.join(
