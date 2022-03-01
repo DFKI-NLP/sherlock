@@ -10,11 +10,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-# from torch.utils.data import DataLoader, SequentialSampler
+from allennlp.common.checks import ConfigurationError
 from allennlp.data import Vocabulary
-from allennlp.data.data_loaders import SimpleDataLoader
-from allennlp.data.tokenizers import Tokenizer
-from allennlp.data.token_indexers import TokenIndexer
+from allennlp.data.data_loaders import SimpleDataLoader, DataLoader
+from allennlp.models.archival import load_archive
 from allennlp.models.model import Model
 from allennlp.nn.util import move_to_device
 
@@ -46,32 +45,35 @@ class AllenNLPAnnotator(Annotator):
 
     @classmethod
     def from_pretrained(  # type: ignore
-            cls, path: str, tokenizer: Tokenizer, token_indexer: TokenIndexer, **kwargs,
+            cls, archive_file: str, cuda_device: int=-1, batch_size: int=16,
     ) -> "Annotator":
-        args = torch.load(os.path.join(path, "training_args.bin"))
+        """Returns an AllenNLPAnnotator. Expects as input an archival file or
+        a directory containing an archival file in the format
+        in which allennlp archives models, vocabularies and configs.
+        http://docs.allennlp.org/main/api/models/archival/
+        If trained with `allennlp train` this can just be the `serialization_dir`.
 
-        # Load FeatureConverter
-        # Option 1: always choose same dir
-        converter = FeatureConverter.from_pretrained(
-            path, tokenizer, token_indexer)
-        # Option 2: choose from dir given in args (preferred)
-        # would need some adaptation in from_pretrained, also means we can get
-        # rid of tokenizer and token_indexer arguments
-        # converter = FeatureConverter.from_pretrained(path)
-        #_, model_class, tokenizer_class, token_indexer_class = ALLENNLP_TASK_CLASSES[cls.task][args.model_type]
-        #params = Params.from_file(os.path.join(path, "config.json"))
-        #weights_file = os.path.join(path, "weights.th")
-        #model = Model.load(params, path, weights_file)
-        #tokenizer = Tokenizer.from_params(params)  # or tokenizer_class.from_params() ?
-        #token_indexer = TokenIndexer.from_params(params)  # or token_indexer_class.from_params() ?
-        # vocab = model.vocab  # Vocabulary is loaded in Model.load()
-        vocabulary = Vocabulary.from_files(os.path.join(path, "allennlp_vocabulary"))
-        model = Model.from_archive(path)
+        """
+        # Determine correct archive_file path
+        if os.path.isdir(archive_file):
+            # try default archive name
+            archive_file = os.path.join(archive_file, "model.tar.gz")
+        if not os.path.exists(archive_file):
+            raise ConfigurationError(
+                f"Archive file {archive_file} neither exists as file or dir."
+            )
+
+        archive = load_archive(
+            archive_file=archive_file,
+            cuda_device=cuda_device,
+        )
+
         return cls(
-            converter,
-            model,
-            vocabulary,
-            **{k: v for k, v in kwargs.items() if k in ["device", "batch_size"]},
+            converter=archive.dataset_reader.feature_converter,
+            model=archive.model,
+            vocabulary=archive.model.vocab,
+            device=cuda_device,
+            batch_size=batch_size,
         )
 
     def process_documents(self, documents: List[Document]) -> List[Document]:
@@ -110,7 +112,7 @@ class AllenNLPAnnotator(Annotator):
         for batch in eval_dataloader:
             self.model.eval()
 
-            batch = move_to_device(batch)
+            batch = move_to_device(batch, self.device)
 
             with torch.no_grad():
                 outputs = self.model(**batch)
