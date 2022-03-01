@@ -19,6 +19,7 @@ def test_convert_documents_to_features():
     tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     converter = BinaryRcConverter(
+        max_length=512,
         tokenizer=tokenizer,
         labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         log_num_input_features=1,

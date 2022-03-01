@@ -26,7 +26,6 @@ def test_convert_documents_to_features():
         """{"model_name": "bert-base-uncased", "max_length": 512,"tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -102,7 +101,6 @@ def test_convert_documents_to_features_truncate():
         + """, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=max_length,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -168,7 +166,6 @@ def test_convert_documents_to_features_truncate():
         + """, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=max_length,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -197,7 +194,6 @@ def test_convert_documents_to_features_truncate():
         + """, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=max_length,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -225,7 +221,6 @@ def test_entity_handling_mark_entity():
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         framework="allennlp",
         tokenizer=tokenizer,
         token_indexers={"tokens": token_indexer},
@@ -291,7 +286,6 @@ def test_entity_handling_mark_entity_append_ner():
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -363,7 +357,6 @@ def test_entity_handling_mask_entity():
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -426,7 +419,6 @@ def test_entity_handling_mask_entity_append_text():
         """{"model_name": "bert-base-uncased", "max_length": 512, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=512,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -494,7 +486,6 @@ def test_save_and_load(tmpdir):
         """{"model_name": "bert-base-uncased", "max_length": 10, "tokenizer_kwargs": {"use_fast": false}}""")))
 
     converter = BinaryRcConverter(
-        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=10,
         framework="allennlp",
         tokenizer=tokenizer,
@@ -508,6 +499,7 @@ def test_save_and_load(tmpdir):
         tmpdir, tokenizer=tokenizer, token_indexers={"tokens": token_indexer})
     assert loaded_converter.max_length == converter.max_length
     assert loaded_converter.entity_handling == converter.entity_handling
-    assert loaded_converter.label_to_id_map == converter.label_to_id_map
-    assert loaded_converter.id_to_label_map == converter.id_to_label_map
+    assert loaded_converter.sep_token == converter.sep_token
+    assert loaded_converter.lower_cases == converter.lower_cases
+    assert loaded_converter.n_special_tokens == converter.n_special_tokens
     assert loaded_converter.log_num_input_features == -1

@@ -37,6 +37,7 @@ def test_convert_documents_to_features():
     tokenizer.add_tokens(
         reader.get_additional_tokens(IETask.NER, file_path=TRAIN_FILE))
     converter = TokenClassificationConverter(
+        max_length=512,
         tokenizer=tokenizer,
         labels=reader.get_labels(IETask.NER, file_path=TRAIN_FILE),
         log_num_input_features=1,
@@ -86,8 +87,9 @@ def test_convert_documents_to_features():
     label_ids = input_features[1].labels
     assert label_ids[0] == converter.pad_token_label_id
     assert label_ids[-1] == converter.pad_token_label_id
+    # 16, because that is the index of label "O" when behavior is well defined.
     assert label_ids[1:8] == (
-        [converter.label_to_id_map["B-LOCATION"]] + [converter.pad_token_label_id] * 3 + [0] * 3
+        [converter.label_to_id_map["B-LOCATION"]] + [converter.pad_token_label_id] * 3 + [16] * 3
     )
 
     assert len(features.input_ids) == converter.max_length
