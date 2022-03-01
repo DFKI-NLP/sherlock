@@ -124,8 +124,6 @@ def evaluate(
     if not os.path.exists(eval_output_dir):
         os.makedirs(eval_output_dir)
 
-    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-
     # Eval!
     name = filename or ""
     logger.info("***** Running evaluation {} *****".format(name))
@@ -229,18 +227,25 @@ def main():
         help="path to archive file of trained model which is evaluated or"
             + "predicted upon."
     )
+    parser.add_argument(
+        "--overwrite_results",
+        action="store_true",
+        help="Overwrite the evaluation/test results.",
+    )
     parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
     args = parser.parse_args()
 
     # Setup CUDA
     if args.no_cuda or not torch.cuda.is_available():
         args.device = torch.device("cpu")
+        args.cuda_device = -1
         if torch.cuda.is_available():
             logger.warn("Not using cuda although it is available.")
         args.n_gpu = 0
     else:
         # Set index, because if not, allennlp crashes ¯\_(ツ)_/¯
         args.device = torch.device("cuda", index=0)
+        args.cuda_device = 0
         args.n_gpu = torch.cuda.device_count()
 
     # Setup logging
@@ -271,10 +276,11 @@ def main():
     # Load from archive
     archive = load_archive(
         args.archive_path,
-        cuda_device=-1 if args.device == torch.device("cpu") else args.device,
+        cuda_device=args.cuda_device,
     )
     dataset_reader = archive.validation_dataset_reader
     model = archive.model
+
 
     # Evaluation
     results = {}
@@ -299,8 +305,32 @@ def main():
         logger.info(
             f"Evaluate following checkpoints: archived model and {checkpoints}"
         )
+
+        filename_eval_archived_model = os.path.join(
+            args.output_dir, "eval_results.txt"
+        )
+        # Check that evaluation files do not exist already
+        if not args.overwrite_results:
+            if os.path.exists(filename_eval_archived_model):
+                raise ValueError(
+                    "Evaluation results for archived model already exist. Use"
+                    + " --overwrite_results to overwrite them."
+                )
+            for checkpoint in checkpoints:
+                finalname_eval = f"{os.path.splitext(checkpoint)[0]}_eval_results.txt"
+                if os.path.exists(finalname_eval):
+                    raise ValueError(
+                        f"Evaluation results for checkpoint {checkpoint}"
+                        + "already exist, use --overwrite_results to"
+                        + "overwrite them."
+                    )
         logger.info(f"Evaluating archived model")
-        evaluateAllennlp(model, valid_data_loader, args.device)
+        evaluateAllennlp(
+            model=model,
+            data_loader=valid_data_loader,
+            cuda_device=args.cuda_device,
+            output_file=filename_eval_archived_model,
+        )
         for checkpoint in checkpoints:
             logger.info(f"Evaluating {checkpoint.split('/')[-1]}")
             splitted = checkpoint.split("_")
@@ -311,7 +341,13 @@ def main():
             state_dict = torch.load(checkpoint, map_location=args.device)
             model.load_state_dict(state_dict)
 
-            result = evaluateAllennlp(model, valid_data_loader, args.device)
+            finalname_eval = f"{os.path.splitext(checkpoint)[0]}_eval_results.txt"
+            result = evaluateAllennlp(
+                model=model,
+                data_loader=valid_data_loader,
+                cuda_device=args.cuda_device,
+                output_file=finalname_eval,
+            )
             result = {f"{k}_{epoch_and_step}": v for k, v in result.items()}
             results.update(result)
 
