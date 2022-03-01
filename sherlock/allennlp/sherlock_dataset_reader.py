@@ -19,7 +19,6 @@ from allennlp.data import DatasetReader
 
 from sherlock.dataset_readers import DatasetReader as DatasetReaderSherlock
 from sherlock.feature_converters import FeatureConverter
-from sherlock.tasks import IETask
 
 
 logger = logging.getLogger(__name__)
@@ -65,7 +64,6 @@ class SherlockDatasetReader(DatasetReader):
 
     def __init__(
         self,
-        task: str,
         dataset_reader_name: str,
         feature_converter_name: str,
         tokenizer: Tokenizer,
@@ -81,49 +79,25 @@ class SherlockDatasetReader(DatasetReader):
 
         self.log_num_input_features = log_num_input_features or 0
 
-        # TODO: make this clean: is it enough to just take the string???
-        if task == "binary_rc":
-            self.task = IETask.BINARY_RC
-        elif task == "ner":
-            self.task = IETask.NER
-        else:
-            raise NotImplementedError("Task not implemented")
-
         DatasetReaderClass = DatasetReaderSherlock.by_name(dataset_reader_name)
         self.dataset_reader: DatasetReaderSherlock = DatasetReaderClass(
-            dataset_reader_kwargs)
+            dataset_reader_kwargs
+        )
 
-        # can only initialize FeatureConverter with labels, but labels are only
-        # retrievable given data. Thus, initialize FeatureConverter later
-        self.feature_converter_name: str = feature_converter_name
-        self.feature_converter: Optional[FeatureConverter] = None
-
-        self.feature_converter_kwargs = feature_converter_kwargs or {}
-        self.feature_converter_kwargs["tokenizer"] = tokenizer
-        self.feature_converter_kwargs["token_indexers"] = token_indexers
-        self.feature_converter_kwargs["max_length"] = max_tokens
+        FeatureConverterClass = FeatureConverter.by_name(feature_converter_name)
+        self.feature_converter: FeatureConverter = FeatureConverterClass(
+            max_length=max_tokens,
+            framework="allennlp",
+            tokenizer=tokenizer,
+            token_indexers=token_indexers,
+            **feature_converter_kwargs,
+        )
 
 
     def _read(
         self,
         file_path: Optional[str]=None,
     ) -> Iterable[Instance]:
-
-        # Initialize FeatureConverter if that did not happen yet
-        # Use opportunity to expand special tokens from tokenizer
-        if self.feature_converter is None:
-
-            # Get class
-            FeatureConverterClass = \
-                FeatureConverter.by_name(
-                    self.feature_converter_name)
-            # Initialize
-            self.feature_converter = \
-                FeatureConverterClass(
-                    labels=self.dataset_reader.get_labels(self.task, file_path),
-                    framework="allennlp",
-                    **self.feature_converter_kwargs
-                )
 
         # Get Document generator
         document_generator = self.dataset_reader.get_documents(file_path)

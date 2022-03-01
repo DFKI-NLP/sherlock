@@ -72,7 +72,6 @@ class BinaryRcConverter(FeatureConverter):
     """
     def __init__(
         self,
-        labels: List[str],
         max_length: Optional[int] = None,
         framework: str = "transformers",
         entity_handling: str = "mark_entity",
@@ -80,7 +79,7 @@ class BinaryRcConverter(FeatureConverter):
         tokenize_special_tokens: Optional[bool] = None,
         **kwargs,
     ) -> None:
-        super().__init__(labels, max_length, framework, **kwargs)
+        super().__init__(max_length, framework, **kwargs)
         if entity_handling not in [
             "mark_entity",
             "mark_entity_append_ner",

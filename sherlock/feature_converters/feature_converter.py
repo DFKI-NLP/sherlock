@@ -28,39 +28,37 @@ class FeatureConverter(Registrable):
 
     Parameters
     ----------
-    labels : ``List[str]``
-        All possible labels for a task
     max_length : ``int``, optional (default=`None`)
         If set to a number, will limit sequences to maximum length.
     framework : ``str``, optional (default=`transformers`)
         Whether to use `transformers` or `allennlp`
-    **kwargs : ``Dict[str,any]``
+    kwargs : ``Dict[str,any]``
         init arguments for `transformer` or `allennlp` FeatureConverter:
-        `transformer`:  {"tokenizer": PreTrainedTokenizer}
+        `transformer`:
+            tokenizer : ``PreTrainedTokenizer``,
+                Huggingface tokenizer to tokenize input-sentences.
+            labels : ``List[str]``,
+                All possible labels for a task.
         `allennlp`:
-            {
-                "tokenizer": Tokenizer,
-                "token_indexers": Dict[str, TokenIndexer]
-            }
+            tokenizer : ``Tokenizer``
+                AllenNLP tokenizer to tokenize input-sentences.
+            token_indexers : ``Dict[str, TokenIndexer]``
+                AllenNLP token indexer to index vocabulary with.
     """
 
     def __init__(
         self,
-        labels: Iterable[str],
         max_length: Optional[int] =None,
         framework: str ="transformers",
         **kwargs,
     ) -> None:
-        self.labels = list(labels)
         self.max_length = max_length
-        self.id_to_label_map = {i: l for i, l in enumerate(self.labels)}
-        self.label_to_id_map = {l: i for i, l in enumerate(self.labels)}
         self.framework = framework
 
         if framework == "transformers":
             logger.info("Initializing Transformers FeatureConverter")
             self._init_feature_converter_transformers(
-                **{k: v for k, v in kwargs.items() if k in ["tokenizer"]}
+                **{k: v for k, v in kwargs.items() if k in ["tokenizer", "labels"]}
             )
         elif framework == "allennlp":
             logger.info("Initializing AllenNLP FeatureConverter")
@@ -70,9 +68,12 @@ class FeatureConverter(Registrable):
             raise NotImplementedError(f"Framework not supported: {framework}")
 
     def _init_feature_converter_transformers(
-        self, tokenizer: PreTrainedTokenizer
+        self, tokenizer: PreTrainedTokenizer, labels: Iterable[str],
     ) -> None:
         self.tokenizer = tokenizer
+        self.labels = sorted(list(labels))
+        self.id_to_label_map = {i: l for i, l in enumerate(self.labels)}
+        self.label_to_id_map = {l: i for i, l in enumerate(self.labels)}
 
     def _init_feature_converter_allennlp(
         self, tokenizer: Tokenizer, token_indexers: Dict[str, TokenIndexer]

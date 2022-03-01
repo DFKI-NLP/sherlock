@@ -33,7 +33,6 @@ function (
     "dataset_reader": {
         "type": "sherlock",
         "dataset_reader_name": "tacred",
-        "task": "binary_rc",
         "feature_converter_name": "binary_rc",
         "tokenizer": {
             "type": "pretrained_transformer",
