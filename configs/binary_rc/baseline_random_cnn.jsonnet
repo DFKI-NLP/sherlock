@@ -1,11 +1,8 @@
 
 function (
-    num_epochs = 5,
+    num_epochs = 50,
     batch_size = 8,
-    lr = 2e-5,
-    adam_epsilon = 1e-8,
-    weight_decay = 0.0,
-    warmup_steps = 0,
+    lr = 0.1,
     do_lower_case = true,
     train_data_path = "../ds/tacred/data/json/train.json",
     validation_data_path = "../ds/tacred/data/json/dev.json",
@@ -13,20 +10,16 @@ function (
     entity_handling = "mark_entity_append_ner",
     word_dropout = 0.04,
     embedding_dropout = 0.0,
-    encoding_dropout = 0.0,
+    encoding_dropout = 0.5,
     embedding_dim = 300,
     embedding_trainable = false,
     text_encoder_num_filters = 500,
     text_encoder_ngram_filter_sizes = [2, 3, 4, 5],
-    num_classes = 42, // not clean
+    num_classes = 42,
     fp16 = false,
     cuda_device = 0,
-    max_instances = 100,
+    max_instances = null,
 ) {
-    local parameter_groups = if weight_decay > 0 then [
-        [["(?<!LayerNorm\\.)weight",], {"weight_decay": weight_decay}],
-        [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
-    ] else null,
     local text_encoder_input_dim = embedding_dim,
     local classifier_feedforward_input_dim = text_encoder_num_filters * std.length(text_encoder_ngram_filter_sizes),
 
@@ -101,15 +94,16 @@ function (
     },
     "trainer": {
         "num_epochs": num_epochs,
+        "patience": 10,
+        "grad_clipping": 5.0,
         "optimizer": {
-            "type": "huggingface_adamw",
-            "parameter_groups": parameter_groups,
+            "type": "adagrad",
             "lr": lr,
-            "eps": adam_epsilon,
         },
         "learning_rate_scheduler": {
-            "type": "linear_with_warmup",
-            "warmup_steps": warmup_steps,
+            "type": "multi_step",
+            "milestones": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+            "gamma": 0.9,
         },
         "validation_metric": "+fscore",
         "cuda_device": cuda_device,
