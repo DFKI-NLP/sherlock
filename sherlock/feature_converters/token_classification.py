@@ -31,21 +31,32 @@ class TokenClassificationConverter(FeatureConverter):
     Class to convert Documents into InputFeatures used for Annotators
     in TokenClassification.
 
-    Parameters
+    Attributes
     ----------
-    labels
-    max_length
-    framework
-    entity_handling
-    pad_token_segmend_id    # TODO: probably move into `transformers` kwargs
-    log_num_input_features
+    max_length : ``int``, optional (default=`512`)
+        Will limit sequences of tokens to maximum length.
+    framework : ``"allennlp" | "transformers"``, optional (default=`transformers`)
+        String indicating to use allennlp or transformers library.
+    entity_handling : ``str``, optional (default=`mark_entity`)
+        Strategy to specifically mark entities in sentences. Has to be between
+        `"mark_entity", "mark_entity_append_ner", "mask_entity", "mask_entity_append_text"`.
+        unclear what this does.
+    pad_token_segmend_id : ``int``, optional (default=`CrossEntropyLoss().ignore_index`)
+        Id with which multi-word tokens are padded.
+    log_num_input_features : ``int``, optional (default=`-1`)
+        Amount of example Instances which are logged.
     kwargs : ``Dict[str, any]``
-        framwork specific keywords.
+        Framework specific keywords.
         `transformers`:
-            tokenizer  : `PreTrainedTokenizer`
+            labels : ``List[str]``
+                List of all labels as strings.
+            tokenizer  : ``PreTrainedTokenizer``
+                Huggingface tokenizer to tokenize input-sentences.
         `allennlp`:
             tokenizer : ``Tokenizer``
-            token_indexers : ``Dict[str, TokenIndexer]``
+                AllenNLP tokenizer to tokenize input-sentences.
+            token_indexers : ``Dict[str,TokenIndexer]``
+                AllenNLP token indexer to index vocabulary with.
     """
 
     def __init__(
@@ -57,7 +68,7 @@ class TokenClassificationConverter(FeatureConverter):
         log_num_input_features: int=-1,
         **kwargs,
     ) -> None:
-        super().__init__(labels, max_length, framework, **kwargs)
+        super().__init__(max_length, framework, labels=labels, **kwargs)
         self.pad_token_label_id = pad_token_label_id
         self.log_num_input_features = log_num_input_features
 
@@ -175,9 +186,8 @@ class TokenClassificationConverter(FeatureConverter):
             metadata=metadata,
         )
 
-        # TODO: implement!
-        # if verbose:
-        #     self._log_input_features(tokens, document, features, labels)
+        if verbose:
+            self._log_input_features(tokens, document, feature, labels)
 
         return [feature]
 

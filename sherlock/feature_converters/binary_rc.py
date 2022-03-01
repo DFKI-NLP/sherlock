@@ -32,8 +32,6 @@ class BinaryRcConverter(FeatureConverter):
 
     Attributes
     ----------
-    labels : ``List[str]``
-        List of all labels as strings.
     max_length : ``int``, optional (default=`512`)
         Will limit sequences of tokens to maximum length.
     framework : ``"allennlp" | "transformers"``, optional (default=`transformers`)
@@ -57,7 +55,9 @@ class BinaryRcConverter(FeatureConverter):
     kwargs : ``Dict[str, any]``
         Framework specific keywords.
         `transformers`:
-            tokenizer  : `PreTrainedTokenizer`
+            labels : ``List[str]``
+                List of all labels as strings.
+            tokenizer  : ``PreTrainedTokenizer``
                 Huggingface tokenizer to tokenize input-sentences.
         `allennlp`:
             tokenizer : ``Tokenizer``
@@ -342,9 +342,9 @@ class BinaryRcConverter(FeatureConverter):
         num_fit_examples = len(documents) - sum(
             [features.metadata["truncated"] for features in input_features]
         )
+        percentage = num_fit_examples * 100.0 / len(documents)
         logger.info(
-            "%d (%.2f %%) examples can fit max_seq_length = %d"
-            % (num_fit_examples, num_fit_examples * 100.0 / len(documents), self.max_length)
+            f"{num_fit_examples} ({percentage:.2f} %) examples can fit max_seq_length = {self.max_length}"
         )
 
         return input_features

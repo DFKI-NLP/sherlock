@@ -138,14 +138,10 @@ class FeatureConverter(Registrable):
     ) -> "FeatureConverter":
         # TODO: Alternatively it would be better to save the token_indexers and
         # tokenizer name in the config, then load it here
-        vocab_file = os.path.join(path, "converter_label_vocab.txt")
-        with open(vocab_file, "r", encoding="utf-8") as reader:
-            config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
         config["token_indexers"] = token_indexers
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
-
 
     @staticmethod
     def from_pretrained(path: str, **kwargs) -> "FeatureConverter":
@@ -187,8 +183,9 @@ class FeatureConverter(Registrable):
 
     def save(self, save_directory: str) -> None:
         if not os.path.isdir(save_directory):
-            logger.error("Saving directory ({}) should be a directory".format(save_directory))
-        self.save_label_vocabulary(save_directory)
+            raise ValueError(
+                f"Saving directory ({save_directory}) should be a directory"
+            )
         config = dict(
             name=self.name,
             framework=self.framework,
@@ -197,6 +194,8 @@ class FeatureConverter(Registrable):
         converter_config_file = os.path.join(save_directory, "converter_config.json")
         with open(converter_config_file, "w", encoding="utf-8") as writer:
             writer.write(json.dumps(config, ensure_ascii=False))
+        if self.framework == "transformers":
+            self.save_label_vocabulary(save_directory)
 
     @staticmethod
     def _log_input_features_transformers(
