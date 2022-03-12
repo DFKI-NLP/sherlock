@@ -8,18 +8,25 @@ from sherlock.tasks import IETask
 from tests import FIXTURES_ROOT
 
 
+TRAIN_FILE = os.path.join(FIXTURES_ROOT, "datasets", "tacred.json")
+
+
 def test_convert_documents_to_features():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+
+    reader = TacredDatasetReader()
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     converter = BinaryRcConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(IETask.BINARY_RC), log_num_input_features=1
+        max_length=512,
+        tokenizer=tokenizer,
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        log_num_input_features=1,
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
 
@@ -72,18 +79,20 @@ def test_convert_documents_to_features():
 
 
 def test_convert_documents_to_features_truncate():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
-    max_length = 10
+    max_length = 19
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     converter = BinaryRcConverter(
-        tokenizer=tokenizer, labels=reader.get_labels(IETask.BINARY_RC), max_length=max_length
+        tokenizer=tokenizer,
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=max_length,
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
 
     input_features = converter.documents_to_features(documents)
     assert all([features.metadata["truncated"] for features in input_features])
@@ -98,6 +107,15 @@ def test_convert_documents_to_features_truncate():
         "chief",
         "financial",
         "officer",
+        '[head_start]',
+        "douglas",
+        "flint",
+        "[head_end]",
+        "will",
+        "become",
+        "[tail_start]",
+        "chairman",
+        "[tail_end]",
         "[SEP]",
     ]
 
@@ -111,20 +129,39 @@ def test_convert_documents_to_features_truncate():
     assert len(features.token_type_ids) == max_length
 
 
-def test_entity_handling_mark_entity():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
-
+    ## Check truncation boundary
+    max_length = 18
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(IETask.BINARY_RC),
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
+        max_length=max_length,
+    )
+
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
+
+    input_features = converter.documents_to_features(documents)
+
+    assert len(input_features) == 0
+
+
+def test_entity_handling_mark_entity():
+    reader = TacredDatasetReader()
+
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
+    converter = BinaryRcConverter(
+        tokenizer=tokenizer,
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         entity_handling="mark_entity",
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
     input_features = converter.documents_to_features(documents)
 
     expected_tokens = [
@@ -168,19 +205,19 @@ def test_entity_handling_mark_entity():
 
 
 def test_entity_handling_mark_entity_append_ner():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(IETask.BINARY_RC),
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         entity_handling="mark_entity_append_ner",
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
     input_features = converter.documents_to_features(documents)
 
     expected_tokens = [
@@ -228,19 +265,19 @@ def test_entity_handling_mark_entity_append_ner():
 
 
 def test_entity_handling_mask_entity():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(IETask.BINARY_RC),
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         entity_handling="mask_entity",
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
     input_features = converter.documents_to_features(documents)
 
     expected_tokens = [
@@ -279,19 +316,19 @@ def test_entity_handling_mask_entity():
 
 
 def test_entity_handling_mask_entity_append_text():
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    tokenizer.add_tokens(reader.get_additional_tokens(IETask.BINARY_RC))
+    tokenizer.add_tokens(
+        reader.get_additional_tokens(IETask.BINARY_RC, file_path=TRAIN_FILE))
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(IETask.BINARY_RC),
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         entity_handling="mask_entity_append_text",
     )
 
-    documents = reader.get_documents(split="train")
+    # TODO: once generator support for FeatureConverts: remove list()
+    documents = list(reader.get_documents(file_path=TRAIN_FILE))
     input_features = converter.documents_to_features(documents)
 
     expected_tokens = [
@@ -335,23 +372,19 @@ def test_entity_handling_mask_entity_append_text():
 
 
 def test_save_and_load(tmpdir):
-    reader = TacredDatasetReader(
-        data_dir=os.path.join(FIXTURES_ROOT, "datasets"), train_file="tacred.json"
-    )
+    reader = TacredDatasetReader()
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     converter = BinaryRcConverter(
         tokenizer=tokenizer,
-        labels=reader.get_labels(IETask.BINARY_RC),
+        labels=reader.get_labels(IETask.BINARY_RC, file_path=TRAIN_FILE),
         max_length=1,
-        pad_token_segment_id=2,
         log_num_input_features=3,
         entity_handling="mask_entity_append_text",
     )
     converter.save(tmpdir)
 
-    loaded_converter = BinaryRcConverter.from_pretrained(tmpdir, tokenizer)
+    loaded_converter = BinaryRcConverter.from_pretrained(tmpdir, tokenizer=tokenizer)
     assert loaded_converter.max_length == converter.max_length
-    assert loaded_converter.pad_token_segment_id == converter.pad_token_segment_id
     assert loaded_converter.entity_handling == converter.entity_handling
     assert loaded_converter.label_to_id_map == converter.label_to_id_map
     assert loaded_converter.id_to_label_map == converter.id_to_label_map

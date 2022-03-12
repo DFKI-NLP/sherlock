@@ -18,9 +18,11 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 import glob
+import json
 import logging
 import os
 import random
+import shutil
 
 import numpy as np
 import torch
@@ -52,8 +54,8 @@ from transformers import (
 )
 
 from sherlock.dataset import TensorDictDataset
-from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import BinaryRcConverter
+from sherlock.dataset_readers import DatasetReader
+from sherlock.feature_converters import FeatureConverter
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
 
@@ -164,7 +166,7 @@ def train(args, dataset_reader, converter, model, tokenizer):
     logger.info("  Total optimization steps = %d", t_total)
 
     global_step = 0
-    tr_loss, logging_loss = 0.0, 0.0
+    tr_loss, logging_loss, logging_loss2 = 0.0, 0.0, 0.0
     model.zero_grad()
     train_iterator = trange(
         int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0]
@@ -174,17 +176,17 @@ def train(args, dataset_reader, converter, model, tokenizer):
         epoch_iterator = tqdm(
             train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0]
         )
+        preds = []
+        out_label_ids = []
         for step, batch in enumerate(epoch_iterator):
             model.train()
             batch = {k: t.to(args.device) for k, t in batch.items()}
-            if args.model_type not in ["bert", "xlnet"]:
-                batch["token_type_ids"] = None
-
-            if args.model_type == "distilbert":
-                del batch["token_type_ids"]
 
             outputs = model(**batch)
-            loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
+            loss, logits = outputs[:2]  # model outputs are always tuple in transformers (see doc)
+
+            preds.append(logits.detach().cpu().numpy())
+            out_label_ids.append(batch["labels"].detach().cpu().numpy())
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -219,10 +221,10 @@ def train(args, dataset_reader, converter, model, tokenizer):
                             args, dataset_reader, converter, model, tokenizer, split="dev"
                         )
                         for key, value in results.items():
-                            tb_writer.add_scalar("eval_{}".format(key), value, global_step)
-                    tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
+                            tb_writer.add_scalar("Steps/Eval/{}".format(key), value, global_step)
+                    tb_writer.add_scalar("Steps/lr", scheduler.get_lr()[0], global_step)
                     tb_writer.add_scalar(
-                        "loss", (tr_loss - logging_loss) / args.logging_steps, global_step
+                        "Steps/Train/loss", (tr_loss - logging_loss) / args.logging_steps, global_step
                     )
                     logging_loss = tr_loss
 
@@ -250,6 +252,44 @@ def train(args, dataset_reader, converter, model, tokenizer):
             if args.max_steps > 0 and global_step > args.max_steps:
                 epoch_iterator.close()
                 break
+
+
+        # Evaluate at end of epoch
+        if args.local_rank == -1:
+            # Only evaluate when single GPU otherwise metrics may not average well
+
+            preds = np.concatenate(preds, axis=0)
+            preds = np.argmax(preds, axis=1)
+            out_label_ids = np.concatenate(out_label_ids, axis=0)
+            train_results = compute_f1(preds, out_label_ids)
+            for key, value in train_results.items():
+                tb_writer.add_scalar(f"Epoch/Train/{key}", value, epoch)
+
+            test_results, _ = evaluate(
+                args,
+                dataset_reader,
+                converter,
+                model,
+                tokenizer,
+                split="dev",
+            )
+
+            for key, value in test_results.items():
+                tb_writer.add_scalar(f"Epoch/Eval/{key}", value, epoch)
+
+            # Save results to file
+            log_file_dir = os.path.join(args.output_dir, f"metrics_epoch_{epoch}.json")
+            results = {f"training_{k}": v for k, v in train_results.items()}
+            results.update({f"validation_{k}": v for k, v in test_results.items()})
+            with open(log_file_dir, "w", encoding="utf-8") as result_out:
+                json.dump(results, result_out, indent=4)
+
+        # tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
+        tb_writer.add_scalar(
+            "Train/Epoch/loss", (tr_loss - logging_loss2) / len(train_dataloader), epoch
+        )
+        logging_loss2 = tr_loss
+
         if args.max_steps > 0 and global_step > args.max_steps:
             train_iterator.close()
             break
@@ -260,7 +300,8 @@ def train(args, dataset_reader, converter, model, tokenizer):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""):
+def evaluate(
+    args, dataset_reader, converter, model, tokenizer, split, filename="eval_results.txt"):
     eval_output_dir = args.output_dir
 
     eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
@@ -280,13 +321,14 @@ def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""
     )
 
     # Eval!
-    logger.info("***** Running evaluation {} *****".format(prefix))
+    name = filename or ""
+    logger.info(f"***** Running evaluation {name} *****")
     logger.info("  Num examples = %d", len(eval_dataset))
     logger.info("  Batch size = %d", args.eval_batch_size)
     eval_loss = 0.0
     nb_eval_steps = 0
-    preds = None
-    out_label_ids = None
+    preds = []
+    out_label_ids = []
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         model.eval()
         batch = {k: t.to(args.device) for k, t in batch.items()}
@@ -302,23 +344,24 @@ def evaluate(args, dataset_reader, converter, model, tokenizer, split, prefix=""
 
             eval_loss += tmp_eval_loss.mean().item()
         nb_eval_steps += 1
-        if preds is None:
-            preds = logits.detach().cpu().numpy()
-            out_label_ids = batch["labels"].detach().cpu().numpy()
-        else:
-            preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
-            out_label_ids = np.append(out_label_ids, batch["labels"].detach().cpu().numpy(), axis=0)
+        preds.append(logits.detach().cpu().numpy())
+        out_label_ids.append(batch["labels"].detach().cpu().numpy())
 
     eval_loss = eval_loss / nb_eval_steps
+    preds = np.concatenate(preds, axis=0)
     preds = np.argmax(preds, axis=1)
+    out_label_ids = np.concatenate(out_label_ids, axis=0)
     result = compute_f1(preds, out_label_ids)
 
-    output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
-    with open(output_eval_file, "w") as writer:
-        logger.info("***** Eval results {} *****".format(prefix))
-        for key in sorted(result.keys()):
-            logger.info("  %s = %s", key, str(result[key]))
-            writer.write("%s = %s\n" % (key, str(result[key])))
+    logger.info("***** Eval results {} *****".format(name))
+    for key in sorted(result.keys()):
+        logger.info("  %s = %s", key, str(result[key]))
+
+    if filename is not None:
+        output_eval_file = os.path.join(eval_output_dir, filename)
+        with open(output_eval_file, "w") as writer:
+            for key in sorted(result.keys()):
+                writer.write("%s = %s\n" % (key, str(result[key])))
 
     return result, preds
 
@@ -331,23 +374,31 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
 
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
-        args.data_dir,
-        "cached_{}_{}_{}".format(
+        args.cache_dir,
+        "cached_rc_{}_{}_{}".format(
             split,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
-        logger.info("Loading features from cached file %s", cached_features_file)
+        logger.info("Loading features for split %s from cached file %s", split, cached_features_file)
         input_features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
-        documents = dataset_reader.get_documents(split)
+        if split == "train":
+            file_path = os.path.join(args.data_dir, "train.json")
+        elif split == "dev":
+            file_path = os.path.join(args.data_dir, "dev.json")
+        elif split == "test":
+            file_path = os.path.join(args.data_dir, "test.json")
+
+        logger.info("Creating features for split %s from dataset file at %s", split, args.data_dir)
+        documents = list(dataset_reader.get_documents(file_path))
         input_features = converter.documents_to_features(documents)
 
         if args.local_rank in [-1, 0]:
-            logger.info("Saving features into cached file %s", cached_features_file)
+            logger.info("Saving features for split %s into cached file %s", split, cached_features_file)
+            os.makedirs(args.cache_dir, exist_ok=True)
             torch.save(input_features, cached_features_file)
 
     if args.local_rank == 0 and split not in ["dev", "test"]:
@@ -358,8 +409,9 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         tensor_dict = {
             "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
-            "token_type_ids": torch.tensor(features.token_type_ids, dtype=torch.long),
         }
+        if features.token_type_ids is not None:
+            tensor_dict["token_type_ids"] = torch.tensor(features.token_type_ids, dtype=torch.long)
         if features.labels is not None:
             tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
         tensor_dicts.append(tensor_dict)
@@ -434,9 +486,10 @@ def main():
     )
     parser.add_argument(
         "--cache_dir",
-        default="",
+        default=None,
         type=str,
-        help="Where do you want to store the pre-trained models downloaded from s3",
+        required=True,
+        help="Where do you want to store the pre-trained models downloaded from s3 and cached features",
     )
     parser.add_argument(
         "--max_seq_length",
@@ -567,6 +620,10 @@ def main():
     )
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
+    parser.add_argument(
+        "--max_instances", type=int, default=-1,
+        help="Only use this number of first instances in dataset (e.g. for debugging)."
+    )
     args = parser.parse_args()
 
     if (
@@ -580,6 +637,13 @@ def main():
                 args.output_dir
             )
         )
+    elif os.path.exists(args.output_dir) and args.do_train:
+        logger.warn(f"Deleting content of output_dir: {args.output_dir}")
+        # delete all files in old dir
+        shutil.rmtree(args.output_dir)
+        os.mkdir(args.output_dir)
+    elif args.do_train:
+        os.mkdir(args.output_dir)
 
     # Setup distant debugging if needed
     if args.server_ip and args.server_port:
@@ -637,10 +701,15 @@ def main():
     # Set seed
     set_seed(args)
 
+    TacredDatasetReader = DatasetReader.by_name("tacred")
+
     dataset_reader = TacredDatasetReader(
-        data_dir=args.data_dir, add_inverse_relations=args.add_inverse_relations
+        add_inverse_relations=args.add_inverse_relations,
+        negative_label_re=args.negative_label,
+        max_instances=args.max_instances if args.max_instances != -1 else None
     )
-    labels = dataset_reader.get_labels(task=IETask.BINARY_RC)
+    train_path = os.path.join(args.data_dir, "train.json")
+    labels = dataset_reader.get_labels(IETask.BINARY_RC, train_path)
     num_labels = len(labels)
 
     # Load pretrained model and tokenizer
@@ -661,16 +730,20 @@ def main():
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
 
+    BinaryRcConverter = FeatureConverter.by_name("binary_rc")
+
     converter = BinaryRcConverter(
-        tokenizer=tokenizer,
         labels=labels,
         max_length=args.max_seq_length,
+        tokenizer=tokenizer,
         entity_handling=args.entity_handling,
-        pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
-        log_num_input_features=20,
+        log_num_input_features=3,
     )
 
-    additional_tokens = dataset_reader.get_additional_tokens(task=IETask.BINARY_RC)
+    # TODO: Issue #41
+    additional_tokens = dataset_reader.get_additional_tokens(
+        IETask.BINARY_RC, train_path)
+
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
         model.resize_token_embeddings(len(tokenizer))
@@ -711,12 +784,6 @@ def main():
         # Good practice: save your training arguments together with the trained model
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
-        # Load a trained model and vocabulary that you have fine-tuned
-        model = model_class.from_pretrained(args.output_dir)
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
-        )
-        model.to(args.device)
 
     # Evaluation
     results = {}
@@ -724,7 +791,7 @@ def main():
         tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=args.do_lower_case
         )
-        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer)
+        converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer=tokenizer)
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints:
             checkpoints = list(
@@ -738,11 +805,12 @@ def main():
         for checkpoint in checkpoints:
             global_step = checkpoint.split("-")[-1] if len(checkpoints) > 1 else ""
             prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
+            filename = f"{prefix}_eval_result.txt"
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
             result, _ = evaluate(
-                args, dataset_reader, converter, model, tokenizer, split="dev", prefix=prefix
+                args, dataset_reader, converter, model, tokenizer, split="dev", filename=filename
             )
             result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
             results.update(result)
@@ -754,7 +822,7 @@ def main():
         model = model_class.from_pretrained(args.output_dir)
         model.to(args.device)
         result, predictions = evaluate(
-            args, dataset_reader, converter, model, tokenizer, split="test"
+            args, dataset_reader, converter, model, tokenizer, split="test", filename=None
         )
         predictions = [converter.id_to_label_map[i] for i in predictions]
 

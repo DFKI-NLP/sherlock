@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*-
+
 def compute_f1(preds, labels):
     n_gold = n_pred = n_correct = 0
     for pred, label in zip(preds, labels):

@@ -8,7 +8,7 @@ from spacy.language import Language as SpacyModelType
 
 from sherlock import Document
 from sherlock.document import Span, Token
-from sherlock.predictors.predictor import Predictor
+from sherlock.annotators.annotator import Annotator
 
 
 logger = logging.getLogger(__name__)
@@ -119,8 +119,8 @@ def _convert_sents(spacy_doc: spacy.tokens.Doc, tokens_isspace: List[Tuple[spacy
     return sents
 
 
-@Predictor.register("spacy")
-class SpacyPredictor(Predictor):
+@Annotator.register("spacy")
+class SpacyAnnotator(Annotator):
     def __init__(
         self,
         path: str = "en_core_web_sm",
@@ -142,7 +142,7 @@ class SpacyPredictor(Predictor):
         # parse: bool = False,
         # ner: bool = False,
         # split_on_spaces: bool = False,
-    ) -> "Predictor":  # type: ignore
+    ) -> "Annotator":  # type: ignore
         return cls(
             path,
             **{
@@ -152,7 +152,7 @@ class SpacyPredictor(Predictor):
             },
         )
 
-    def predict_documents(self, documents: List[Document]) -> List[Document]:
+    def process_documents(self, documents: List[Document]) -> List[Document]:
         # following AllenAI's usage of Spacy Tokenizer, i.e. removing spaces after tokenization
         spacy_docs = self.spacy.pipe([doc.text for doc in documents], n_threads=-1)
         for doc, spacy_doc in zip(documents, spacy_docs):
@@ -165,7 +165,7 @@ class SpacyPredictor(Predictor):
                 doc.ments.append(Span.from_spacy(doc, mention))
         return documents
 
-    def predict_document(self, document: Document) -> Document:
+    def process_document(self, document: Document) -> Document:
         # following AllenAI's usage of Spacy Tokenizer, i.e. removing spaces after tokenization
         spacy_doc = self.spacy(document.text)
         tokens_isspace = [(Token.from_spacy(document, token), token.is_space) for token in spacy_doc]

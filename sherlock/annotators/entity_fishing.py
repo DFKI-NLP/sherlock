@@ -4,15 +4,16 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 
 from sherlock import Document
+from sherlock.annotators.annotator import Annotator
 from sherlock.document import Entity, Mention
-from sherlock.predictors.predictor import Predictor
+from sherlock.annotators.annotator import Annotator
 
 
 logger = logging.getLogger(__name__)
 
 
-@Predictor.register("entity_fishing")
-class EntityFishingPredictor(Predictor):
+@Annotator.register("entity_fishing")
+class EntityFishingAnnotator(Annotator):
     def __init__(
         self,
         service_url: str,
@@ -33,13 +34,13 @@ class EntityFishingPredictor(Predictor):
         connect_timeout_ms: int = 5000,
         read_timeout_ms: int = 5000,
         **kwargs,
-    ) -> "Predictor":  # type: ignore
+    ) -> "Annotator":  # type: ignore
         return cls(service_url, lang, connect_timeout_ms, read_timeout_ms)
 
-    def predict_documents(self, documents: List[Document]) -> List[Document]:
-        return [self.predict_document(d) for d in documents]
+    def process_documents(self, documents: List[Document]) -> List[Document]:
+        return [self.process_document(d) for d in documents]
 
-    def predict_document(self, document: Document) -> Document:
+    def process_document(self, document: Document) -> Document:
         params = {"text": document.text, "language": {"lang": self.lang}}
 
         response = requests.post(
@@ -50,7 +51,7 @@ class EntityFishingPredictor(Predictor):
         if response.status_code == 200:
             data = response.json()
             if "entities" in data:
-                entities = EntityFishingPredictor._create_entities_from_mentions(
+                entities = EntityFishingAnnotator._create_entities_from_mentions(
                     document, data["entities"]
                 )
                 document.ents.extend(entities)
@@ -81,7 +82,7 @@ class EntityFishingPredictor(Predictor):
                 # NOTE: Further useful fields in ef_entity are
                 # "nerd_score", "nerd_selection_score", "type" (nerd_type).
 
-                (mention_idx, doc_mention) = EntityFishingPredictor._find_matching_concept(
+                (mention_idx, doc_mention) = EntityFishingAnnotator._find_matching_concept(
                     doc, mention_text, start, end
                 )
                 if doc_mention:
