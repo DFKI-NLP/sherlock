@@ -64,6 +64,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForTokenClassification, BertTokenizer),
     "roberta": (RobertaConfig, RobertaForTokenClassification, RobertaTokenizer),
