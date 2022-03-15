@@ -327,7 +327,7 @@ class BinaryRcConverter(FeatureConverter):
 
 
     def documents_to_features(self, documents: List[Document]) -> List[InputFeatures]:
-        input_features = []
+        input_features: List[InputFeatures] = []
         num_shown_input_features = 0
         for doc_idx, document in enumerate(documents):
             if doc_idx % 10000 == 0:
@@ -337,16 +337,24 @@ class BinaryRcConverter(FeatureConverter):
             doc_input_features = self.document_to_features(document, verbose)
             input_features.extend(doc_input_features)
             num_shown_input_features += 1
+        logger.info("Converted all documents.")
 
         # logger.info("Average #tokens: %.2f" % (num_tokens * 1.0 / len(examples)))
-        num_fit_examples = len(documents) - sum(
-            [features.metadata["truncated"] for features in input_features]
-        )
-        percentage = num_fit_examples * 100.0 / len(documents)
+        n_fit_examples = len(input_features)
+        percentage = 100 * n_fit_examples / len(documents)
+        n_truncated_without_entity_cutoff = sum((
+            1 for features in input_features if features.metadata["truncated"]
+        ))
+        n_untruncated = n_fit_examples - n_truncated_without_entity_cutoff
+        percentage_untruncated = 100 * n_untruncated / len(documents)
         logger.info(
-            f"{num_fit_examples} ({percentage:.2f} %) examples can fit max_seq_length = {self.max_length}"
+            f"{n_fit_examples} ({percentage:.2f} %) examples can fit max_seq_length = {self.max_length}"
+            + " without entity cutoff."
         )
-
+        logger.info(
+            f"{n_untruncated} ({percentage_untruncated:.2f} % ) examples can fit"
+            + f" max_seq_length = {self.max_length} without truncation."
+        )
         return input_features
 
 
@@ -379,9 +387,18 @@ class BinaryRcConverter(FeatureConverter):
         head_idx: int,
         tail_idx: int,
         sent_idx: Optional[int] = None,
-    ) -> Union[List[str], List[Token]]:
+    ) -> Tuple[Union[List[str], List[Token]], bool, bool]:
         """Apply entity handling strategy on Document and tokenize
         text.
+
+        Returns
+        -------
+        tokens : str
+            tokenized tokens.
+        truncated_entity : bool
+            whether an entity was truncated.
+        truncated : bool
+            whether tokens have been truncated in general
         """
         # assert no special tokens are added
         # check transformers implementation
