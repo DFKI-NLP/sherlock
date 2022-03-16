@@ -386,11 +386,11 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         input_features = torch.load(cached_features_file)
     else:
         if split == "train":
-            file_path = os.path.join(args.data_dir, "train.json")
+            file_path = os.path.join(args.data_dir, args.train_file)
         elif split == "dev":
-            file_path = os.path.join(args.data_dir, "dev.json")
+            file_path = os.path.join(args.data_dir, args.dev_file)
         elif split == "test":
-            file_path = os.path.join(args.data_dir, "test.json")
+            file_path = os.path.join(args.data_dir, args.test_file)
 
         logger.info("Creating features for split %s from dataset file at %s", split, args.data_dir)
         documents = list(dataset_reader.get_documents(file_path))
@@ -741,7 +741,7 @@ def main():
         dataset_reader = TacredDatasetReader(
             add_inverse_relations=args.add_inverse_relations,
             negative_label_re=args.negative_label,
-            max_instances=args.max_instances if args.max_instances != -1 else None, kwargs=kwargs
+            max_instances=args.max_instances if args.max_instances != -1 else None, **kwargs
         )
     else:
         raise NotImplementedError(f'Dataset reader {args.dataset_reader} not implemented')

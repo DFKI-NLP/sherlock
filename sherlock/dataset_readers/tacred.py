@@ -196,7 +196,7 @@ class TacredDatasetReader(DatasetReader):
 
 
     def _example_to_document(self, example: Dict[str, Any]) -> Optional[Document]:
-        tokens = example["token"]
+        tokens = example["tokens"] if self.use_dfki_jsonl_format else example["token"]
         if self.convert_ptb_tokens:
             tokens = [self._convert_token(token) for token in tokens]
         text = " ".join(tokens)
