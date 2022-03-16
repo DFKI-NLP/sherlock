@@ -94,6 +94,7 @@ class TacredDatasetReader(DatasetReader):
         self.tagging_scheme = tagging_scheme.lower()
         self.add_inverse_relations = add_inverse_relations
         self.max_instances = max_instances
+        self.use_dfki_jsonl_format = kwargs.get("tacred_use_dfki_jsonl_format") or False
 
 
     def get_documents(
@@ -122,10 +123,10 @@ class TacredDatasetReader(DatasetReader):
                 raise ValueError("Selected split '%s' not available." % split)
             file_path = self.input_files[split]
             # Returns list for backward compability
-            return list(self._documents_generator(self._read_json(file_path)))
+            return list(self._documents_generator(self._read_json(file_path, self.use_dfki_jsonl_format)))
 
         # Returns generator for performance improvements
-        return self._documents_generator(self._read_json(file_path))
+        return self._documents_generator(self._read_json(file_path, self.use_dfki_jsonl_format))
 
 
     def get_labels(self, task: IETask, file_path: str=None) -> List[str]:
@@ -141,18 +142,18 @@ class TacredDatasetReader(DatasetReader):
         if task == IETask.BINARY_RC:
             # backwards compability
             if self.data_dir is not None:
-                dataset = list(self._read_json(self.input_files["train"]))
+                dataset = list(self._read_json(self.input_files["train"], self.use_dfki_jsonl_format))
             else:
                 if file_path is None:
                     raise AttributeError(
                         "get_additional_tokens requires file_path as argument")
-                dataset = self._read_json(file_path)
+                dataset = self._read_json(file_path, self.use_dfki_jsonl_format)
 
             additional_tokens = \
                 set(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]"])
             for example in dataset:
-                head_type = "[HEAD=%s]" % example["subj_type"].upper()
-                tail_type = "[TAIL=%s]" % example["obj_type"].upper()
+                head_type = "[HEAD=%s]" % (example["type"][0] if self.use_dfki_jsonl_format else example["subj_type"].upper())
+                tail_type = "[TAIL=%s]" % (example["type"][1] if self.use_dfki_jsonl_format else example["obj_type"].upper())
                 additional_tokens.add(head_type)
                 additional_tokens.add(tail_type)
 
@@ -170,9 +171,14 @@ class TacredDatasetReader(DatasetReader):
 
 
     @staticmethod
-    def _read_json(input_file: str) -> List[Dict[str, Any]]:
+    def _read_json(input_file: str, use_dfki_jsonl_format:bool) -> List[Dict[str, Any]]:
         with open(input_file, "r", encoding="utf-8") as tacred_file:
-            data = json.load(tacred_file)
+            if not use_dfki_jsonl_format:
+                data = json.load(tacred_file)
+            else:
+                data = []
+                for line in tacred_file:
+                    data.append(json.loads(line))
         return data
 
 
@@ -195,15 +201,15 @@ class TacredDatasetReader(DatasetReader):
             tokens = [self._convert_token(token) for token in tokens]
         text = " ".join(tokens)
 
-        head_start, head_end = example["subj_start"], example["subj_end"] + 1
-        tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
+        head_start, head_end = (example["entities"][0][0], example["entities"][0][1]) if self.use_dfki_jsonl_format else (example["subj_start"], example["subj_end"] + 1)
+        tail_start, tail_end = (example["entities"][1][0], example["entities"][1][1]) if self.use_dfki_jsonl_format else (example["obj_start"], example["obj_end"] + 1)
 
         if head_end > len(tokens) or tail_end > len(tokens):
             return None
 
         ent_type = example.get("stanford_ner")
         if ent_type and self.tagging_scheme == "bio":
-            ent_type = self._ner_as_bio(example, insert_argument_types=True)
+            ent_type = self._ner_as_bio(example, insert_argument_types=True, use_dfki_jsonl_format=self.use_dfki_jsonl_format)
 
         pos = example.get("stanford_pos")
         dep = example.get("stanford_deprel")
@@ -235,20 +241,21 @@ class TacredDatasetReader(DatasetReader):
         # for label, (start, end) in bio_tags_to_spans(ner):
         #     # end is inclusive, we want exclusive -> +1
         #     doc.ments.append(Span(doc=doc, start=start, end=end + 1, label=label))
-
+        subj_type = example["type"][0] if self.use_dfki_jsonl_format else example["subj_type"]
+        obj_type = example["type"][1] if self.use_dfki_jsonl_format else example["obj_type"]
         doc.ments = [
-            Mention(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
-            Mention(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
+            Mention(doc=doc, start=head_start, end=head_end, label=subj_type),
+            Mention(doc=doc, start=tail_start, end=tail_end, label=obj_type),
         ]
-
-        doc.rels = [Relation(doc=doc, head_idx=0, tail_idx=1, label=example["relation"])]
+        rel_label = example["label"] if self.use_dfki_jsonl_format else example["relation"]
+        doc.rels = [Relation(doc=doc, head_idx=0, tail_idx=1, label=rel_label)]
         if self.add_inverse_relations:
             doc.rels.append(
                 Relation(
                     doc=doc,
                     head_idx=1,
                     tail_idx=0,
-                    label=INVERSE_RELATIONS.get(example["relation"], self.negative_label_re),
+                    label=INVERSE_RELATIONS.get(rel_label, self.negative_label_re),
                 )
             )
 
@@ -278,17 +285,17 @@ class TacredDatasetReader(DatasetReader):
 
         # Backwards compability
         if self.data_dir is not None:
-            dataset = list(self._read_json(self.input_files["train"]))
+            dataset = list(self._read_json(self.input_files["train"], self.use_dfki_jsonl_format))
         else:
-            dataset = self._read_json(file_path)
+            dataset = self._read_json(file_path, self.use_dfki_jsonl_format)
 
         unique_labels: Set[str] = set()
         for example in dataset:
             if task == IETask.NER:
-                ner = example["stanford_ner"] + [example["subj_type"], example["obj_type"]]
+                ner = example.get("stanford_ner", []) + example["type"] if self.use_dfki_jsonl_format else [example["subj_type"], example["obj_type"]]
                 unique_labels.update(ner)
             elif task == IETask.BINARY_RC:
-                unique_labels.add(example["relation"])
+                unique_labels.add(example["label"] if self.use_dfki_jsonl_format else example["relation"])
             else:
                 raise Exception("This should not happen.")
 
@@ -315,14 +322,14 @@ class TacredDatasetReader(DatasetReader):
 
 
     @staticmethod
-    def _ner_as_bio(example: Dict[str, Any], insert_argument_types: bool = False):
+    def _ner_as_bio(example: Dict[str, Any], insert_argument_types: bool = False, use_dfki_jsonl_format: bool = False):
         tags = list(example["stanford_ner"])
 
-        head_start, head_end = example["subj_start"], example["subj_end"] + 1
-        tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
+        head_start, head_end = (example["entities"][0][0], example["entities"][0][1]) if use_dfki_jsonl_format else (example["subj_start"], example["subj_end"] + 1)
+        tail_start, tail_end = (example["entities"][1][0], example["entities"][1][1]) if use_dfki_jsonl_format else (example["obj_start"], example["obj_end"] + 1)
 
-        head_type = example["subj_type"]
-        tail_type = example["obj_type"]
+        head_type = example["type"][0] if use_dfki_jsonl_format else example["subj_type"]
+        tail_type = example["type"][1] if use_dfki_jsonl_format else example["obj_type"]
 
         if insert_argument_types:
             for i in range(head_start, head_end):

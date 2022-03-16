@@ -624,6 +624,37 @@ def main():
         "--max_instances", type=int, default=-1,
         help="Only use this number of first instances in dataset (e.g. for debugging)."
     )
+    parser.add_argument(
+        "--train_file",
+        type=str,
+        default="train.json",
+        help="Train file name relative to --data_dir"
+    )
+    parser.add_argument(
+        "--dev_file",
+        type=str,
+        default="dev.json",
+        help="Dev file name relative to --data_dir"
+    )
+    parser.add_argument(
+        "--test_file",
+        type=str,
+        default="test.json",
+        help="Test file name relative to --data_dir"
+    )
+    parser.add_argument(
+        "--dataset_reader",
+        type=str,
+        default="tacred",
+        choices=["tacred"],
+        help="Registered dataset reader name. Currently supports only 'tacred'"
+    )
+    parser.add_argument(
+        "--tacred_use_dfki_jsonl_format",
+        action="store_true",
+        help="If set, expects JSONL files with fields 'id', 'tokens', 'label', 'entities', 'grammar', 'type'" \
+             " instead of the original TACRED json file format"
+    )
     args = parser.parse_args()
 
     if (
@@ -701,14 +732,20 @@ def main():
     # Set seed
     set_seed(args)
 
+    # this is still inconvenient - can it be done by a __init__.py file in the package folder?
     TacredDatasetReader = DatasetReader.by_name("tacred")
 
-    dataset_reader = TacredDatasetReader(
-        add_inverse_relations=args.add_inverse_relations,
-        negative_label_re=args.negative_label,
-        max_instances=args.max_instances if args.max_instances != -1 else None
-    )
-    train_path = os.path.join(args.data_dir, "train.json")
+    if args.dataset_reader == 'tacred':
+        kwargs = {"train_file": args.train_file, "test_file": args.test_file, "dev_file": args.dev_file,
+                  "tacred_use_dfki_jsonl_format": args.tacred_use_dfki_jsonl_format}
+        dataset_reader = TacredDatasetReader(
+            add_inverse_relations=args.add_inverse_relations,
+            negative_label_re=args.negative_label,
+            max_instances=args.max_instances if args.max_instances != -1 else None, kwargs=kwargs
+        )
+    else:
+        raise NotImplementedError(f'Dataset reader {args.dataset_reader} not implemented')
+    train_path = os.path.join(args.data_dir, args.train_file)
     labels = dataset_reader.get_labels(IETask.BINARY_RC, train_path)
     num_labels = len(labels)
 
