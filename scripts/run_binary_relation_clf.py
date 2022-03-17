@@ -646,14 +646,8 @@ def main():
         "--dataset_reader",
         type=str,
         default="tacred",
-        choices=["tacred"],
+        choices=["tacred", "tacred_dfki_jsonl"],
         help="Registered dataset reader name. Currently supports only 'tacred'"
-    )
-    parser.add_argument(
-        "--tacred_use_dfki_jsonl_format",
-        action="store_true",
-        help="If set, expects JSONL files with fields 'id', 'tokens', 'label', 'entities', 'grammar', 'type'" \
-             " instead of the original TACRED json file format"
     )
     args = parser.parse_args()
 
@@ -734,14 +728,19 @@ def main():
 
     # this is still inconvenient - can it be done by a __init__.py file in the package folder?
     TacredDatasetReader = DatasetReader.by_name("tacred")
+    TacredDatasetReaderDfkiJsonl = DatasetReader.by_name("tacred_dfki_jsonl")
 
     if args.dataset_reader == 'tacred':
-        kwargs = {"train_file": args.train_file, "test_file": args.test_file, "dev_file": args.dev_file,
-                  "tacred_use_dfki_jsonl_format": args.tacred_use_dfki_jsonl_format}
         dataset_reader = TacredDatasetReader(
             add_inverse_relations=args.add_inverse_relations,
             negative_label_re=args.negative_label,
-            max_instances=args.max_instances if args.max_instances != -1 else None, **kwargs
+            max_instances=args.max_instances if args.max_instances != -1 else None
+        )
+    elif args.dataset_reader == 'tacred_dfki_jsonl':
+        dataset_reader = TacredDatasetReaderDfkiJsonl(
+            add_inverse_relations=args.add_inverse_relations,
+            negative_label_re=args.negative_label,
+            max_instances=args.max_instances if args.max_instances != -1 else None
         )
     else:
         raise NotImplementedError(f'Dataset reader {args.dataset_reader} not implemented')

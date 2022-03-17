@@ -34,10 +34,22 @@ INVERSE_RELATIONS = {
 logger = logging.getLogger(__name__)
 
 
-@DatasetReader.register("tacred")
-class TacredDatasetReader(DatasetReader):
+@DatasetReader.register("tacred_dfki_jsonl")
+class TacredDatasetReaderDfkiJsonl(DatasetReader):
     """
-    Dataset reader for the TACRED dataset.
+    Dataset reader for the TACRED dataset that uses the DFKI JSONL format/schema:
+    1 line per instance
+    fields:
+        label: relation label
+        tokens: list of token strings
+        id: document id
+        type: array of subj, obj ner types, e.g. [PERSON, ORGANIZATION]
+        entities: token-offsets of head/tail entities, array of arrays, e.g. [[0, 2], [4, 7]]. end index is exclusive
+        grammar: array of subj, obj grammar role, e.g. [SUBJ, OBJ]
+        ner: optional list of ner tags (str), as in original tacred format
+        pos: optional list of pos tags (str), as in original tacred format
+        dep_rel: optional list of dependency relations (str), as in original tacred format
+        dep_head: optional list of dependency head token indices (int), as in original tacred format
 
     Parameters
     ----------
@@ -76,9 +88,9 @@ class TacredDatasetReader(DatasetReader):
 
         if self.data_dir is not None:
             files = [
-                kwargs.get("train_file") or "train.json",
-                kwargs.get("dev_file") or "dev.json",
-                kwargs.get("test_file") or "test.json",
+                kwargs.get("train_file") or "train.jsonl",
+                kwargs.get("dev_file") or "dev.jsonl",
+                kwargs.get("test_file") or "test.jsonl",
             ]
             self.input_files = {
                 split: os.path.join(data_dir, filename)
@@ -151,8 +163,8 @@ class TacredDatasetReader(DatasetReader):
             additional_tokens = \
                 set(["[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]"])
             for example in dataset:
-                head_type = "[HEAD=%s]" % example["subj_type"].upper()
-                tail_type = "[TAIL=%s]" % example["obj_type"].upper()
+                head_type = "[HEAD=%s]" % example["type"][0]
+                tail_type = "[TAIL=%s]" % example["type"][1]
                 additional_tokens.add(head_type)
                 additional_tokens.add(tail_type)
 
@@ -172,7 +184,9 @@ class TacredDatasetReader(DatasetReader):
     @staticmethod
     def _read_json(input_file: str) -> List[Dict[str, Any]]:
         with open(input_file, "r", encoding="utf-8") as tacred_file:
-            data = json.load(tacred_file)
+            data = []
+            for line in tacred_file:
+                data.append(json.loads(line))
         return data
 
 
@@ -190,24 +204,24 @@ class TacredDatasetReader(DatasetReader):
 
 
     def _example_to_document(self, example: Dict[str, Any]) -> Optional[Document]:
-        tokens = example["token"]
+        tokens = example["tokens"]
         if self.convert_ptb_tokens:
             tokens = [self._convert_token(token) for token in tokens]
         text = " ".join(tokens)
 
-        head_start, head_end = example["subj_start"], example["subj_end"] + 1
-        tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
+        head_start, head_end = example["entities"][0][0], example["entities"][0][1]
+        tail_start, tail_end = example["entities"][1][0], example["entities"][1][1]
 
         if head_end > len(tokens) or tail_end > len(tokens):
             return None
 
-        ent_type = example["stanford_ner"]
+        ent_type = example.get("stanford_ner")
         if ent_type and self.tagging_scheme == "bio":
-            ent_type = self._ner_as_bio(example, insert_argument_types=True)
+            ent_type = self._ner_as_bio(example, insert_argument_types=True, use_dfki_jsonl_format=self.use_dfki_jsonl_format)
 
-        pos = example["stanford_pos"]
-        dep = example["stanford_deprel"]
-        dep_head = example["stanford_head"]
+        pos = example.get("stanford_pos")
+        dep = example.get("stanford_deprel")
+        dep_head = example.get("stanford_head")
 
         doc = Document(guid=example["id"], text=text)
 
@@ -235,20 +249,21 @@ class TacredDatasetReader(DatasetReader):
         # for label, (start, end) in bio_tags_to_spans(ner):
         #     # end is inclusive, we want exclusive -> +1
         #     doc.ments.append(Span(doc=doc, start=start, end=end + 1, label=label))
-
+        subj_type = example["type"][0]
+        obj_type = example["type"][1]
         doc.ments = [
-            Mention(doc=doc, start=head_start, end=head_end, label=example["subj_type"]),
-            Mention(doc=doc, start=tail_start, end=tail_end, label=example["obj_type"]),
+            Mention(doc=doc, start=head_start, end=head_end, label=subj_type),
+            Mention(doc=doc, start=tail_start, end=tail_end, label=obj_type),
         ]
-
-        doc.rels = [Relation(doc=doc, head_idx=0, tail_idx=1, label=example["relation"])]
+        rel_label = example["label"]
+        doc.rels = [Relation(doc=doc, head_idx=0, tail_idx=1, label=rel_label)]
         if self.add_inverse_relations:
             doc.rels.append(
                 Relation(
                     doc=doc,
                     head_idx=1,
                     tail_idx=0,
-                    label=INVERSE_RELATIONS.get(example["relation"], self.negative_label_re),
+                    label=INVERSE_RELATIONS.get(rel_label, self.negative_label_re),
                 )
             )
 
@@ -285,10 +300,10 @@ class TacredDatasetReader(DatasetReader):
         unique_labels: Set[str] = set()
         for example in dataset:
             if task == IETask.NER:
-                ner = example["stanford_ner"] + [example["subj_type"], example["obj_type"]]
+                ner = example.get("stanford_ner", []) + example["type"]
                 unique_labels.update(ner)
             elif task == IETask.BINARY_RC:
-                unique_labels.add(example["relation"])
+                unique_labels.add(example["label"])
             else:
                 raise Exception("This should not happen.")
 
@@ -315,14 +330,14 @@ class TacredDatasetReader(DatasetReader):
 
 
     @staticmethod
-    def _ner_as_bio(example: Dict[str, Any], insert_argument_types: bool = False):
-        tags = list(example["stanford_ner"])
+    def _ner_as_bio(example: Dict[str, Any], insert_argument_types: bool = False, use_dfki_jsonl_format: bool = False):
+        tags = list(example.get("stanford_ner", []))
 
-        head_start, head_end = example["subj_start"], example["subj_end"] + 1
-        tail_start, tail_end = example["obj_start"], example["obj_end"] + 1
+        head_start, head_end = example["entities"][0][0], example["entities"][0][1]
+        tail_start, tail_end = example["entities"][1][0], example["entities"][1][1]
 
-        head_type = example["subj_type"]
-        tail_type = example["obj_type"]
+        head_type = example["type"][0]
+        tail_type = example["type"][1]
 
         if insert_argument_types:
             for i in range(head_start, head_end):
