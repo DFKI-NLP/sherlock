@@ -647,7 +647,7 @@ def main():
         type=str,
         default="tacred",
         choices=["tacred", "tacred_dfki_jsonl"],
-        help="Registered dataset reader name. Currently supports only 'tacred'"
+        help="Registered dataset reader name from ['tacred', 'tacred_dfki_jsonl']"
     )
     args = parser.parse_args()
 
