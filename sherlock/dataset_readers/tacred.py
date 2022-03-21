@@ -201,13 +201,13 @@ class TacredDatasetReader(DatasetReader):
         if head_end > len(tokens) or tail_end > len(tokens):
             return None
 
-        ent_type = example["stanford_ner"]
+        ent_type = example.get("stanford_ner")
         if ent_type and self.tagging_scheme == "bio":
             ent_type = self._ner_as_bio(example, insert_argument_types=True)
 
-        pos = example["stanford_pos"]
-        dep = example["stanford_deprel"]
-        dep_head = example["stanford_head"]
+        pos = example.get("stanford_pos")
+        dep = example.get("stanford_deprel")
+        dep_head = example("stanford_head")
 
         doc = Document(guid=example["id"], text=text)
 
