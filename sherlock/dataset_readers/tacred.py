@@ -207,7 +207,7 @@ class TacredDatasetReader(DatasetReader):
 
         pos = example.get("stanford_pos")
         dep = example.get("stanford_deprel")
-        dep_head = example("stanford_head")
+        dep_head = example.get("stanford_head")
 
         doc = Document(guid=example["id"], text=text)
 
