@@ -663,10 +663,10 @@ def main():
         help="Registered dataset reader name from ['tacred', 'tacred_dfki_jsonl']"
     )
     parser.add_argument(
-        "--predictions_file",
+        "--predictions_exp_name",
         type=str,
-        default="{}_predictions_{}.jsonl",
-        help="Format string for dev / test prediction output files. First {} is dev or test, second {} for the model name"
+        default="",
+        help="Optional experiment name identifier which is appended to the prediction file name"
     )
     args = parser.parse_args()
 
@@ -889,8 +889,9 @@ def main():
             for key in sorted(result.keys()):
                 writer.write("{} = {}\n".format(key, str(result[key])))
         # Save predictions
-        exp_name = list(filter(None, args.model_name_or_path.split("/"))).pop()
-        output_test_predictions_file = os.path.join(args.output_dir, args.predictions_file.format("test", exp_name))
+        model_name = list(filter(None, args.model_name_or_path.split("/"))).pop()
+        output_test_predictions_file = os.path.join(args.output_dir, "{}_predictions_{}_{}".format(
+            "test", args.predictions_exp_name, model_name))
 
         with open(output_test_predictions_file, "w") as writer:
             for prediction in predictions:
