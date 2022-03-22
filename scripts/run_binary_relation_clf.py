@@ -890,7 +890,7 @@ def main():
                 writer.write("{} = {}\n".format(key, str(result[key])))
         # Save predictions
         model_name = list(filter(None, args.model_name_or_path.split("/"))).pop()
-        output_test_predictions_file = os.path.join(args.output_dir, "{}_predictions_{}_{}".format(
+        output_test_predictions_file = os.path.join(args.output_dir, "{}_predictions_{}_{}.jsonl".format(
             "test", args.predictions_exp_name, model_name))
 
         with open(output_test_predictions_file, "w") as writer:
