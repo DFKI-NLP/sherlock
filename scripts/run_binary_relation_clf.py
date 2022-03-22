@@ -726,24 +726,14 @@ def main():
     # Set seed
     set_seed(args)
 
-    # this is still inconvenient - can it be done by a __init__.py file in the package folder?
-    TacredDatasetReader = DatasetReader.by_name("tacred")
-    TacredDatasetReaderDfkiJsonl = DatasetReader.by_name("tacred_dfki_jsonl")
+    DatasetReaderClass = DatasetReader.by_name(args.dataset_reader)
 
-    if args.dataset_reader == 'tacred':
-        dataset_reader = TacredDatasetReader(
-            add_inverse_relations=args.add_inverse_relations,
-            negative_label_re=args.negative_label,
-            max_instances=args.max_instances if args.max_instances != -1 else None
-        )
-    elif args.dataset_reader == 'tacred_dfki_jsonl':
-        dataset_reader = TacredDatasetReaderDfkiJsonl(
-            add_inverse_relations=args.add_inverse_relations,
-            negative_label_re=args.negative_label,
-            max_instances=args.max_instances if args.max_instances != -1 else None
-        )
-    else:
-        raise NotImplementedError(f'Dataset reader {args.dataset_reader} not implemented')
+    dataset_reader = DatasetReaderClass(
+        add_inverse_relations=args.add_inverse_relations,
+        negative_label_re=args.negative_label,
+        max_instances=args.max_instances if args.max_instances != -1 else None
+    )
+
     train_path = os.path.join(args.data_dir, args.train_file)
     labels = dataset_reader.get_labels(IETask.BINARY_RC, train_path)
     num_labels = len(labels)
