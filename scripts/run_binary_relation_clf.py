@@ -221,7 +221,7 @@ def train(args, dataset_reader, converter, model, tokenizer):
                     if (
                         args.local_rank == -1 and args.evaluate_during_training
                     ):  # Only evaluate when single GPU otherwise metrics may not average well
-                        results, _ = evaluate(
+                        results, _, _, _ = evaluate(
                             args, dataset_reader, converter, model, tokenizer, split="dev"
                         )
                         for key, value in results.items():
