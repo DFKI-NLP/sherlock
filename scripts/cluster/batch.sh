@@ -8,7 +8,7 @@
 #SBATCH --partition RTXA6000
 
 username="$USER"
-IMAGE=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.07-py3.sqsh
+IMAGE=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.10-py3.sqsh
 WORKDIR="`pwd`"
 
 srun -K --container-mounts=/netscratch/$USER:/netscratch/$USER,/ds:/ds:ro,"`pwd`":"`pwd`" \

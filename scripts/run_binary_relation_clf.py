@@ -386,11 +386,11 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         input_features = torch.load(cached_features_file)
     else:
         if split == "train":
-            file_path = os.path.join(args.data_dir, "train.json")
+            file_path = os.path.join(args.data_dir, args.train_file)
         elif split == "dev":
-            file_path = os.path.join(args.data_dir, "dev.json")
+            file_path = os.path.join(args.data_dir, args.dev_file)
         elif split == "test":
-            file_path = os.path.join(args.data_dir, "test.json")
+            file_path = os.path.join(args.data_dir, args.test_file)
 
         logger.info("Creating features for split %s from dataset file at %s", split, args.data_dir)
         documents = list(dataset_reader.get_documents(file_path))
@@ -624,6 +624,31 @@ def main():
         "--max_instances", type=int, default=-1,
         help="Only use this number of first instances in dataset (e.g. for debugging)."
     )
+    parser.add_argument(
+        "--train_file",
+        type=str,
+        default="train.json",
+        help="Train file name relative to --data_dir"
+    )
+    parser.add_argument(
+        "--dev_file",
+        type=str,
+        default="dev.json",
+        help="Dev file name relative to --data_dir"
+    )
+    parser.add_argument(
+        "--test_file",
+        type=str,
+        default="test.json",
+        help="Test file name relative to --data_dir"
+    )
+    parser.add_argument(
+        "--dataset_reader",
+        type=str,
+        default="tacred",
+        choices=["tacred", "tacred_dfki_jsonl"],
+        help="Registered dataset reader name from ['tacred', 'tacred_dfki_jsonl']"
+    )
     args = parser.parse_args()
 
     if (
@@ -701,14 +726,15 @@ def main():
     # Set seed
     set_seed(args)
 
-    TacredDatasetReader = DatasetReader.by_name("tacred")
+    DatasetReaderClass = DatasetReader.by_name(args.dataset_reader)
 
-    dataset_reader = TacredDatasetReader(
+    dataset_reader = DatasetReaderClass(
         add_inverse_relations=args.add_inverse_relations,
         negative_label_re=args.negative_label,
         max_instances=args.max_instances if args.max_instances != -1 else None
     )
-    train_path = os.path.join(args.data_dir, "train.json")
+
+    train_path = os.path.join(args.data_dir, args.train_file)
     labels = dataset_reader.get_labels(IETask.BINARY_RC, train_path)
     num_labels = len(labels)
 
