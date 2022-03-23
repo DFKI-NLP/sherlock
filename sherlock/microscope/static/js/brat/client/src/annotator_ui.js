@@ -1666,8 +1666,8 @@ var AnnotatorUI = (function($, window, undefined) {
             });
 
             if (crossSentence) {
-              // attempt to annotate across sentence boundaries; not supported
-              dispatcher.post('messages', [[['Error: cannot annotate across a sentence break', 'error']]]);
+              // attempt to process across sentence boundaries; not supported
+              dispatcher.post('messages', [[['Error: cannot process across a sentence break', 'error']]]);
               if (reselectedSpan) {
                 $(reselectedSpan.rect).removeClass('reselect');
               }

@@ -52,7 +52,7 @@ from transformers import (
 
 from sherlock.dataset import TensorDictDataset
 from sherlock.dataset_readers import TacredDatasetReader
-from sherlock.feature_converters import TokenClassificationConverter
+from sherlock.feature_converters import FeatureConverter
 from sherlock.tasks import IETask
 
 
@@ -64,13 +64,6 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-ALL_MODELS = sum(
-    (
-        tuple(conf.pretrained_config_archive_map.keys())
-        for conf in (BertConfig, RobertaConfig, DistilBertConfig, CamembertConfig, XLMRobertaConfig)
-    ),
-    (),
-)
 
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForTokenClassification, BertTokenizer),
@@ -348,23 +341,24 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
 
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
-        args.data_dir,
-        "cached_{}_{}_{}".format(
+        args.cache_dir,
+        "cached_ner_{}_{}_{}".format(
             split,
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
-        logger.info("Loading features from cached file %s", cached_features_file)
+        logger.info("Loading features for split %s from cached file %s", split, cached_features_file)
         input_features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        logger.info("Creating features for split %s from dataset file at %s", split, args.data_dir)
         documents = dataset_reader.get_documents(split)
         input_features = converter.documents_to_features(documents)
 
         if args.local_rank in [-1, 0]:
-            logger.info("Saving features into cached file %s", cached_features_file)
+            logger.info("Saving features for split %s into cached file %s", split, cached_features_file)
+            os.makedirs(args.cache_dir, exist_ok=True)
             torch.save(input_features, cached_features_file)
 
     if args.local_rank == 0 and split not in ["dev", "test"]:
@@ -408,8 +402,8 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Path to pre-trained model or shortcut name selected in the list: "
-        + ", ".join(ALL_MODELS),
+        help="Path to pre-trained model or shortcut name selected in the hub "
+        + "https://huggingface.co/models",
     )
     parser.add_argument(
         "--output_dir",
@@ -440,9 +434,10 @@ def main():
     )
     parser.add_argument(
         "--cache_dir",
-        default="",
+        default=None,
         type=str,
-        help="Where do you want to store the pre-trained models downloaded from s3",
+        required=True,
+        help="Where do you want to store the pre-trained models downloaded from s3 and cached features",
     )
     parser.add_argument(
         "--max_seq_length",
@@ -666,13 +661,13 @@ def main():
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
 
+    TokenClassificationConverter = FeatureConverter.by_name("token_classification")
     converter = TokenClassificationConverter(
-        tokenizer=tokenizer,
         labels=labels,
         max_length=args.max_seq_length,
         pad_token_label_id=CrossEntropyLoss().ignore_index,
-        pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
         log_num_input_features=20,
+        tokenizer=tokenizer,
     )
 
     additional_tokens = dataset_reader.get_additional_tokens(task=IETask.NER)

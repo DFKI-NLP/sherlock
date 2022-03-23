@@ -1,117 +1,168 @@
-import copy
+# -*- coding: utf8 -*-
+"""
+
+@date: 09.02.22
+@author: christoph.alt@posteo.de, gabriel.kressin@dfki.de, leonhard.hennig@dfki.de
+"""
 import json
 import logging
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Dict, Union, Iterable
 
+from allennlp.data.tokenizers import Tokenizer
+from allennlp.data.tokenizers.token_class import Token
+from allennlp.data.token_indexers import TokenIndexer
 from registrable import Registrable
 from transformers import PreTrainedTokenizer
 
 from sherlock import Document
-
+from sherlock.feature_converters.input_features import (
+    InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformers)
 
 logger = logging.getLogger(__name__)
 
-
-class InputFeatures(object):
+# TODO: enable generator support for FeatureConverter
+class FeatureConverter(Registrable):
     """
-    A single set of features of data.
-    Args:
-        input_ids: Indices of input sequence tokens in the vocabulary.
-        attention_mask: Mask to avoid performing attention on padding token indices.
-            Mask values selected in ``[0, 1]``:
-            Usually  ``1`` for tokens that are NOT MASKED, ``0`` for MASKED (padded) tokens.
-        token_type_ids: Segment token indices to indicate first and second portions of the inputs.
-        label: Label corresponding to the input
+    Converts Document into Representation usable for Model Training.
+
+    Parameters
+    ----------
+    max_length : ``int``, optional (default=`None`)
+        If set to a number, will limit sequences to maximum length.
+    framework : ``str``, optional (default=`transformers`)
+        Whether to use `transformers` or `allennlp`
+    kwargs : ``Dict[str,any]``
+        init arguments for `transformer` or `allennlp` FeatureConverter:
+        `transformer`:
+            tokenizer : ``PreTrainedTokenizer``,
+                Huggingface tokenizer to tokenize input-sentences.
+            labels : ``List[str]``,
+                All possible labels for a task.
+        `allennlp`:
+            tokenizer : ``Tokenizer``
+                AllenNLP tokenizer to tokenize input-sentences.
+            token_indexers : ``Dict[str, TokenIndexer]``
+                AllenNLP token indexer to index vocabulary with.
     """
 
     def __init__(
         self,
-        input_ids,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        labels=None,
-        metadata=None,
+        max_length: Optional[int] =None,
+        framework: str ="transformers",
+        **kwargs,
     ) -> None:
-        self.input_ids = input_ids
-        self.attention_mask = attention_mask
-        self.token_type_ids = token_type_ids
-        self.position_ids = position_ids
-        self.head_mask = head_mask
-        self.labels = labels
-        self.metadata = metadata or {}
+        self.max_length = max_length
+        self.framework = framework
 
-    def __str__(self) -> str:
-        return self.to_dict()
+        if framework == "transformers":
+            logger.info("Initializing Transformers FeatureConverter")
+            self._init_feature_converter_transformers(
+                **{k: v for k, v in kwargs.items() if k in ["tokenizer", "labels"]}
+            )
+        elif framework == "allennlp":
+            logger.info("Initializing AllenNLP FeatureConverter")
+            self._init_feature_converter_allennlp(**{k: v for k, v in kwargs.items()
+                                                     if k in ["tokenizer", "token_indexers"]})
+        else:
+            raise NotImplementedError(f"Framework not supported: {framework}")
 
-    def __repr__(self) -> str:
-        return str(self.to_dict())
-
-    def to_dict(self):
-        """Serializes this instance to a Python dictionary."""
-        output = copy.deepcopy(self.__dict__)
-        return output
-
-    def to_json_string(self):
-        """Serializes this instance to a JSON string."""
-        return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
-
-
-class FeatureConverter(Registrable):
-    def __init__(
-        self, tokenizer: PreTrainedTokenizer, labels: List[str], max_length: int = 512
+    def _init_feature_converter_transformers(
+        self, tokenizer: PreTrainedTokenizer, labels: Iterable[str],
     ) -> None:
         self.tokenizer = tokenizer
-        self.labels = labels
-        self.max_length = max_length
-        self.id_to_label_map = {i: l for i, l in enumerate(labels)}
-        self.label_to_id_map = {l: i for i, l in enumerate(labels)}
+        self.labels = sorted(list(labels))
+        self.id_to_label_map = {i: l for i, l in enumerate(self.labels)}
+        self.label_to_id_map = {l: i for i, l in enumerate(self.labels)}
+
+    def _init_feature_converter_allennlp(
+        self, tokenizer: Tokenizer, token_indexers: Dict[str, TokenIndexer]
+    ) -> None:
+        self.tokenizer = tokenizer
+        self.token_indexers = token_indexers
 
     @property
     def name(self) -> str:
-        raise NotImplementedError("FeatureConvert must implement 'name'.")
+        raise NotImplementedError("FeatureConverter must implement 'name'.")
 
     @property
     def persist_attributes(self) -> List[str]:
-        raise NotImplementedError("FeatureConvert must implement 'persist_attributes'.")
+        """All attributes that are saved alongside FeatureConverter"""
+        raise NotImplementedError("FeatureConverter must implement 'persist_attributes'.")
+
+    def document_to_features_transformers(
+        self, document: Document, verbose: bool=False
+    ) -> List[InputFeaturesTransformers]:
+        raise NotImplementedError(
+            "FeatureConverter does not implement 'document_to_features_transformers'.")
+
+    def document_to_features_allennlp(
+        self, document: Document, verbose: bool=False
+    ) -> List[InputFeaturesAllennlp]:
+        raise NotImplementedError(
+            "FeatureConverter does not implement 'document_to_features_allennlp'.")
 
     def document_to_features(
-        self, document: Document, verbose: bool = False
+        self, document: Document, verbose: bool=False
     ) -> List[InputFeatures]:
-        raise NotImplementedError("FeatureConvert must implement 'document_to_features'.")
+        if self.framework == "transformers":
+            return self.document_to_features_transformers(document, verbose)
+        elif self.framework == "allennlp":
+            return self.document_to_features_allennlp(document, verbose)
 
-    def documents_to_features(self, documents: List[Document]) -> List[InputFeatures]:
+    def documents_to_features(
+        self, documents: List[Document], verbose: bool=False
+    ) -> List[List[InputFeatures]]:
         input_features = []
         for document in documents:
-            input_features.extend(self.document_to_features(document))
+            input_features.extend(self.document_to_features(document, verbose))
         return input_features
 
     @staticmethod
-    def from_pretrained(path: str, tokenizer: PreTrainedTokenizer) -> "FeatureConverter":
+    def _from_pretrained_transformers(
+        path: str, config: Dict[str,any], tokenizer: PreTrainedTokenizer
+    ) -> "FeatureConverter":
         vocab_file = os.path.join(path, "converter_label_vocab.txt")
-        converter_config_file = os.path.join(path, "converter_config.json")
-        with open(converter_config_file, "r", encoding="utf-8") as config_file:
-            config = json.load(config_file)
         with open(vocab_file, "r", encoding="utf-8") as reader:
             config["labels"] = [line.strip() for line in reader.readlines()]
         config["tokenizer"] = tokenizer
         converter_class = FeatureConverter.by_name(config.pop("name"))
         return converter_class(**config)
 
-    def save(self, save_directory: str) -> None:
-        if not os.path.isdir(save_directory):
-            logger.error("Saving directory ({}) should be a directory".format(save_directory))
-        self.save_vocabulary(save_directory)
-        config = dict(
-            name=self.name, **{attr: getattr(self, attr) for attr in self.persist_attributes}
-        )
-        converter_config_file = os.path.join(save_directory, "converter_config.json")
-        with open(converter_config_file, "w", encoding="utf-8") as writer:
-            writer.write(json.dumps(config, ensure_ascii=False))
+    @staticmethod
+    def _from_pretrained_allennlp(
+        path: str,
+        config: Dict[str,any],
+        tokenizer: Tokenizer,
+        token_indexers: Dict[str,TokenIndexer],
+    ) -> "FeatureConverter":
+        # TODO: Alternatively it would be better to save the token_indexers and
+        # tokenizer name in the config, then load it here
+        config["tokenizer"] = tokenizer
+        config["token_indexers"] = token_indexers
+        converter_class = FeatureConverter.by_name(config.pop("name"))
+        return converter_class(**config)
+
+    @staticmethod
+    def from_pretrained(path: str, **kwargs) -> "FeatureConverter":
+        """Load FeatureConverter from a directory it was previously saved in"""
+        # 1. get config and framework
+        converter_config_file = os.path.join(path, "converter_config.json")
+        with open(converter_config_file, "r", encoding="utf-8") as config_file:
+            config = json.load(config_file)
+        framework = config.get("framework")
+        framework = "transformers" if framework is None else framework # backwards compability
+
+        # 2. Call framework specific constructor
+        if framework == "transformers":
+            return FeatureConverter._from_pretrained_transformers(path, config, **kwargs)
+        elif framework == "allennlp":
+            return FeatureConverter._from_pretrained_allennlp(path, config, **kwargs)
 
     def save_vocabulary(self, vocab_path: str) -> None:
+        raise DeprecationWarning("Deprecated. Use 'save_label_vocabulary'.")
+
+    def save_label_vocabulary(self, vocab_path: str) -> None:
         """Save the converters label vocabulary to a directory or file."""
         index = 0
         if os.path.isdir(vocab_path):
@@ -122,16 +173,32 @@ class FeatureConverter(Registrable):
             for label, label_index in self.label_to_id_map.items():
                 if index != label_index:
                     logger.warning(
-                        "Saving vocabulary to %s: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!",
-                        vocab_file,
+                        f"Saving label vocabulary to {vocab_file}: vocabulary"
+                        + " indices are not consecutive. Please check that"
+                        + " the vocabulary is not corrupted!",
                     )
                     index = label_index
                 writer.write(label + "\n")
                 index += 1
 
-    def _log_input_features(
-        self,
+    def save(self, save_directory: str) -> None:
+        if not os.path.isdir(save_directory):
+            raise ValueError(
+                f"Saving directory ({save_directory}) should be a directory"
+            )
+        config = dict(
+            name=self.name,
+            framework=self.framework,
+            **{attr: getattr(self, attr) for attr in self.persist_attributes}
+        )
+        converter_config_file = os.path.join(save_directory, "converter_config.json")
+        with open(converter_config_file, "w", encoding="utf-8") as writer:
+            writer.write(json.dumps(config, ensure_ascii=False))
+        if self.framework == "transformers":
+            self.save_label_vocabulary(save_directory)
+
+    @staticmethod
+    def _log_input_features_transformers(
         tokens: List[str],
         document: Document,
         features: InputFeatures,
@@ -142,6 +209,37 @@ class FeatureConverter(Registrable):
         logger.info("tokens: %s", " ".join([str(x) for x in tokens]))
         logger.info("input_ids: %s", " ".join([str(x) for x in features.input_ids]))
         logger.info("attention_mask: %s", " ".join([str(x) for x in features.attention_mask]))
-        logger.info("token_type_ids: %s", " ".join([str(x) for x in features.token_type_ids]))
+        if features.token_type_ids is not None:
+            logger.info("token_type_ids: %s", " ".join([str(x) for x in features.token_type_ids]))
         if labels:
             logger.info("labels: %s (ids = %s)", labels, features.labels)
+
+    @staticmethod
+    def _log_input_features_allennlp(
+            tokens: List[Token],
+            document: Document,
+            features: InputFeatures,
+            labels: Optional[Union[str, List[str]]] = None,
+    ) -> None:
+        # Examples are unpadded and not "officially" tokenized by allennlp yet
+        logger.info("*** Example ***")
+        logger.info(f"guid: {document.guid}", )
+        logger.info(f"tokens: {' '.join([x.text for x in tokens])}")
+        if len(tokens) > 0:
+            if tokens[0].text_id is not None:
+                logger.info(f"token_ids: {' '.join([str(x.text_id) for x in tokens])}")
+            if tokens[0].type_id is not None:
+                logger.info(f"token_type_ids: {' '.join([str(x.type_id) for x in tokens])}")
+        if labels:
+            logger.info(f"labels: {labels}")
+        logger.info(features.instance)
+
+    def _log_input_features(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
+        if self.framework == "transformers":
+            self._log_input_features_transformers(*args, **kwargs)
+        elif self.framework == "allennlp":
+            self._log_input_features_allennlp(*args, **kwargs)

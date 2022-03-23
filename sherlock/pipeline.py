@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 import importlib
 import json
 import pkgutil
@@ -7,7 +8,7 @@ from typing import Any, List
 import _jsonnet
 
 from sherlock import Document, DocumentProcessor
-from sherlock.predictors.predictor import Predictor
+from sherlock.annotators.annotator import Annotator
 
 
 class Pipeline(DocumentProcessor):
@@ -21,9 +22,9 @@ class Pipeline(DocumentProcessor):
         self._processors: List[DocumentProcessor] = processors
         self._provenance = provenance
 
-    def predict_documents(self, documents: List[Document]) -> List[Document]:
+    def process_documents(self, documents: List[Document]) -> List[Document]:
         for processor in self._processors:
-            processor.predict_documents(documents)
+            processor.process_documents(documents)
         self._add_provenance(documents)
         return documents
 
@@ -53,8 +54,8 @@ class Pipeline(DocumentProcessor):
             # if os.path.isdir(joint_path):
             #     model_path = joint_path
             params["device"] = cuda_device
-            predictor_name = params.pop("name")
-            processors.append(Predictor.by_name(predictor_name).from_pretrained(**params))
+            annotator_name = params.pop("name")
+            processors.append(Annotator.by_name(annotator_name).from_pretrained(**params))
         provenance = pipeline_config.get("provenance", None)
         return Pipeline(processors=processors, provenance=provenance)
 

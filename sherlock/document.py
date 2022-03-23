@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,6 +11,7 @@ class Token:
     """
     A simple token representation, keeping track of the token's start and end offset
     in the text it was taken from, POS tag, dependency relation, and similar information.
+
     Parameters
     ----------
     doc : ``Document``
@@ -30,6 +32,8 @@ class Token:
         The dependency relation head for this token.
     ent_type : ``str``, optional
         The entity type (i.e., the NER tag) for this token.
+    ent_dist: ``dict``, optional
+        The distribution of entity types processed by different models for this token.
     """
 
     doc: "Document" = field(compare=False, repr=False)
@@ -41,6 +45,7 @@ class Token:
     dep: Optional[str] = None
     dep_head: Optional[int] = None
     ent_type: Optional[str] = None
+    ent_dist: Optional[dict] = None
 
     @property
     def text(self) -> str:
@@ -59,7 +64,7 @@ class Token:
     def to_dict(self) -> Dict[str, Any]:
         dct = dict(start=self.start, end=self.end)
 
-        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type"]:
+        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type", "ent_dist"]:
             attr_val = getattr(self, attr)
             if attr_val is not None:
                 dct[attr] = attr_val
@@ -69,7 +74,7 @@ class Token:
     def from_dict(cls, doc: "Document", dct: Dict[str, Any]) -> "Token":
         tmp_dct = dict(doc=doc, start=dct["start"], end=dct["end"])
 
-        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type"]:
+        for attr in ["lemma", "pos", "tag", "dep", "dep_head", "ent_type", "ent_dist"]:
             attr_val = dct.get(attr)
             if attr_val is not None:
                 tmp_dct[attr] = attr_val
@@ -87,11 +92,26 @@ class Token:
             dep=token.dep_,
             dep_head=token.head.i,
             ent_type=token.ent_type_ or None,
+            ent_dist=None
         )
 
 
 @dataclass(frozen=True)
 class Span:
+    """
+    A slice from a Document object.
+
+    Parameters
+    ----------
+    doc: ``Document''
+        The document the Span belongs to.
+    start : ``int``
+        The index of the first Token of the span.
+    end : ``int``
+        The index of the first Token after the span.
+    label: ``Optional[str]``
+        An optional label to attach to the span.
+    """
     doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
@@ -117,6 +137,20 @@ class Span:
 
 @dataclass(frozen=True)
 class Mention:
+    """
+    An entity mention string in text with token-based offsets and a label.
+
+    Parameters
+    ----------
+    doc: ``Document''
+        The document the Mention belongs to.
+    start : ``int``
+        The index of the first Token of the span.
+    end : ``int``
+        The index of the first Token after the span.
+    label: ``str``
+        A named entity type label to attach to the span.
+    """
     doc: "Document" = field(compare=False, repr=False)
     start: int
     end: int
@@ -148,6 +182,20 @@ class Mention:
 
 @dataclass(frozen=True)
 class Entity:
+    """
+    An entity, with a list of mentions in text and external identifiers.
+
+    Parameters
+    ----------
+    doc: ``Document''
+        The document the Entity belongs to.
+    mentions_indices : ``List[int]``
+        The index of the first token of the span.
+    ref_ids : ``Dict[str, Any]``
+        A dictionary of <KB alias, KB id> tuples
+    label: ``str``
+        A named entity type label.
+    """
     doc: "Document" = field(compare=False, repr=False)
     mentions_indices: List[int]
     label: str
@@ -176,6 +224,22 @@ class Entity:
 
 @dataclass(frozen=True)
 class Relation:
+    """
+    A binary relation mention between a head and a tail Mention
+
+    Parameters
+    ----------
+    doc: ``Document''
+        The document the Relation belongs to.
+    head_idx : ``int``
+        The index of the head Mention in doc.ments
+    tail_idx : ``int``
+        The index of the tail Mention in doc.ments
+    label: ``str``
+        The label of the relation.
+    logits: ``Optional[Dict[str, float]]
+        Optional logits over the space of possible relation labels.
+    """
     doc: "Document" = field(compare=False, repr=False)
     head_idx: int
     tail_idx: int
@@ -213,10 +277,24 @@ class Relation:
 
 @dataclass(frozen=True)
 class Event:
+    """
+    A n-ary relation mention / event with a list of Mention arguments.
+
+    Parameters
+    ----------
+    doc: ``Document''
+        The document the Relation belongs to.
+    event_type: ``str``
+        The event type / relation type label of the Event.
+    arg_idxs : ``List[Tuple[str, int]]``
+        The arguments of this Event, as a list of tuples of role label and index into doc.ments
+    trigger_idx : ``Optional[int]``
+        The optional index of the trigger Mention or Token for this Event.
+    """
     doc: "Document" = field(compare=False, repr=False)
     event_type: str
     arg_idxs: List[Tuple[str, int]]  # tuples of role and mention_idx
-    trigger_idx: Optional[int]
+    trigger_idx: Optional[int] # TODO is this token-index or Mention-index? Should we allow multiple, disjoint tokens?
 
     @property
     def idx(self) -> int:
@@ -254,6 +332,36 @@ class Event:
 
 @dataclass
 class Document:
+    """
+    A simple document representation, keeping track of the document's text, id, list of tokens, sentences, paragraphs,
+    entity mentions, entities, relations, and events.
+
+    Parameters
+    ----------
+    guid: ``str''
+        The identifier of this document.
+    text: ``str``
+        The text of this document.
+    tokens : ``List[Token]``
+        The list of tokens of this document.
+    sents : ``List[Span]``
+        The list of sentences of this document.
+    ments : ``List[Mention]``
+        The list of entity mentions of this document.
+    ents : ``List[Entity]``
+        The list of entities of this document.
+    rels : ``List[Relation]``
+        The list of relations of this document.
+    events : ``List[Event]``
+        The list of events of this document.
+    paragraphs : ``Optional[List[Span]]``
+        The list of paragraphs of this document.
+    title: ``Optional[str]``
+        The optional title of this document, e.g. for news articles.
+    provenance: ``Optional[List[Any]]''
+        The optional provenance information for this document, e.g. source information, annotator identifiers, and
+        similar information.
+    """
     guid: str
     text: str
     tokens: List[Token] = field(default_factory=list)
@@ -263,6 +371,8 @@ class Document:
     rels: List[Relation] = field(default_factory=list)
     events: List[Event] = field(default_factory=list)
     provenance: Optional[List[Any]] = None
+    paragraphs: Optional[List[Span]] = None
+    title: Optional[str] = None
 
     @property
     def is_tokenized(self) -> bool:
@@ -291,6 +401,10 @@ class Document:
             dct["events"] = [evt.to_dict() for evt in self.events]
         if self.provenance is not None:
             dct["provenance"] = self.provenance
+        if self.paragraphs is not None:
+            dct["paragraphs"] = [par.to_dict() for par in self.paragraphs]
+        if self.title is not None:
+            dct["title"] = self.title
         return dct
 
     @classmethod
@@ -305,4 +419,8 @@ class Document:
             doc.events = [Event.from_dict(doc, evt) for evt in dct["events"]]
         if "provenance" in dct:
             doc.provenance = dct["provenance"]
+        if "paragraphs" in dct:
+            doc.paragraphs = [Span.from_dict(doc, par) for par in dct["paragraphs"]]
+        if "title" in dct:
+            doc.title = dct["title"]
         return doc
