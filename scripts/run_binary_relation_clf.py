@@ -178,8 +178,12 @@ def train(args, dataset_reader, converter, model, tokenizer):
         )
         preds = []
         out_label_ids = []
+        instance_ids = []
         for step, batch in enumerate(epoch_iterator):
             model.train()
+            if 'metadata' in batch:
+                instance_ids.append(batch["metadata"]['guid'])
+                del batch["metadata"]
             batch = {k: t.to(args.device) for k, t in batch.items()}
 
             outputs = model(**batch)
@@ -217,7 +221,7 @@ def train(args, dataset_reader, converter, model, tokenizer):
                     if (
                         args.local_rank == -1 and args.evaluate_during_training
                     ):  # Only evaluate when single GPU otherwise metrics may not average well
-                        results, _ = evaluate(
+                        results, _, _, _ = evaluate(
                             args, dataset_reader, converter, model, tokenizer, split="dev"
                         )
                         for key, value in results.items():
@@ -261,11 +265,12 @@ def train(args, dataset_reader, converter, model, tokenizer):
             preds = np.concatenate(preds, axis=0)
             preds = np.argmax(preds, axis=1)
             out_label_ids = np.concatenate(out_label_ids, axis=0)
+            instance_ids = np.concatenate(instance_ids, axis=0) # currently not used, but if we want to save train preds
             train_results = compute_f1(preds, out_label_ids)
             for key, value in train_results.items():
                 tb_writer.add_scalar(f"Epoch/Train/{key}", value, epoch)
 
-            test_results, _ = evaluate(
+            test_results, _, _, _ = evaluate(
                 args,
                 dataset_reader,
                 converter,
@@ -328,9 +333,13 @@ def evaluate(
     eval_loss = 0.0
     nb_eval_steps = 0
     preds = []
-    out_label_ids = []
+    true_label_ids = []
+    instance_ids = []
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         model.eval()
+        if 'metadata' in batch:
+            instance_ids.append(batch["metadata"]['guid'])
+            del batch["metadata"]
         batch = {k: t.to(args.device) for k, t in batch.items()}
         if args.model_type not in ["bert", "xlnet"]:
             batch["token_type_ids"] = None
@@ -345,13 +354,14 @@ def evaluate(
             eval_loss += tmp_eval_loss.mean().item()
         nb_eval_steps += 1
         preds.append(logits.detach().cpu().numpy())
-        out_label_ids.append(batch["labels"].detach().cpu().numpy())
+        true_label_ids.append(batch["labels"].detach().cpu().numpy())
 
     eval_loss = eval_loss / nb_eval_steps
     preds = np.concatenate(preds, axis=0)
     preds = np.argmax(preds, axis=1)
-    out_label_ids = np.concatenate(out_label_ids, axis=0)
-    result = compute_f1(preds, out_label_ids)
+    true_label_ids = np.concatenate(true_label_ids, axis=0)
+    instance_ids = np.concatenate(instance_ids, axis=0)
+    result = compute_f1(preds, true_label_ids)
 
     logger.info("***** Eval results {} *****".format(name))
     for key in sorted(result.keys()):
@@ -363,7 +373,7 @@ def evaluate(
             for key in sorted(result.keys()):
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
-    return result, preds
+    return result, preds, true_label_ids, instance_ids
 
 
 def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
@@ -409,11 +419,14 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         tensor_dict = {
             "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
+            "metadata": features.metadata
         }
         if features.token_type_ids is not None:
             tensor_dict["token_type_ids"] = torch.tensor(features.token_type_ids, dtype=torch.long)
         if features.labels is not None:
             tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
+        #if split != 'train':
+
         tensor_dicts.append(tensor_dict)
 
     dataset = TensorDictDataset(tensor_dicts)
@@ -649,6 +662,12 @@ def main():
         choices=["tacred", "tacred_dfki_jsonl"],
         help="Registered dataset reader name from ['tacred', 'tacred_dfki_jsonl']"
     )
+    parser.add_argument(
+        "--predictions_exp_name",
+        type=str,
+        default="",
+        help="Optional experiment name identifier which is appended to the prediction file name"
+    )
     args = parser.parse_args()
 
     if (
@@ -835,7 +854,7 @@ def main():
 
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
-            result, _ = evaluate(
+            result, _, _, _ = evaluate(
                 args, dataset_reader, converter, model, tokenizer, split="dev", filename=filename
             )
             result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
@@ -847,10 +866,12 @@ def main():
         )
         model = model_class.from_pretrained(args.output_dir)
         model.to(args.device)
-        result, predictions = evaluate(
+        result, predictions, true_label_ids, instance_ids = evaluate(
             args, dataset_reader, converter, model, tokenizer, split="test", filename=None
         )
-        predictions = [converter.id_to_label_map[i] for i in predictions]
+        predictions = [{"id": instance_ids[idx],
+                       "label_true": converter.id_to_label_map[true_label_ids[idx]],
+                       "label_pred": converter.id_to_label_map[i]} for idx, i in enumerate(predictions)]
 
         # Save results
         output_test_results_file = os.path.join(args.output_dir, "test_results.txt")
@@ -858,10 +879,13 @@ def main():
             for key in sorted(result.keys()):
                 writer.write("{} = {}\n".format(key, str(result[key])))
         # Save predictions
-        output_test_predictions_file = os.path.join(args.output_dir, "test_predictions.txt")
+        model_name = list(filter(None, args.model_name_or_path.split("/"))).pop()
+        output_test_predictions_file = os.path.join(args.output_dir, "{}_predictions_{}_{}.jsonl".format(
+            "test", args.predictions_exp_name, model_name))
+
         with open(output_test_predictions_file, "w") as writer:
             for prediction in predictions:
-                writer.write(prediction + "\n")
+                writer.write(json.dumps(prediction, ensure_ascii=False) + "\n")
         results.update(result)
 
     return results
