@@ -13,7 +13,7 @@
 <p>State-of-the-art Information Extraction
 </h3>
 
-Tested with Python 3.7.
+Tested with Python 3.8.
 
 Download and install Sherlock:
 ```bash

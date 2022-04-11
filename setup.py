@@ -16,7 +16,7 @@ extras["dev"] = extras["testing"] + extras["quality"] + ["torch"]
 
 setup(
     name="sherlock",
-    version="0.0.2",
+    version="0.2.0",
     author="Christoph Alt,Leonhard Hennig,Marc Hübner,Gabriel Kressin",
     author_email="christoph.alt@posteo.de,marc.huebner@dfki.de,leonhard.hennig@dfki.de,gabriel.kressin@dfki.de",
     description="Sherlock - A state-of-the-art information extraction framework",
@@ -53,7 +53,7 @@ setup(
     entry_points={
         "console_scripts": []
     },
-    python_requires='>=3.7.1',
+    python_requires='>=3.8',
     classifiers=[
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT Software License",
