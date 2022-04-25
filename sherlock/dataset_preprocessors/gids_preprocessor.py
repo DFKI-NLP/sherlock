@@ -48,13 +48,13 @@ def main():
     # Required parameters
     parser.add_argument(
         "--data_path",
-        default="./ds/text/gids",
+        default="../../ds/text/gids",
         type=str,
         help="path to directory containing the gids data files",
     )
     parser.add_argument(
         "--export_path",
-        default="./ds/text/gids/converted",
+        default="../../ds/text/gids/converted",
         type=str,
         help="path to directory where the converted files should be saved",
     )

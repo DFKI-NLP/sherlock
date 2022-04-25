@@ -188,13 +188,13 @@ def main():
     # Required parameters
     parser.add_argument(
         "--data_path",
-        default="./ds/text/knowledge-net",
+        default="../../ds/text/knowledge-net",
         type=str,
         help="path to directory containing the knowledge net data files",
     )
     parser.add_argument(
         "--export_path",
-        default="./ds/text/knowledge-net/converted",
+        default="../../ds/text/knowledge-net/converted",
         type=str,
         help="path to directory where the converted files should be saved",
     )

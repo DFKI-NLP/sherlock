@@ -58,13 +58,13 @@ def main():
     # Required parameters
     parser.add_argument(
         "--data_path",
-        default="./ds/text/DocRED",
+        default="../../ds/text/DocRED",
         type=str,
         help="path to directory containing the docred relation info and data files",
     )
     parser.add_argument(
         "--export_path",
-        default="./ds/text/DocRED/converted",
+        default="../../ds/text/DocRED/converted",
         type=str,
         help="path to directory where the converted files should be saved",
     )

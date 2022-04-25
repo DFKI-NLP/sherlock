@@ -34,13 +34,13 @@ def main():
     # Required parameters
     parser.add_argument(
         "--data_path",
-        default="./ds/text/fewrel",
+        default="../../ds/text/fewrel",
         type=str,
         help="path to directory containing the fewrel relation info and data files",
     )
     parser.add_argument(
         "--export_path",
-        default="./ds/text/fewrel/converted",
+        default="../../ds/text/fewrel/converted",
         type=str,
         help="path to directory where the converted files should be saved",
     )
