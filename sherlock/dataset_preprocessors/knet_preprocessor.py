@@ -212,12 +212,12 @@ def main():
         level=logging.INFO,
     )
 
+    spacy_word_splitter = English()
     for split in ["train", "test-no-facts"]:
         split_path = os.path.join(knet_path, split + ".json")
         logging.info("Reading %s", split_path)
         split_export_path = os.path.join(export_path, split + ".jsonl")
         logging.info("Processing and exporting to %s", split_export_path)
-        spacy_word_splitter = English()
         with open(split_path, mode="r", encoding="utf-8") as knet_file, \
                 open(split_export_path, mode="w", encoding="utf-8") as export_knet_file:
             for line in knet_file.readlines():
