@@ -57,7 +57,7 @@ def main():
 
     # Required parameters
     parser.add_argument(
-        "--docred_path",
+        "--data_path",
         default="./ds/text/DocRED",
         type=str,
         help="path to directory containing the docred relation info and data files",
@@ -70,7 +70,7 @@ def main():
     )
     args = parser.parse_args()
 
-    docred_path = args.docred_path
+    docred_path = args.data_path
     export_path = args.export_path
     if not os.path.exists(export_path):
         os.makedirs(export_path)
