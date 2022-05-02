@@ -4,8 +4,9 @@ import os
 import logging
 import argparse
 
-from utils import generate_example_id
 from spacy.lang.en import English
+
+import utils
 
 
 def replace_underscore_in_span(text, start, end):
@@ -13,7 +14,7 @@ def replace_underscore_in_span(text, start, end):
     return cleaned_text
 
 
-def gids_converter(example, word_splitter, replace_underscores=False):
+def gids_converter(example, word_splitter, replace_underscores=True):
     text = example[5].strip()[:-9].strip()  # remove '###END###' from text
     subj_text = example[2]
     obj_text = example[3]
@@ -33,7 +34,7 @@ def gids_converter(example, word_splitter, replace_underscores=False):
 
     rel_type = example[4]
     return {
-        "id": "r/" + generate_example_id(),
+        "id": "r/" + utils.generate_example_id(),
         "tokens": word_tokens,
         "label": rel_type,
         "grammar": ["SUBJ", "OBJ"],

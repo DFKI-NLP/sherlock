@@ -3,7 +3,7 @@ import os
 import logging
 import argparse
 
-from utils import generate_example_id
+import utils
 
 
 def fewrel_converter(data, fewrel_rel_info):
@@ -18,9 +18,9 @@ def fewrel_converter(data, fewrel_rel_info):
             obj_start = tail_token_positions[0]
             obj_end = tail_token_positions[-1]
             converted_examples.append({
-                "id": "r/" + generate_example_id(),
+                "id": "r/" + utils.generate_example_id(),
                 "tokens": example["tokens"],
-                "label": fewrel_rel_info[label],
+                "label": fewrel_rel_info[label][0],
                 "grammar": ["SUBJ", "OBJ"],
                 "entities": [[subj_start, subj_end+1], [obj_start, obj_end+1]],
                 # "type": [subj_type, obj_type]

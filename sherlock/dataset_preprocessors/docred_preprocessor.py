@@ -3,7 +3,7 @@ import os
 import logging
 import argparse
 
-from utils import generate_example_id
+import utils
 
 
 def doc_red_converter(example, docred_rel_info):
@@ -42,7 +42,7 @@ def doc_red_converter(example, docred_rel_info):
             subj_type = head["type"]
             obj_type = tail["type"]
             converted_examples.append({
-                "id": "r/" + generate_example_id(),
+                "id": "r/" + utils.generate_example_id(),
                 "tokens": example["sents"][sent_id],
                 "label": rel_type,
                 "grammar": ["SUBJ", "OBJ"],
