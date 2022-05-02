@@ -4,123 +4,9 @@ import logging
 import argparse
 import re
 
-from utils import generate_example_id
+import utils
+from relation_types import RELATION_TYPES
 from spacy.lang.en import English
-
-GLOVE_MAPPING = {
-    "-LRB-": "(",
-    "-RRB-": ")",
-    "-LSB-": "[",
-    "-RSB-": "]",
-    "-LCB-": "{",
-    "-RCB-": "}",
-}
-
-TACRED_NEGATIVE_LABEL = 'no_relation'
-TACRED_LABELS = [
-    TACRED_NEGATIVE_LABEL,
-    "org:alternate_names",
-    "org:city_of_headquarters",
-    "org:country_of_headquarters",
-    "org:dissolved",
-    "org:founded",
-    "org:founded_by",
-    "org:member_of",
-    "org:members",
-    "org:number_of_employees/members",
-    "org:parents",
-    "org:political/religious_affiliation",
-    "org:shareholders",
-    "org:stateorprovince_of_headquarters",
-    "org:subsidiaries",
-    "org:top_members/employees",
-    "org:website",
-    "per:age",
-    "per:alternate_names",
-    "per:cause_of_death",
-    "per:charges",
-    "per:children",
-    "per:cities_of_residence",
-    "per:city_of_birth",
-    "per:city_of_death",
-    "per:countries_of_residence",
-    "per:country_of_birth",
-    "per:country_of_death",
-    "per:date_of_birth",
-    "per:date_of_death",
-    "per:employee_of",
-    "per:origin",
-    "per:other_family",
-    "per:parents",
-    "per:religion",
-    "per:schools_attended",
-    "per:siblings",
-    "per:spouse",
-    "per:stateorprovince_of_birth",
-    "per:stateorprovince_of_death",
-    "per:stateorprovinces_of_residence",
-    "per:title"
-]
-
-KNET_NEGATIVE_LABEL = 'NO_RELATION'
-TACRED_RELATIONS_NOT_IN_KNOWLEDGENET = [
-    "org:alternate_names",
-    "org:dissolved",
-    "org:shareholders",
-    "org:website",
-    "org:number_of_employees/members",
-    "org:member_of",  # companies/orgs members of larger confederations
-    "org:members",  # companies/orgs members of larger confederations
-    "org:political/religious_affiliation",  # TODO: compare against "POLITICAL_AFFILIATION"
-    "per:age",
-    "per:alternate_names",
-    "per:charges",
-    "per:other_family",
-    "per:religion",
-    "per:siblings",
-    "per:title",
-    "per:cause_of_death",
-    "per:city_of_death",
-    "per:country_of_death",
-    "per:stateorprovince_of_death",
-]
-
-KNET_LABELS = [
-    KNET_NEGATIVE_LABEL,
-    "FOUNDED_BY",
-    "POLITICAL_AFFILIATION",
-    "PLACE_OF_BIRTH",
-    "EDUCATED_AT",
-    "DATE_OF_DEATH",
-    "NATIONALITY",
-    "PLACE_OF_RESIDENCE",
-    "CHILD_OF",
-    "DATE_OF_BIRTH",
-    "HEADQUARTERS",
-    "DATE_FOUNDED",
-    "EMPLOYEE_OR_MEMBER_OF",
-    "SPOUSE",
-    "SUBSIDIARY_OF",
-    "CEO"
-]
-
-KNET_LABELS_TO_PROP_IDS = {
-    "CHILD_OF": 34,
-    "POLITICAL_AFFILIATION": 45,
-    "DATE_OF_BIRTH": 15,
-    "HEADQUARTERS": 6,
-    "EMPLOYEE_OR_MEMBER_OF": 3,
-    "DATE_FOUNDED": 5,
-    "EDUCATED_AT": 9,
-    "FOUNDED_BY": 2,
-    "PLACE_OF_RESIDENCE": 11,
-    "DATE_OF_DEATH": 14,
-    "CEO": 4,
-    "NATIONALITY": 10,
-    "PLACE_OF_BIRTH": 12,
-    "SPOUSE": 25,
-    "SUBSIDIARY_OF": 1
-}
 
 
 def remove_contiguous_whitespaces(text):
@@ -144,7 +30,7 @@ def knowledge_net_converter(example, word_splitter):
     converted_examples = []
     for passage in example["passages"]:
         # Skip passages without facts right away
-        # Later, we will probably need these passages to generate negative examples
+        # TODO Later, we will probably need these passages to generate negative examples
         if len(passage["facts"]) == 0:
             continue
 
@@ -172,7 +58,7 @@ def knowledge_net_converter(example, word_splitter):
 
             relation_label = fact["humanReadable"].split(">")[1][2:]
             converted_examples.append({
-                "id": "r/" + generate_example_id(),
+                "id": "r/" + utils.generate_example_id(),
                 "tokens": word_tokens,
                 "label": relation_label,
                 "grammar": ["SUBJ", "OBJ"],
@@ -180,6 +66,76 @@ def knowledge_net_converter(example, word_splitter):
                 # "type": [subj_type, obj_type]
             })
     return converted_examples
+
+
+def map_knet_label(example):
+    knet_label = example["label"]
+    mapped_label = None
+
+    if knet_label == "CEO":
+        mapped_label = "org:top_members/employees"
+
+    # TODO randomly map to per:parents or per:children?
+    # elif knet_label == "CHILD_OF": # child: subj, parent: obj
+    #     mapped_label = "per:parents"  # child: subj, parent: obj
+    #     example = utils.swap_args(example)
+    elif knet_label == "CHILD_OF":  # child: subj, parent: obj
+        mapped_label = "per:children"  # child: subj, parent: obj
+
+    elif knet_label == "DATE_FOUNDED":
+        mapped_label = "org:founded"
+
+    elif knet_label == "DATE_OF_BIRTH":
+        mapped_label = "per:date_of_birth"
+
+    elif knet_label == "DATE_OF_DEATH":
+        mapped_label = "per:date_of_death"
+
+    elif knet_label == "EDUCATED_AT":
+        mapped_label = "per:schools_attended"
+
+    elif knet_label == "EMPLOYEE_OR_MEMBER_OF":
+        mapped_label = "per:employee_of"
+
+    elif knet_label == "FOUNDED_BY":
+        mapped_label = "org:founded_by"
+
+    elif knet_label == "HEADQUARTERS":
+        # no sensible mapping to
+        # "org:city_of_headquarters", "org:country_of_headquarters", "org:stateorprovince_of_headquarters"
+        mapped_label = "org:place_of_headquarters"
+
+    if knet_label == "NATIONALITY":
+        mapped_label = "per:origin"
+
+    elif knet_label == "POLITICAL_AFFILIATION":
+        mapped_label = "per:political_affiliation"
+
+    elif knet_label == "PLACE_OF_BIRTH":
+        # no sensible mapping to "per:city_of_birth", "per:country_of_birth", "per:stateorprovince_of_birth"
+        mapped_label = "per:place_of_birth"
+
+    elif knet_label == "PLACE_OF_RESIDENCE":
+        # no sensible mapping to
+        # "per:cities_of_residence", "per:countries_of_residence", "per:stateorprovinces_of_residence"
+        mapped_label = "per:place_of_residence"
+
+    elif knet_label == "SPOUSE":
+        mapped_label = "per:spouse"
+
+    # TODO randomly map to org:subsidiaries or org:parents?
+    # elif knet_label == "SUBSIDIARY_OF":  # subsidiary: subj, parent: obj
+    #     mapped_label = "org:subsidiaries"  # subsidiary: obj, parent: subj
+    #     example = swap_args(example)
+    elif knet_label == "SUBSIDIARY_OF":
+        mapped_label = "org:parents"  # subsidiary: subj, parent: obj
+
+    if mapped_label is None:
+        return None
+
+    assert mapped_label in RELATION_TYPES
+    example["label"] = mapped_label
+    return example
 
 
 def main():
