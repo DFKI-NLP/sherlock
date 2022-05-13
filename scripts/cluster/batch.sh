@@ -11,7 +11,7 @@ username="$USER"
 IMAGE=/netscratch/enroot/nvcr.io_nvidia_pytorch_21.10-py3.sqsh
 WORKDIR="`pwd`"
 
-srun -K --container-mounts=/netscratch/$USER:/netscratch/$USER,/ds:/ds:ro,"`pwd`":"`pwd`" \
+srun -K --container-mounts=/netscratch/$USER:/netscratch/$USER,/netscratch/$USER/.cache_slurm:/root/.cache,/ds:/ds:ro,"`pwd`":"`pwd`" \
 --container-image=$IMAGE \
 --container-workdir=$WORKDIR \
 --ntasks=1 \

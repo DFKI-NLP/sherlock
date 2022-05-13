@@ -19,4 +19,5 @@ python ./scripts/run_binary_relation_clf.py \
   --overwrite_output_dir \
   --entity_handling mark_entity_append_ner \
   --output_dir ./experiments/binary_relation_clf_de \
-  --dataset_reader tacred
+  --dataset_reader tacred \
+  --predictions_exp_name de
