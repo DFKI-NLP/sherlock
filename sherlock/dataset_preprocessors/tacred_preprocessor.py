@@ -2,13 +2,41 @@ import json
 import os
 import logging
 import argparse
+import re
+
+from utils import swap_args
+from relation_types import RELATION_TYPES
+
+
+def map_tacred_label(example, merge_location=False, merge_child_parent=False):
+    tacred_label = example["label"]
+    mapped_label = tacred_label
+
+    if merge_child_parent:  # org:parents & org_subsidiaries; per:parents & per:children
+        # TODO this does not make sense if the reverse relation is always annotated as well
+        if tacred_label == "org:parents":   # subsidiary: subj, parent: obj
+            mapped_label = "org:subsidiaries"  # subsidiary: obj, parent: subj
+            example = swap_args(example)
+        elif tacred_label == "per:parents":     # child: subj, parent: obj
+            mapped_label = "per:children"   # child: subj, parent: obj
+            example = swap_args(example)
+    if merge_location:
+        # "org:city_of_headquarters", "org:country_of_headquarters", "org:stateorprovince_of_headquarters"
+        # "per:city_of_birth", "per:country_of_birth", "per:stateorprovince_of_birth"
+        # "per:cities_of_residence", "per:countries_of_residence", "per:stateorprovinces_of_residence"
+        mapped_label = re.sub('(cities|countries|stateorprovinces)_of', 'places_of', tacred_label)
+        mapped_label = re.sub('(city|country|stateorprovince)_of', 'place_of', mapped_label)
+
+    assert mapped_label in RELATION_TYPES
+    example["label"] = mapped_label
+    return example
 
 
 def tacred_converter(data):
     converted_examples = []
     for example in data:
         # TODO relation mapping
-        label = example["relation"]
+        label = map_tacred_label(example["relation"])
         # TODO argument swapping for inverse relations
         inverse = False
         entities = [[example["subj_start"], example["subj_end"]+1], [example["obj_start"], example["obj_end"]+1]]

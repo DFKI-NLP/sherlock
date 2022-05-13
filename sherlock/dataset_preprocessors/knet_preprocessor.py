@@ -118,7 +118,7 @@ def map_knet_label(example):
     elif knet_label == "PLACE_OF_RESIDENCE":
         # no sensible mapping to
         # "per:cities_of_residence", "per:countries_of_residence", "per:stateorprovinces_of_residence"
-        mapped_label = "per:place_of_residence"
+        mapped_label = "per:places_of_residence"
 
     elif knet_label == "SPOUSE":
         mapped_label = "per:spouse"

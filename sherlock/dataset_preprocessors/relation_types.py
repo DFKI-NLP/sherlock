@@ -50,7 +50,7 @@ RELATION_TYPES = [
     "per:political_affiliation",  # (per, org)
     "per:place_of_birth",  # as a superclass for city/stateorprovince/country
     "per:place_of_death",  # as a superclass for city/stateorprovince/country, not acutally in KNET CHECK
-    "per:place_of_residence",  # as a superclass for city/stateorprovince/country
+    "per:places_of_residence",  # as a superclass for city/stateorprovince/country
     # GIDS
     "per:degree",  # (per, degree)   list of degree names can be obtained from GIDS file!     OPEN
     # DOCRED
