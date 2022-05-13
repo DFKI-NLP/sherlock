@@ -50,6 +50,9 @@ from transformers import (
     XLNetConfig,
     XLNetForSequenceClassification,
     XLNetTokenizer,
+    CamembertConfig,
+    CamembertForSequenceClassification,
+    CamembertTokenizer,
     get_linear_schedule_with_warmup,
 )
 
@@ -75,6 +78,7 @@ MODEL_CLASSES = {
     "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
     "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
     "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
+    "camembert": (CamembertConfig, CamembertForSequenceClassification, CamembertTokenizer),
 }
 
 
