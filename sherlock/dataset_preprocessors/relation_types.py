@@ -68,7 +68,8 @@ RELATION_TYPES = [
     "org:production_company",  # (org, work of art) P272                                              CHECK
     "per:creator",  # (per, work of art) P170                                                         CHECK
     "per:ethnic_group",  # (per, NORP?) P172                                                          CHECK
-    "org:manufacturer",  # (org, prod) P176, P1056  originally "manufacturer, product or material produced"   CHECK
+    # "org:manufacturer",  # (org, prod) P176, P1056  originally "manufacturer, product or material produced"   CHECK
+    # -> SDW "org:product_or_technology_or_service"
     # "position held",  # (per, position) P39         -> TACRED per:title                                  OPEN
     "per:producer",  # (per, work of art) P162                                                        CHECK
     "loc:contains_location",  # (loc/gpe, loc/gpe) P150                                               CHECK
@@ -86,17 +87,17 @@ RELATION_TYPES = [
     "per:developer",  # P178                                                              OPEN
     "loc:twinned_adm_body",  # P190  (loc, loc)   sister city                                                   CHECK
     # Fewrel
-    "parent",  # P22
-    "member of political party",  # P102
-    "hq location",  # P159
-    "sibling",  # P3373
-    "country",  # P17 (of item)
-    "occupation",  # P106 (per, job)   -> TACRED position/title
-    "residence",  # P551 (per, loc)
-    "subsidiary",  # P355
-    "owned by",  # P127 (shareholders)
-    "location of",  # P276 (loc, misc)
-    "field of work",  # P101 (per, ...)
+    # "parent",  # P22 actually father, P25 mother -> per:parent
+    "per:member_of_political party",  # TODO P102 (per, org) -> org:political/religious_affiliation
+    # "hq location",  # P159 -> org:place_of_headquarters
+    # "sibling",  # P3373 -> per:siblings
+    "loc:country",  # P17 (of item)
+    # "occupation",  # P106 (per, job)   -> TACRED position/title
+    # "residence",  # P551 (per, loc)   -> per:places_of_residence
+    # "subsidiary",  # P355 (parent, subsidiary) -> org:subsidiary
+    "org:owned by",  # TODO check P127 (shareholders)
+    "loc:location_of",  # TODO check P276 (loc, misc)
+    "per:field_of_work",  # P101 (per, ...)
     # NYT
     # "/business/business_location/parent_company",
     # "/business/company/founders",

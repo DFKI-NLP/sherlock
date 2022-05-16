@@ -18,9 +18,9 @@ def map_doc_red_label(example):
     elif doc_red_label in [
             "located in the administrative territorial entity",
             "located on terrain feature",
-            "located in or next to body of water"
+            # "located in or next to body of water"
     ]:
-        mapped_label = "loc:located_in"
+        mapped_label = "org:facility_or_location"
     elif doc_red_label == "conflict":
         mapped_label = "per:conflict"
     elif doc_red_label == "language":
@@ -44,7 +44,7 @@ def map_doc_red_label(example):
     elif doc_red_label == "ethnic group":
         mapped_label = "per:ethnic_group"
     elif doc_red_label in ["manufacturer", "product or material produced"]:
-        mapped_label = "org:manufacturer"
+        mapped_label = "org:product_or_technology_or_service"
     elif doc_red_label == "position held":
         mapped_label = "per:title"
     elif doc_red_label == "producer":
@@ -77,6 +77,7 @@ def map_doc_red_label(example):
         mapped_label = "per:developer"
     elif doc_red_label == "sister city":
         mapped_label = "loc:twinned_adm_body"
+    # TODO sort and check for missing mappings/arg positions
 
     if mapped_label is None:
         return None

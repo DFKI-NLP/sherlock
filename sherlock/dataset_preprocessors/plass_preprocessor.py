@@ -3,18 +3,46 @@ import os
 import logging
 import argparse
 
+from relation_types import RELATION_TYPES
+
+
+def map_plass_label(example):
+    plass_label = example["label"]
+    mapped_label = None
+
+    if plass_label in RELATION_TYPES:
+        mapped_label = plass_label
+    if plass_label == "CompanyProvidesProduct":
+        mapped_label = "org:product_or_technology_or_service"
+    elif plass_label == "Disaster":
+        mapped_label = "loc:event_or_disaster"
+    elif plass_label == "CompanyFacility":
+        mapped_label = "org:facility_or_location"
+    elif plass_label == "CompanyFinancialEvent":
+        mapped_label = "org:fin_event"
+    elif plass_label == "CompanyCustomer":
+        mapped_label = "org:customer"
+    # elif plass_label == "Identity":
+    #     mapped_label = "org:identity"
+
+    if mapped_label is None:
+        return None
+
+    assert mapped_label in RELATION_TYPES
+    example["label"] = mapped_label
+    return example
+
 
 def plass_converter(data):
     converted_examples = []
     for example in data:
-        # TODO relation mapping
         label = example["relation"]
         entities = [[example["subj_start"], example["subj_end"]+1], [example["obj_start"], example["obj_end"]+1]]
         # TODO ner mapping
         subj_type = example["subj_type"]
         obj_type = example["obj_type"]
         ent_type = [subj_type, obj_type]
-        converted_examples.append({
+        converted_example = map_plass_label({
             "id": example["id"],
             "tokens": example["tokens"],
             "label": label,
@@ -22,6 +50,8 @@ def plass_converter(data):
             "entities": entities,
             "type": ent_type
         })
+        if converted_example is not None:
+            converted_examples.append(converted_example)
     return converted_examples
 
 
