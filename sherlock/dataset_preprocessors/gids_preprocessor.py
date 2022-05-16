@@ -7,6 +7,31 @@ import argparse
 from spacy.lang.en import English
 
 import utils
+from relation_types import RELATION_TYPES
+
+
+def map_gids_label(example):
+    gids_label = example["label"]
+    mapped_label = None
+
+    if gids_label == "/people/person/education./education/education/degree":
+        mapped_label = "per:degree"
+    elif gids_label == "NA":
+        mapped_label = "no_relation"
+    # TODO check whether to include the following labels as well
+    elif gids_label == "/people/person/education./education/education/institution":
+        mapped_label = "per:schools_attended"
+    elif gids_label == "/people/person/place_of_birth":
+        mapped_label = "per:place_of_birth"
+    elif gids_label == "/people/deceased_person/place_of_death":
+        mapped_label = "per:place_of_death"
+
+    if mapped_label is None:
+        return None
+
+    assert mapped_label in RELATION_TYPES
+    example["label"] = mapped_label
+    return example
 
 
 def replace_underscore_in_span(text, start, end):
@@ -33,14 +58,15 @@ def gids_converter(example, word_splitter, replace_underscores=True):
     obj_span = doc.char_span(obj_char_start, obj_char_end, alignment_mode="expand")
 
     rel_type = example[4]
-    return {
+    converted_example = map_gids_label({
         "id": "r/" + utils.generate_example_id(),
         "tokens": word_tokens,
         "label": rel_type,
         "grammar": ["SUBJ", "OBJ"],
         "entities": [[subj_span.start, subj_span.end], [obj_span.start, obj_span.end]],
         # "type": [subj_type, obj_type]
-    }
+    })
+    return map_gids_label(converted_example)
 
 
 def main():
@@ -84,8 +110,9 @@ def main():
             gids_data = csv.reader(gids_file, delimiter="\t")
             for example in gids_data:
                 converted_example = gids_converter(example, spacy_word_splitter, replace_underscores=True)
-                export_gids_file.write(json.dumps(converted_example))
-                export_gids_file.write("\n")
+                if converted_example is not None:
+                    export_gids_file.write(json.dumps(converted_example))
+                    export_gids_file.write("\n")
 
 
 if __name__ == "__main__":

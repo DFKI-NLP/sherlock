@@ -57,7 +57,7 @@ def knowledge_net_converter(example, word_splitter):
             obj_span = doc.char_span(obj_start, obj_end, alignment_mode="expand")
 
             relation_label = fact["humanReadable"].split(">")[1][2:]
-            converted_examples.append({
+            converted_example = map_knet_label({
                 "id": "r/" + utils.generate_example_id(),
                 "tokens": word_tokens,
                 "label": relation_label,
@@ -65,6 +65,8 @@ def knowledge_net_converter(example, word_splitter):
                 "entities": [[subj_span.start, subj_span.end], [obj_span.start, obj_span.end]],
                 # "type": [subj_type, obj_type]
             })
+            if converted_example is not None:
+                converted_examples.append(converted_example)
     return converted_examples
 
 

@@ -35,9 +35,7 @@ def map_tacred_label(example, merge_location=False, merge_child_parent=False):
 def tacred_converter(data):
     converted_examples = []
     for example in data:
-        # TODO relation mapping
-        label = map_tacred_label(example["relation"])
-        # TODO argument swapping for inverse relations
+        label = example["relation"]
         inverse = False
         entities = [[example["subj_start"], example["subj_end"]+1], [example["obj_start"], example["obj_end"]+1]]
         # TODO ner mapping
@@ -47,14 +45,15 @@ def tacred_converter(data):
         if inverse:
             entities[0], entities[1] = entities[1], entities[0]
             ent_type[0], ent_type[1] = ent_type[1], ent_type[0]
-        converted_examples.append({
+        converted_example = {
             "id": example["id"],
             "tokens": example["token"],
             "label": label,
             "grammar": ["SUBJ", "OBJ"],
             "entities": entities,
             "type": ent_type
-        })
+        }
+        converted_examples.append(map_tacred_label(converted_example))
     return converted_examples
 
 
