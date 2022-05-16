@@ -46,6 +46,7 @@ RELATION_TYPES = [
     "per:spouse",  # [('per', 'spouse'), ('per', 'spouse')],                                       CHECK
     "per:title",  # [('per', 'person'), ('misc', 'title')],                   OPEN title is mostly job positions
     "no_relation",  # [('none', 'none'), ('none', 'none')]
+    "org:location_of_headquarters",     # as superclass for city/country_of_headquarters
     # KnowledgeNet
     "per:political_affiliation",  # (per, org)
     "per:place_of_birth",  # as a superclass for city/stateorprovince/country
@@ -54,62 +55,48 @@ RELATION_TYPES = [
     # GIDS
     "per:degree",  # (per, degree)   list of degree names can be obtained from GIDS file!     OPEN
     # DOCRED
-    "capital_of/capital",  # (loc, loc/gpe) P1376, P36                                           CHECK
-    "conflict",  # (per, loc) P607                                                             CHECK
-    "located_in",  # (loc, loc) P131  , P706                                                     CHECK
-    "language",  # (per, language) P1412                                                       CHECK
-    "publisher",  # (org/per, work_of_art) P123                                                 CHECK
-    "location of formation",  # (org, loc) P740                                                   CHECK
-    "head_of_gov/state",  # (gpe, per)         P6, P35                                            CHECK
-    "location",  # (fac/event/item, loc) P276                                                  CHECK
-    "country_of_citizenship",  # (per, loc/gpe) P27                                               CHECK
-    "notable work",  # (per, work of art) P800                                                    CHECK
-    "production company",  # (org, work of art) P272                                              CHECK
-    "creator",  # (per, work of art) P170                                                         CHECK
-    "ethnic group",  # (per, NORP?) P172                                                          CHECK
-    "manufacturer, product or material produced",  # (org, prod) P176, P1056                      CHECK
-    "position held",  # (per, position) P39                                           OPEN
-    "producer",  # (per, work of art) P162                                                        CHECK
-    "contains location",  # (loc/gpe, loc/gpe) P150                                               CHECK
-    "author",  # (per, work of art) P50                                                           CHECK
-    "director",  # (per, work of art) P57                                                         CHECK
-    "work location",  # (per, loc) P937                                                           CHECK
-    "religion",  # (per, norp) P140                                                               CHECK
-    "unemployment rate",  # (loc/gpe, number)                                                     CHECK
-    "country of origin (of item)",  # P495 (loc, work of art/misc?)                   OPEN
-    "performer",  # P175                                                                          CHECK
-    "composer",  # per/work_of_art, P86                                                          CHECK
-    "lyrics by",  # P676                                                                          CHECK
-    "director",  # P57                                                                            CHECK
-    "screenwriter",  # P58                                                                        CHECK
-    "developer",  # P178                                                              OPEN
-    "twinned adm. body",  # P190  (loc, loc)                                                      CHECK
+    "loc:capital_of",  # (loc, loc/gpe) P1376, P36                                           CHECK
+    "per:conflict",  # (per, loc) P607                                                             CHECK
+    "loc:located_in",  # (loc, loc) P131  , P706      ? P206                                               CHECK
+    "per:language",  # (per, language) P1412                                                       CHECK
+    "publisher",  # TODO naming (org/per, work_of_art) P123                                                 CHECK
+    "org:location_of_formation",  # (org, loc) P740                                                   CHECK
+    "head_of_gov/state",  # TODO naming (gpe, per)         P6, P35                                            CHECK
+    "location",  # TODO naming (fac/event/item, loc) P276                                                  CHECK
+    "per:country_of_citizenship",  # (per, loc/gpe) P27                                               CHECK
+    "per:notable_work",  # (per, work of art) P800                                                    CHECK
+    "org:production_company",  # (org, work of art) P272                                              CHECK
+    "per:creator",  # (per, work of art) P170                                                         CHECK
+    "per:ethnic_group",  # (per, NORP?) P172                                                          CHECK
+    "org:manufacturer",  # (org, prod) P176, P1056  originally "manufacturer, product or material produced"   CHECK
+    # "position held",  # (per, position) P39         -> TACRED per:title                                  OPEN
+    "per:producer",  # (per, work of art) P162                                                        CHECK
+    "loc:contains_location",  # (loc/gpe, loc/gpe) P150                                               CHECK
+    "per:author",  # (per, work of art) P50                                                           CHECK
+    "per:director",  # (per, work of art) P57                                                         CHECK
+    "per:work_location",  # (per, loc) P937                                                           CHECK
+    "per:religion",  # TODO (per, norp) P140      -> org:political/religious_affiliation              CHECK
+    "loc:unemployment_rate",  # (loc/gpe, number)                                                     CHECK
+    "loc:country of origin",  # P495 (loc, work of art/misc?)                   OPEN
+    "per:performer",  # P175                                                                          CHECK
+    "per:composer",  # per/work_of_art, P86                                                          CHECK
+    "per:lyrics by",  # P676                                                                          CHECK
+    "per:director",  # P57                                                                            CHECK
+    "per:screenwriter",  # P58                                                                        CHECK
+    "per:developer",  # P178                                                              OPEN
+    "loc:twinned_adm_body",  # P190  (loc, loc)   sister city                                                   CHECK
     # Fewrel
-    "religion",  # P140 DocRED
-    "head of state",  # P6   DocRED
-    "country of citizenship",  # P27    DocRED
-    "position held",  # P39   DocRED
-    "location of formation",  # P740  DocRED
-    "located in",  # P706  DocRED
-    "country of origin",  # P495  DocRED
-    "publisher",  # P123
-    "director",  # P57   DocRED
     "parent",  # P22
-    "manufacturer",  # P176 DocRED
     "member of political party",  # P102
     "hq location",  # P159
     "sibling",  # P3373
     "country",  # P17 (of item)
     "occupation",  # P106 (per, job)   -> TACRED position/title
     "residence",  # P551 (per, loc)
-    "work location",  # P937 (per, loc/org) DocRED
     "subsidiary",  # P355
     "owned by",  # P127 (shareholders)
-    "composer",  # P86 DocRED
     "location of",  # P276 (loc, misc)
     "field of work",  # P101 (per, ...)
-    "notable work",  # P800
-    "located in",  # P131  DocRED
     # NYT
     # "/business/business_location/parent_company",
     # "/business/company/founders",

@@ -4,13 +4,92 @@ import logging
 import argparse
 
 import utils
+from relation_types import RELATION_TYPES
+
+
+def map_doc_red_label(example):
+    doc_red_label = example["label"]
+    mapped_label = None
+
+    if doc_red_label in ["capital of", "capital"]:
+        mapped_label = "loc:capital_of"
+    elif doc_red_label == "conflict":
+        mapped_label = "per:conflict"
+    elif doc_red_label in [
+            "located in the administrative territorial entity",
+            "located on terrain feature",
+            "located in or next to body of water"
+    ]:
+        mapped_label = "loc:located_in"
+    elif doc_red_label == "conflict":
+        mapped_label = "per:conflict"
+    elif doc_red_label == "language":
+        mapped_label = "per:language"
+    elif doc_red_label == "publisher":
+        mapped_label = "publisher"  # TODO name
+    elif doc_red_label == "location of formation":
+        mapped_label = "org:location_of_formation"
+    elif doc_red_label in ["head of government", "head of state"]:
+        mapped_label = "head_of_gov/state"  # TODO name
+    elif doc_red_label == "location":
+        mapped_label = "location"   # TODO name
+    elif doc_red_label == "country of citizenship":
+        mapped_label = "per:country_of_citizenship"
+    elif doc_red_label == "notable work":
+        mapped_label = "per:notable_work"
+    elif doc_red_label == "production company":
+        mapped_label = "org:production_company"
+    elif doc_red_label == "creator":
+        mapped_label = "per:creator"
+    elif doc_red_label == "ethnic group":
+        mapped_label = "per:ethnic_group"
+    elif doc_red_label in ["manufacturer", "product or material produced"]:
+        mapped_label = "org:manufacturer"
+    elif doc_red_label == "position held":
+        mapped_label = "per:title"
+    elif doc_red_label == "producer":
+        mapped_label = "per:producer"
+    elif doc_red_label == "contains location":
+        mapped_label = "loc:contains_location"
+    elif doc_red_label == "author":
+        mapped_label = "per:author"
+    elif doc_red_label == "director":
+        mapped_label = "per:director"
+    elif doc_red_label == "work location":
+        mapped_label = "per:work_location"
+    elif doc_red_label == "religion":
+        mapped_label = "per:religion"   # TODO political/religious_affiliation mapping?
+    elif doc_red_label == "unemployment rate":
+        mapped_label = "loc:unemployment_rate"
+    elif doc_red_label == "country of origin":
+        mapped_label = "loc:country_of_origin"
+    elif doc_red_label == "performer":
+        mapped_label = "per:performer"
+    elif doc_red_label == "composer":
+        mapped_label = "per:composer"
+    elif doc_red_label == "lyrics by":
+        mapped_label = "per:lyrics_by"
+    elif doc_red_label == "director":
+        mapped_label = "per:director"
+    elif doc_red_label == "screenwriter":
+        mapped_label = "per:screenwriter"
+    elif doc_red_label == "developer":
+        mapped_label = "per:developer"
+    elif doc_red_label == "sister city":
+        mapped_label = "loc:twinned_adm_body"
+
+    if mapped_label is None:
+        return None
+
+    assert mapped_label in RELATION_TYPES
+    example["label"] = mapped_label
+    return example
 
 
 def doc_red_converter(example, docred_rel_info):
     labels = example["labels"]
     converted_examples = []
     for idx, label in enumerate(labels):
-        # TODO relation type mapping
         rel_type = docred_rel_info[label["r"]]
         evidence = label["evidence"]
         head_idx = label["h"]
@@ -41,7 +120,7 @@ def doc_red_converter(example, docred_rel_info):
             # TODO NER mapping
             subj_type = head["type"]
             obj_type = tail["type"]
-            converted_examples.append({
+            converted_example = map_doc_red_label({
                 "id": "r/" + utils.generate_example_id(),
                 "tokens": example["sents"][sent_id],
                 "label": rel_type,
@@ -49,6 +128,8 @@ def doc_red_converter(example, docred_rel_info):
                 "entities": [[subj_start, subj_end], [obj_start, obj_end]],
                 "type": [subj_type, obj_type]
             })
+            if converted_example is not None:
+                converted_examples.append(converted_example)
     return converted_examples
 
 
