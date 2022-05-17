@@ -91,7 +91,7 @@ def set_seed(args):
 
 
 def train(args, dataset_reader, converter, model, tokenizer):
-    """ Train the model """
+    """Train the model"""
     if args.local_rank in [-1, 0]:
         tb_writer = SummaryWriter()
 
@@ -101,7 +101,9 @@ def train(args, dataset_reader, converter, model, tokenizer):
         args, dataset_reader, converter, tokenizer, split="train"
     )
     train_sampler = (
-        RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
+        RandomSampler(train_dataset)
+        if args.local_rank == -1
+        else DistributedSampler(train_dataset)
     )
     train_dataloader = DataLoader(
         train_dataset, sampler=train_sampler, batch_size=args.train_batch_size
@@ -185,8 +187,8 @@ def train(args, dataset_reader, converter, model, tokenizer):
         instance_ids = []
         for step, batch in enumerate(epoch_iterator):
             model.train()
-            if 'metadata' in batch:
-                instance_ids.append(batch["metadata"]['guid'])
+            if "metadata" in batch:
+                instance_ids.append(batch["metadata"]["guid"])
                 del batch["metadata"]
             batch = {k: t.to(args.device) for k, t in batch.items()}
 
@@ -232,7 +234,9 @@ def train(args, dataset_reader, converter, model, tokenizer):
                             tb_writer.add_scalar("Steps/Eval/{}".format(key), value, global_step)
                     tb_writer.add_scalar("Steps/lr", scheduler.get_lr()[0], global_step)
                     tb_writer.add_scalar(
-                        "Steps/Train/loss", (tr_loss - logging_loss) / args.logging_steps, global_step
+                        "Steps/Train/loss",
+                        (tr_loss - logging_loss) / args.logging_steps,
+                        global_step,
                     )
                     logging_loss = tr_loss
 
@@ -261,7 +265,6 @@ def train(args, dataset_reader, converter, model, tokenizer):
                 epoch_iterator.close()
                 break
 
-
         # Evaluate at end of epoch
         if args.local_rank == -1:
             # Only evaluate when single GPU otherwise metrics may not average well
@@ -269,7 +272,9 @@ def train(args, dataset_reader, converter, model, tokenizer):
             preds = np.concatenate(preds, axis=0)
             preds = np.argmax(preds, axis=1)
             out_label_ids = np.concatenate(out_label_ids, axis=0)
-            instance_ids = np.concatenate(instance_ids, axis=0) # currently not used, but if we want to save train preds
+            instance_ids = np.concatenate(
+                instance_ids, axis=0
+            )  # currently not used, but if we want to save train preds
             train_results = compute_f1(preds, out_label_ids)
             for key, value in train_results.items():
                 tb_writer.add_scalar(f"Epoch/Train/{key}", value, epoch)
@@ -310,7 +315,8 @@ def train(args, dataset_reader, converter, model, tokenizer):
 
 
 def evaluate(
-    args, dataset_reader, converter, model, tokenizer, split, filename="eval_results.txt"):
+    args, dataset_reader, converter, model, tokenizer, split, filename="eval_results.txt"
+):
     eval_output_dir = args.output_dir
 
     eval_dataset = load_and_cache_examples(args, dataset_reader, converter, tokenizer, split)
@@ -341,8 +347,8 @@ def evaluate(
     instance_ids = []
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         model.eval()
-        if 'metadata' in batch:
-            instance_ids.append(batch["metadata"]['guid'])
+        if "metadata" in batch:
+            instance_ids.append(batch["metadata"]["guid"])
             del batch["metadata"]
         batch = {k: t.to(args.device) for k, t in batch.items()}
         if args.model_type not in ["bert", "xlnet"]:
@@ -396,7 +402,9 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
-        logger.info("Loading features for split %s from cached file %s", split, cached_features_file)
+        logger.info(
+            "Loading features for split %s from cached file %s", split, cached_features_file
+        )
         input_features = torch.load(cached_features_file)
     else:
         if split == "train":
@@ -411,7 +419,9 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         input_features = converter.documents_to_features(documents)
 
         if args.local_rank in [-1, 0]:
-            logger.info("Saving features for split %s into cached file %s", split, cached_features_file)
+            logger.info(
+                "Saving features for split %s into cached file %s", split, cached_features_file
+            )
             os.makedirs(args.cache_dir, exist_ok=True)
             torch.save(input_features, cached_features_file)
 
@@ -423,13 +433,13 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
         tensor_dict = {
             "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
-            "metadata": features.metadata
+            "metadata": features.metadata,
         }
         if features.token_type_ids is not None:
             tensor_dict["token_type_ids"] = torch.tensor(features.token_type_ids, dtype=torch.long)
         if features.labels is not None:
             tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
-        #if split != 'train':
+        # if split != 'train':
 
         tensor_dicts.append(tensor_dict)
 
@@ -477,7 +487,12 @@ def main():
         "--entity_handling",
         type=str,
         default="mask_entity",
-        choices=["mark_entity", "mark_entity_append_ner", "mask_entity", "mask_entity_append_text"],
+        choices=[
+            "mark_entity",
+            "mark_entity_append_ner",
+            "mask_entity",
+            "mask_entity_append_text",
+        ],
     )
     parser.add_argument(
         "--do_predict", action="store_true", help="Whether to run predictions on the test set."
@@ -638,39 +653,41 @@ def main():
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
     parser.add_argument(
-        "--max_instances", type=int, default=-1,
-        help="Only use this number of first instances in dataset (e.g. for debugging)."
+        "--max_instances",
+        type=int,
+        default=-1,
+        help="Only use this number of first instances in dataset (e.g. for debugging).",
     )
     parser.add_argument(
         "--train_file",
         type=str,
         default="train.json",
-        help="Train file name relative to --data_dir"
+        help="Train file name relative to --data_dir",
     )
     parser.add_argument(
-        "--dev_file",
-        type=str,
-        default="dev.json",
-        help="Dev file name relative to --data_dir"
+        "--dev_file", type=str, default="dev.json", help="Dev file name relative to --data_dir"
     )
     parser.add_argument(
-        "--test_file",
-        type=str,
-        default="test.json",
-        help="Test file name relative to --data_dir"
+        "--test_file", type=str, default="test.json", help="Test file name relative to --data_dir"
     )
     parser.add_argument(
         "--dataset_reader",
         type=str,
         default="tacred",
         choices=["tacred", "tacred_dfki_jsonl"],
-        help="Registered dataset reader name from ['tacred', 'tacred_dfki_jsonl']"
+        help="Registered dataset reader name from ['tacred', 'tacred_dfki_jsonl']",
     )
     parser.add_argument(
         "--predictions_exp_name",
         type=str,
         default="",
-        help="Optional experiment name identifier which is appended to the prediction file name"
+        help="Optional experiment name identifier which is appended to the prediction file name",
+    )
+    parser.add_argument(
+        "--log_file",
+        type=str,
+        default=None,
+        help="If specified, append logs to log-file instead of stdout.",
     )
     args = parser.parse_args()
 
@@ -732,11 +749,19 @@ def main():
         args.xla_model = xm
 
     # Setup logging
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
-    )
+    if args.log_file is not None:
+        logging.basicConfig(
+            filename=args.log_file,
+            format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+            datefmt="%d/%m/%Y %H:%M:%S",
+            level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
+        )
+    else:
+        logging.basicConfig(
+            format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+            datefmt="%d/%m/%Y %H:%M:%S",
+            level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
+        )
     logger.warning(
         "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
         args.local_rank,
@@ -754,7 +779,7 @@ def main():
     dataset_reader = DatasetReaderClass(
         add_inverse_relations=args.add_inverse_relations,
         negative_label_re=args.negative_label,
-        max_instances=args.max_instances if args.max_instances != -1 else None
+        max_instances=args.max_instances if args.max_instances != -1 else None,
     )
 
     train_path = os.path.join(args.data_dir, args.train_file)
@@ -790,8 +815,7 @@ def main():
     )
 
     # TODO: Issue #41
-    additional_tokens = dataset_reader.get_additional_tokens(
-        IETask.BINARY_RC, train_path)
+    additional_tokens = dataset_reader.get_additional_tokens(IETask.BINARY_RC, train_path)
 
     if additional_tokens:
         tokenizer.add_tokens(additional_tokens)
@@ -833,7 +857,6 @@ def main():
         # Good practice: save your training arguments together with the trained model
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
-
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
@@ -873,9 +896,14 @@ def main():
         result, predictions, true_label_ids, instance_ids = evaluate(
             args, dataset_reader, converter, model, tokenizer, split="test", filename=None
         )
-        predictions = [{"id": instance_ids[idx],
-                       "label_true": converter.id_to_label_map[true_label_ids[idx]],
-                       "label_pred": converter.id_to_label_map[i]} for idx, i in enumerate(predictions)]
+        predictions = [
+            {
+                "id": instance_ids[idx],
+                "label_true": converter.id_to_label_map[true_label_ids[idx]],
+                "label_pred": converter.id_to_label_map[i],
+            }
+            for idx, i in enumerate(predictions)
+        ]
 
         # Save results
         output_test_results_file = os.path.join(args.output_dir, "test_results.txt")
@@ -884,8 +912,10 @@ def main():
                 writer.write("{} = {}\n".format(key, str(result[key])))
         # Save predictions
         model_name = list(filter(None, args.model_name_or_path.split("/"))).pop()
-        output_test_predictions_file = os.path.join(args.output_dir, "{}_predictions_{}_{}.jsonl".format(
-            "test", args.predictions_exp_name, model_name))
+        output_test_predictions_file = os.path.join(
+            args.output_dir,
+            "{}_predictions_{}_{}.jsonl".format("test", args.predictions_exp_name, model_name),
+        )
 
         with open(output_test_predictions_file, "w") as writer:
             for prediction in predictions:
