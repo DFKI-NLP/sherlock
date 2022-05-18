@@ -13,7 +13,7 @@ from allennlp.data.fields import TextField, LabelField
 from allennlp.data.instance import Instance
 from allennlp.data.tokenizers import (
     Tokenizer, PretrainedTransformerTokenizer, Token)
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from sherlock import Document
 from sherlock.feature_converters.feature_converter import FeatureConverter
@@ -189,8 +189,8 @@ class BinaryRcConverter(FeatureConverter):
         self, document: Document, verbose: bool = False
     ) -> List[InputFeaturesTransformers]:
 
-        assert isinstance(self.tokenizer, PreTrainedTokenizer),\
-            "FeatureConverter initialized with wrong Tokenizer class"
+        assert isinstance(self.tokenizer, PreTrainedTokenizer) or isinstance(self.tokenizer, PreTrainedTokenizerFast),\
+                f"FeatureConverter initialized with wrong Tokenizer class: {self.tokenizer.__class__}"
 
         mention_combinations = self._create_mention_combinations(document)
 
