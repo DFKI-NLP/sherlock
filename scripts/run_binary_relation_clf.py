@@ -107,8 +107,9 @@ def train(args, dataset_reader, converter, model, tokenizer):
     train_sampler = (
         RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     )
+    # Leo 24.5.2022 set num_workers = 0 because of error 'Function Can't open SHM failed' (see Matternmost channel)
     train_dataloader = DataLoader(
-        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size
+        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size, num_workers=0
     )
 
     if args.max_steps > 0:
@@ -329,8 +330,9 @@ def evaluate(
         if args.local_rank == -1
         else DistributedSampler(eval_dataset)
     )
+    # Leo 24.5.2022 set num_workers = 0 because of error 'Function Can't open SHM failed' (see Matternmost channel)
     eval_dataloader = DataLoader(
-        eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size
+        eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=0
     )
 
     # Eval!
@@ -701,9 +703,9 @@ def main():
         logger.warning(f"Deleting content of output_dir: {args.output_dir}")
         # delete all files in old dir
         shutil.rmtree(args.output_dir)
-        os.mkdir(args.output_dir)
+        os.makedirs(args.output_dir)
     elif args.do_train:
-        os.mkdir(args.output_dir)
+        os.makedirs(args.output_dir)
 
     # Setup distant debugging if needed
     if args.server_ip and args.server_port:
