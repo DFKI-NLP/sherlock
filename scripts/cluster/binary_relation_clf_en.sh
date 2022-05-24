@@ -8,7 +8,7 @@ python ./scripts/run_binary_relation_clf.py \
   --eval_all_checkpoints \
   --do_lower_case \
   --data_dir /ds/text/patched_tacrev/ \
-  --cache_dir ./.cache/binary_relation_clf \
+  --cache_dir ./.cache/binary_relation_clf/in_language/en/${RUN_ID} \
   --save_steps 8500 \
   --logging_steps 8500 \
   --max_seq_length 128 \
@@ -19,6 +19,7 @@ python ./scripts/run_binary_relation_clf.py \
   --overwrite_cache \
   --overwrite_output_dir \
   --entity_handling mark_entity_append_ner \
-  --output_dir ./experiments/binary_relation_clf_en \
+  --output_dir ./experiments/binary_relation_clf/in_language/en/${RUN_ID} \
   --dataset_reader tacred \
-  --predictions_exp_name en
+  --predictions_exp_name en_${RUN_ID} \
+  --seed ${SEED} 
