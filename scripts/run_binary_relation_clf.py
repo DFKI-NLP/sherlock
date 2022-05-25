@@ -786,14 +786,17 @@ def main():
     config = AutoConfig.from_pretrained(
         args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels
     )
+    logger.info(f'Initialized config class {config.__class__}: {config}')
     tokenizer = AutoTokenizer.from_pretrained(
         args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
         do_lower_case=args.do_lower_case,
         use_fast=False, # set to False because binary_rc FeatureConverter currently fails in encode_plus call due to wrong input type (line 206)
     )
+    logger.info(f'Initialized tokenizer class {tokenizer.__class__}: {tokenizer}')
     model = AutoModelForSequenceClassification.from_pretrained(
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
+    logger.info(f'Initialized model class {model.__class__}: {model}')
 
     BinaryRcConverter = FeatureConverter.by_name("binary_rc")
 
@@ -886,7 +889,9 @@ def main():
             args.output_dir, do_lower_case=args.do_lower_case,
             use_fast=False, # set to False because binary_rc FeatureConverter currently fails in encode_plus call due to wrong input type (line 206)
         )
+        logger.info(f'Initialized tokenizer class {tokenizer.__class__}: {tokenizer}')
         model = AutoModelForSequenceClassification.from_pretrained(args.output_dir)
+        logger.info(f'Initialized model class {model.__class__}: {model}')
         model.to(args.device)
         result, predictions, true_label_ids, instance_ids = evaluate(
             args, dataset_reader, converter, model, tokenizer, split="test", filename=None
