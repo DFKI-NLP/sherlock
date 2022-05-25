@@ -8,18 +8,10 @@ from utils import swap_args
 from relation_types import RELATION_TYPES
 
 
-def map_tacred_label(example, merge_location=False, merge_child_parent=False):
+def map_tacred_label(example, merge_location=True):
     tacred_label = example["label"]
     mapped_label = tacred_label
 
-    if merge_child_parent:  # org:parents & org_subsidiaries; per:parents & per:children
-        # TODO this does not make sense if the reverse relation is always annotated as well
-        if tacred_label == "org:parents":   # subsidiary: subj, parent: obj
-            mapped_label = "org:subsidiaries"  # subsidiary: obj, parent: subj
-            example = swap_args(example)
-        elif tacred_label == "per:parents":     # child: subj, parent: obj
-            mapped_label = "per:children"   # child: subj, parent: obj
-            example = swap_args(example)
     if merge_location:
         # "org:city_of_headquarters", "org:country_of_headquarters", "org:stateorprovince_of_headquarters"
         # "per:city_of_birth", "per:country_of_birth", "per:stateorprovince_of_birth"

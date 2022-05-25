@@ -30,7 +30,7 @@ def map_fewrel_label(example):
     elif fewrel_label == "location of formation":
         mapped_label = "org:location_of_formation"
     elif fewrel_label in ["head of government", "head of state"]:
-        mapped_label = "head_of_gov/state"  # TODO name
+        mapped_label = "gpe:head_of_gov/state"
     elif fewrel_label == "location":
         mapped_label = "location"  # TODO name
     elif fewrel_label == "country of citizenship":

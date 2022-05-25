@@ -77,7 +77,6 @@ def map_knet_label(example):
     if knet_label == "CEO":
         mapped_label = "org:top_members/employees"
 
-    # TODO randomly map to per:parents or per:children?
     # elif knet_label == "CHILD_OF": # child: subj, parent: obj
     #     mapped_label = "per:parents"  # child: subj, parent: obj
     #     example = utils.swap_args(example)
@@ -125,12 +124,11 @@ def map_knet_label(example):
     elif knet_label == "SPOUSE":
         mapped_label = "per:spouse"
 
-    # TODO randomly map to org:subsidiaries or org:parents?
-    # elif knet_label == "SUBSIDIARY_OF":  # subsidiary: subj, parent: obj
-    #     mapped_label = "org:subsidiaries"  # subsidiary: obj, parent: subj
-    #     example = swap_args(example)
-    elif knet_label == "SUBSIDIARY_OF":
-        mapped_label = "org:parents"  # subsidiary: subj, parent: obj
+    elif knet_label == "SUBSIDIARY_OF":  # subsidiary: subj, parent: obj
+        mapped_label = "org:subsidiaries"  # subsidiary: obj, parent: subj
+        example = swap_args(example)
+    # elif knet_label == "SUBSIDIARY_OF":
+    #     mapped_label = "org:parents"  # subsidiary: subj, parent: obj
 
     if mapped_label is None:
         return None

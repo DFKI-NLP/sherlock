@@ -5,8 +5,8 @@
 RELATION_TYPES = [
     # TACRED
     "org:alternate_names",  # [('org', 'organization'), ('org', 'alternate_name')],                CHECK
-    "org:city_of_headquarters",  # [('org', 'organization'), ('loc', 'city')],                     CHECK
-    "org:country_of_headquarters",  # [('org', 'organization'), ('loc', 'country')],               CHECK
+    # "org:city_of_headquarters",  # [('org', 'organization'), ('loc', 'city')],                     CHECK
+    # "org:country_of_headquarters",  # [('org', 'organization'), ('loc', 'country')],               CHECK
     "org:dissolved",  # [('org', 'organization'), ('date', 'dissolved')],                          CHECK
     "org:founded",  # [('org', 'organization'), ('date', 'founded')],                              CHECK
     "org:founded_by",  # [('org', 'organization'), ('per', 'founder')],                            CHECK
@@ -16,7 +16,7 @@ RELATION_TYPES = [
     "org:parents",  # [('org', 'daughter_company'), ('org', 'parent_company')],                    CHECK
     "org:political/religious_affiliation",  # [('org', 'organization'), ('misc', 'affiliation')],  CHECK
     "org:shareholders",  # [('org', 'organization'), ('org', 'shareholder')],                      CHECK
-    "org:stateorprovince_of_headquarters",  # [('org', 'organization'), ('loc', 'location')],      CHECK
+    # "org:stateorprovince_of_headquarters",  # [('org', 'organization'), ('loc', 'location')],      CHECK
     "org:subsidiaries",  # [('org', 'organization'), ('org', 'subsidiary')],                       CHECK
     "org:top_members/employees",  # [('org', 'organization'), ('per', 'member')],                  CHECK
     "org:website",  # [('org', 'organization'), ('url', 'website')],                       OPEN
@@ -25,12 +25,12 @@ RELATION_TYPES = [
     "per:cause_of_death",  # [('per', 'person'), ('misc', 'cause_of_death')],              OPEN
     "per:charges",  # [('per', 'person'), ('misc', 'charge')],                             OPEN
     "per:children",  # [('per', 'parent'), ('per', 'child')],                                      CHECK
-    "per:cities_of_residence",  # [('per', 'person'), ('loc', 'city')],                            CHECK
-    "per:city_of_birth",  # [('per', 'person'), ('loc', 'city')],                                  CHECK
-    "per:city_of_death",  # [('per', 'person'), ('loc', 'city')],                                  CHECK
-    "per:countries_of_residence",  # [('per', 'person'), ('loc', 'country')],                      CHECK
-    "per:country_of_birth",  # [('per', 'person'), ('loc', 'country')],                            CHECK
-    "per:country_of_death",  # [('per', 'person'), ('loc', 'country')],                            CHECK
+    # "per:cities_of_residence",  # [('per', 'person'), ('loc', 'city')],                            CHECK
+    # "per:city_of_birth",  # [('per', 'person'), ('loc', 'city')],                                  CHECK
+    # "per:city_of_death",  # [('per', 'person'), ('loc', 'city')],                                  CHECK
+    # "per:countries_of_residence",  # [('per', 'person'), ('loc', 'country')],                      CHECK
+    # "per:country_of_birth",  # [('per', 'person'), ('loc', 'country')],                            CHECK
+    # "per:country_of_death",  # [('per', 'person'), ('loc', 'country')],                            CHECK
     "per:date_of_birth",  # [('per', 'person'), ('date', 'date_of_birth')],                        CHECK
     "per:date_of_death",  # [('per', 'person'), ('date', 'date_of_death')],                        CHECK
     "per:employee_of",  # [('per', 'employee'), ('org', 'employer')],                              CHECK
@@ -40,9 +40,9 @@ RELATION_TYPES = [
     "per:religion",  # [('per', 'person'), ('misc', 'religion')],                                  CHECK
     "per:schools_attended",  # [('per', 'person'), ('org', 'school')],                             CHECK
     "per:siblings",  # [('per', 'person'), ('per', 'person')],                                     CHECK
-    "per:stateorprovince_of_birth",  # [('per', 'person'), ('loc', 'location')],                   CHECK
-    "per:stateorprovince_of_death",  # [('per', 'person'), ('loc', 'location')],                   CHECK
-    "per:stateorprovinces_of_residence",  # [('per', 'person'), ('loc', 'location')],              CHECK
+    # "per:stateorprovince_of_birth",  # [('per', 'person'), ('loc', 'location')],                   CHECK
+    # "per:stateorprovince_of_death",  # [('per', 'person'), ('loc', 'location')],                   CHECK
+    # "per:stateorprovinces_of_residence",  # [('per', 'person'), ('loc', 'location')],              CHECK
     "per:spouse",  # [('per', 'spouse'), ('per', 'spouse')],                                       CHECK
     "per:title",  # [('per', 'person'), ('misc', 'title')],                   OPEN title is mostly job positions
     "no_relation",  # [('none', 'none'), ('none', 'none')]
@@ -61,7 +61,7 @@ RELATION_TYPES = [
     "per:language",  # (per, language) P1412                                                       CHECK
     "publisher",  # TODO naming (org/per, work_of_art) P123                                                 CHECK
     "org:location_of_formation",  # (org, loc) P740                                                   CHECK
-    "head_of_gov/state",  # TODO naming (gpe, per)         P6, P35                                            CHECK
+    "gpe:head_of_gov/state",  # (gpe, per)         P6, P35                                            CHECK
     "location",  # TODO naming (fac/event/item, loc) P276                                                  CHECK
     "per:country_of_citizenship",  # (per, loc/gpe) P27                                               CHECK
     "per:notable_work",  # (per, work of art) P800                                                    CHECK

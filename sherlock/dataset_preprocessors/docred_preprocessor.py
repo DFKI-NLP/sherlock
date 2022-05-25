@@ -30,7 +30,7 @@ def map_doc_red_label(example):
     elif doc_red_label == "location of formation":
         mapped_label = "org:location_of_formation"
     elif doc_red_label in ["head of government", "head of state"]:
-        mapped_label = "head_of_gov/state"  # TODO name
+        mapped_label = "gpe:head_of_gov/state"
     elif doc_red_label == "location":
         mapped_label = "location"   # TODO name
     elif doc_red_label == "country of citizenship":
