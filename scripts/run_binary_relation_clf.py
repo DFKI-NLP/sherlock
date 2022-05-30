@@ -528,7 +528,7 @@ def main():
     parser.add_argument(
         "--evaluate_during_training",
         action="store_true",
-        help="Rul evaluation during training at each logging step.",
+        help="Run evaluation during training at each logging step.",
     )
     parser.add_argument(
         "--do_lower_case",
