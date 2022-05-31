@@ -25,14 +25,14 @@ def map_fewrel_label(example):
         mapped_label = "per:conflict"
     elif fewrel_label == "language":
         mapped_label = "per:language"
-    elif fewrel_label == "publisher":
-        mapped_label = "publisher"  # TODO name
+    # elif fewrel_label == "publisher":
+    #     mapped_label = "publisher"  # TODO name, (per/org, loc) need NER to determine NER prefix for RE label
     elif fewrel_label == "location of formation":
         mapped_label = "org:location_of_formation"
     elif fewrel_label in ["head of government", "head of state"]:
         mapped_label = "gpe:head_of_gov/state"
-    elif fewrel_label == "location":
-        mapped_label = "location"  # TODO name
+    # elif fewrel_label == "location":
+    #     mapped_label = "location"  # TODO name, (fac/event/item, loc) need NER to determine NER prefix for RE label
     elif fewrel_label == "country of citizenship":
         mapped_label = "per:country_of_citizenship"
     elif fewrel_label == "notable work":

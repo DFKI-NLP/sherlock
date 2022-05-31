@@ -59,10 +59,10 @@ RELATION_TYPES = [
     "per:conflict",  # (per, loc) P607                                                             CHECK
     "loc:located_in",  # (loc, loc) P131  , P706      ? P206                                               CHECK
     "per:language",  # (per, language) P1412                                                       CHECK
-    "publisher",  # TODO naming (org/per, work_of_art) P123                                                 CHECK
+    # "publisher",  # TODO naming (org/per, work_of_art) P123                                                 CHECK
     "org:location_of_formation",  # (org, loc) P740                                                   CHECK
     "gpe:head_of_gov/state",  # (gpe, per)         P6, P35                                            CHECK
-    "location",  # TODO naming (fac/event/item, loc) P276                                                  CHECK
+    # "location",  # TODO naming (fac/event/item, loc) P276                                                  CHECK
     "per:country_of_citizenship",  # (per, loc/gpe) P27                                               CHECK
     "per:notable_work",  # (per, work of art) P800                                                    CHECK
     "org:production_company",  # (org, work of art) P272                                              CHECK

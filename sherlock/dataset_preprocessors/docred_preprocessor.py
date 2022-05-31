@@ -25,14 +25,14 @@ def map_doc_red_label(example):
         mapped_label = "per:conflict"
     elif doc_red_label == "language":
         mapped_label = "per:language"
-    elif doc_red_label == "publisher":
-        mapped_label = "publisher"  # TODO name
+    # elif doc_red_label == "publisher":
+    #     mapped_label = "publisher"  # TODO name, (per/org, loc) need NER to determine NER prefix for RE label
     elif doc_red_label == "location of formation":
         mapped_label = "org:location_of_formation"
     elif doc_red_label in ["head of government", "head of state"]:
         mapped_label = "gpe:head_of_gov/state"
-    elif doc_red_label == "location":
-        mapped_label = "location"   # TODO name
+    # elif doc_red_label == "location":
+    #     mapped_label = "location"  # TODO name, (fac/event/item, loc) need NER to determine NER prefix for RE label
     elif doc_red_label == "country of citizenship":
         mapped_label = "per:country_of_citizenship"
     elif doc_red_label == "notable work":
