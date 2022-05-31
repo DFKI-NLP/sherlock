@@ -1,6 +1,10 @@
 #!/bin/bash
-for LANG in 'fr' 'ja'
-#for LANG in 'en' 'de' 'es' 'fi' 'fr' 'ru' 'ja' 'zh'
+# from http://projects.dfki.uni-kl.de/km-publications/web/ML/core/hpc-doc/docs/slurm-cluster/known-issues/#multithreading-contention
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+
+for LANG in 'en' 'de' 'es' 'fi' 'fr' 'ru' 'ja' 'zh'
 do
  for RUN in {1..5}
  do
