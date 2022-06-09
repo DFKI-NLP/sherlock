@@ -126,7 +126,7 @@ def map_knet_label(example):
 
     elif knet_label == "SUBSIDIARY_OF":  # subsidiary: subj, parent: obj
         mapped_label = "org:subsidiaries"  # subsidiary: obj, parent: subj
-        example = swap_args(example)
+        example = utils.swap_args(example)
     # elif knet_label == "SUBSIDIARY_OF":
     #     mapped_label = "org:parents"  # subsidiary: subj, parent: obj
 

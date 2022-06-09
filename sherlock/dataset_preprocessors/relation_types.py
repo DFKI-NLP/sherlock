@@ -61,7 +61,7 @@ RELATION_TYPES = [
     "per:language",  # (per, language) P1412                                                       CHECK
     # "publisher",  # TODO naming (org/per, work_of_art) P123                                                 CHECK
     "org:location_of_formation",  # (org, loc) P740                                                   CHECK
-    "gpe:head_of_gov/state",  # (gpe, per)         P6, P35                                            CHECK
+    "per:head_of_gov/state",  # (gpe, per)         P6, P35                                            CHECK
     # "location",  # TODO naming (fac/event/item, loc) P276                                                  CHECK
     "per:country_of_citizenship",  # (per, loc/gpe) P27                                               CHECK
     "per:notable_work",  # (per, work of art) P800                                                    CHECK
@@ -76,7 +76,7 @@ RELATION_TYPES = [
     "per:author",  # (per, work of art) P50                                                           CHECK
     "per:director",  # (per, work of art) P57                                                         CHECK
     "per:work_location",  # (per, loc) P937                                                           CHECK
-    "per:religion",  # TODO (per, norp) P140      -> org:political/religious_affiliation              CHECK
+    "per:religion",  # (per, norp) P140                                                               CHECK
     "loc:unemployment_rate",  # (loc/gpe, number)                                                     CHECK
     "loc:country of origin",  # P495 (loc, work of art/misc?)                   OPEN
     "per:performer",  # P175                                                                          CHECK
