@@ -23,6 +23,7 @@ import logging
 import os
 import random
 import shutil
+import sys
 
 import numpy as np
 import torch
@@ -50,6 +51,12 @@ from transformers import (
     XLNetConfig,
     XLNetForSequenceClassification,
     XLNetTokenizer,
+    CamembertConfig,
+    CamembertForSequenceClassification,
+    CamembertTokenizer,
+    AutoConfig,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
     get_linear_schedule_with_warmup,
 )
 
@@ -75,6 +82,7 @@ MODEL_CLASSES = {
     "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
     "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
     "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
+    "camembert": (CamembertConfig, CamembertForSequenceClassification, CamembertTokenizer),
 }
 
 
@@ -99,8 +107,9 @@ def train(args, dataset_reader, converter, model, tokenizer):
     train_sampler = (
         RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     )
+    # Leo 24.5.2022 set num_workers = 0 because of error 'Function Can't open SHM failed' (see Matternmost channel)
     train_dataloader = DataLoader(
-        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size
+        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size, num_workers=0
     )
 
     if args.max_steps > 0:
@@ -321,8 +330,9 @@ def evaluate(
         if args.local_rank == -1
         else DistributedSampler(eval_dataset)
     )
+    # Leo 24.5.2022 set num_workers = 0 because of error 'Function Can't open SHM failed' (see Matternmost channel)
     eval_dataloader = DataLoader(
-        eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size
+        eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, num_workers=0
     )
 
     # Eval!
@@ -518,7 +528,7 @@ def main():
     parser.add_argument(
         "--evaluate_during_training",
         action="store_true",
-        help="Rul evaluation during training at each logging step.",
+        help="Run evaluation during training at each logging step.",
     )
     parser.add_argument(
         "--do_lower_case",
@@ -670,6 +680,14 @@ def main():
     )
     args = parser.parse_args()
 
+    # Setup logging
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
+        stream=sys.stdout,
+    )
+
     if (
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
@@ -682,12 +700,12 @@ def main():
             )
         )
     elif os.path.exists(args.output_dir) and args.do_train:
-        logger.warn(f"Deleting content of output_dir: {args.output_dir}")
+        logger.warning(f"Deleting content of output_dir: {args.output_dir}")
         # delete all files in old dir
         shutil.rmtree(args.output_dir)
-        os.mkdir(args.output_dir)
+        os.makedirs(args.output_dir)
     elif args.do_train:
-        os.mkdir(args.output_dir)
+        os.makedirs(args.output_dir)
 
     # Setup distant debugging if needed
     if args.server_ip and args.server_port:
@@ -728,11 +746,12 @@ def main():
         args.xla_model = xm
 
     # Setup logging
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
-    )
+    #logging.basicConfig(
+    #    format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+    #    datefmt="%m/%d/%Y %H:%M:%S",
+    #    level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
+    #    stream=sys.stdout,
+    #)
     logger.warning(
         "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
         args.local_rank,
@@ -763,17 +782,21 @@ def main():
         torch.distributed.barrier()
 
     args.model_type = args.model_type.lower()
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-    config = config_class.from_pretrained(
+    #config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+    config = AutoConfig.from_pretrained(
         args.config_name if args.config_name else args.model_name_or_path, num_labels=num_labels
     )
-    tokenizer = tokenizer_class.from_pretrained(
+    logger.info(f'Initialized config class {config.__class__}: {config}')
+    tokenizer = AutoTokenizer.from_pretrained(
         args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
         do_lower_case=args.do_lower_case,
+        use_fast=False, # set to False because binary_rc FeatureConverter currently fails in encode_plus call due to wrong input type (line 206)
     )
-    model = model_class.from_pretrained(
+    logger.info(f'Initialized tokenizer class {tokenizer.__class__}: {tokenizer}')
+    model = AutoModelForSequenceClassification.from_pretrained(
         args.model_name_or_path, from_tf=bool(".ckpt" in args.model_name_or_path), config=config
     )
+    logger.info(f'Initialized model class {model.__class__}: {model}')
 
     BinaryRcConverter = FeatureConverter.by_name("binary_rc")
 
@@ -833,8 +856,9 @@ def main():
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.output_dir, do_lower_case=args.do_lower_case,
+            use_fast=False, # set to False because binary_rc FeatureConverter currently fails in encode_plus call due to wrong input type (line 206)
         )
         converter = BinaryRcConverter.from_pretrained(args.output_dir, tokenizer=tokenizer)
         checkpoints = [args.output_dir]
@@ -852,7 +876,7 @@ def main():
             prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
             filename = f"{prefix}_eval_result.txt"
 
-            model = model_class.from_pretrained(checkpoint)
+            model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
             model.to(args.device)
             result, _, _, _ = evaluate(
                 args, dataset_reader, converter, model, tokenizer, split="dev", filename=filename
@@ -861,10 +885,13 @@ def main():
             results.update(result)
 
     if args.do_predict and args.local_rank in [-1, 0]:
-        tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=args.do_lower_case
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.output_dir, do_lower_case=args.do_lower_case,
+            use_fast=False, # set to False because binary_rc FeatureConverter currently fails in encode_plus call due to wrong input type (line 206)
         )
-        model = model_class.from_pretrained(args.output_dir)
+        logger.info(f'Initialized tokenizer class {tokenizer.__class__}: {tokenizer}')
+        model = AutoModelForSequenceClassification.from_pretrained(args.output_dir)
+        logger.info(f'Initialized model class {model.__class__}: {model}')
         model.to(args.device)
         result, predictions, true_label_ids, instance_ids = evaluate(
             args, dataset_reader, converter, model, tokenizer, split="test", filename=None

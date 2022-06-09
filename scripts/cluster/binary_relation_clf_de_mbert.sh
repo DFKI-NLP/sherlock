@@ -6,8 +6,8 @@ python ./scripts/run_binary_relation_clf.py \
   --do_predict \
   --evaluate_during_training \
   --eval_all_checkpoints \
-  --data_dir /netscratch/hennig/data/tacred-multi/ \
-  --cache_dir ./.cache/binary_relation_clf_multi \
+  --data_dir /netscratch/hennig/data/tacred-mbert/ \
+  --cache_dir ./.cache/binary_relation_clf/cross_language/de/${RUN_ID} \
   --save_steps 8500 \
   --logging_steps 8500 \
   --max_seq_length 128 \
@@ -18,8 +18,10 @@ python ./scripts/run_binary_relation_clf.py \
   --overwrite_cache \
   --overwrite_output_dir \
   --entity_handling mark_entity_append_ner \
-  --output_dir ./experiments/binary_relation_clf_multi \
+  --output_dir ./experiments/binary_relation_clf/cross_language/de/${RUN_ID} \
   --dataset_reader tacred \
   --train_file train_en.json \
   --dev_file dev_en.json \
-  --test_file test_de.json
+  --test_file test_de.json \
+  --predictions_exp_name mbert_en_de_${RUN_ID}  \
+  --seed ${SEED}

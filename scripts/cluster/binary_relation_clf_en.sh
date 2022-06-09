@@ -1,13 +1,14 @@
 python ./scripts/run_binary_relation_clf.py \
   --model_type bert \
-  --model_name_or_path bert-base-german-cased \
+  --model_name_or_path bert-base-uncased \
   --do_train \
   --do_eval \
   --do_predict \
   --evaluate_during_training \
   --eval_all_checkpoints \
-  --data_dir /netscratch/hennig/data/tacred-de/ \
-  --cache_dir ./.cache/binary_relation_clf/in_language/de/${RUN_ID} \
+  --do_lower_case \
+  --data_dir /ds/text/patched_tacrev/ \
+  --cache_dir ./.cache/binary_relation_clf/in_language/en/${RUN_ID} \
   --save_steps 8500 \
   --logging_steps 8500 \
   --max_seq_length 128 \
@@ -18,7 +19,7 @@ python ./scripts/run_binary_relation_clf.py \
   --overwrite_cache \
   --overwrite_output_dir \
   --entity_handling mark_entity_append_ner \
-  --output_dir ./experiments/binary_relation_clf/in_language/de/${RUN_ID} \
+  --output_dir ./experiments/binary_relation_clf/in_language/en/${RUN_ID} \
   --dataset_reader tacred \
-  --predictions_exp_name de_${RUN_ID}  \
-  --seed ${SEED}
+  --predictions_exp_name en_${RUN_ID} \
+  --seed ${SEED} 

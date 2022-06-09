@@ -37,6 +37,7 @@ setup(
         "tensorboardX>=1.2",
         "allennlp==2.8.0",
         "allennlp-models==2.8.0",
+        "transformers[ja]>=4.1,<4.13",
 
         # code formatting
         "black",
