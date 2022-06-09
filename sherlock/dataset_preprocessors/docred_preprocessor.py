@@ -11,73 +11,150 @@ def map_doc_red_label(example):
     doc_red_label = example["label"]
     mapped_label = None
 
-    if doc_red_label in ["capital of", "capital"]:
-        mapped_label = "loc:capital_of"
-    elif doc_red_label == "conflict":
-        mapped_label = "per:conflict"
-    elif doc_red_label in [
-            "located in the administrative territorial entity",
-            "located on terrain feature",
-            # "located in or next to body of water"
+    if doc_red_label in [
+        "applies to jurisdiction",  # (org, loc)
+        "award received",   # (per, misc)
+        "basin country",    # (loc, loc)
+        "cast_member",  # (misc, per)
+        "chairperson",  # (org, per)    TODO could be relevant
+        "characters",   # (misc, per)
+        "child",    # (parent, child)   TODO
+        "contains administrative territorial entity",   # (loc, contained loc)
+        "continent",    # (loc, continent)
+        "country",  # (org, loc)
+        "date_of_birth",    # (per, time)   TODO
+        "date_of_death",  # (per, time)   TODO
+        "dissolved, abolished or demolished",   # (org, time)
+        "educated at",  # (per, org)    TODO
+        "employer",  # (per, org)   TODO
+        "end time",  # (misc, time)
+        "father",   # (child, father)   TODO
+        "followed by",  # (org, successor)
+        "follows",  # (successor, org)
+        "founded by",   # (org, per)    TODO
+        "genre",    # (org, org genre)
+        "has part",  # (org, per)
+        "headquarters location",    # (org, loc) TODO
+        "inception",    # (loc, time)
+        "influenced by",    # (misc, per)
+        "instance of",  # (org, org instance)
+        "languages spoken, written or signed",  # (per, misc)
+        "league",   # (org, misc league)
+        "legislative body",  # (loc, org)
+        "located in or next to body of water",  # (loc, loc body of water)
+        "location",  # (misc, loc) example: Second World War in Europe TODO
+        "member of",    # (per, org)
+        "member of political party",    # (per, org) TODO religious/political affiliation?
+        "member of sports team",    # (per, org)
+        "military branch",  # (per, org branch)
+        "mother",   # (child, mother)   TODO
+        "mouth of the watercourse",  # (loc, loc), <head>Second River joins the <tail>Passaic River
+        "narrative location",   # (misc, loc)
+        "official language",    # (loc, org language)
+        "operator",     # (loc, org operator)
+        "original language of work",    # (misc, loc language)
+        "original network",  # (misc, org network)
+        "owned by",  # (org, per owner) TODO
+        "parent organization",  # (parent org, org) TODO
+        "parent taxon",  # (misc, parent misc)
+        "part of",  # (part loc, loc)
+        "participant",  # (misc, per participant)
+        "participant of",   # (per participant, misc)
+        "place of birth",   # (per, loc) TODO
+        "place of death",   # (per, loc) TODO
+        "platform",  # (misc, misc platform)
+        "point in time",    # (time point, time)
+        "present in work",  # (per, misc)
+        "publication date",  # (misc, time)
+        "record label",  # (org, org record label)
+        "replaced by",  # (loc, loc replacement)
+        "replaces",  # (loc replacement, loc)
+        "residence",    # (per, loc) TODO
+        "separated_from",   # (org separated from, org) Christianity separated from Judaism
+        "series",   # (misc, misc series)
+        "sibling",  # (per, per)    TODO
+        "spouse",   # (per, per)    TODO
+        "start time",    # (misc, time)
+        "subclass of",  # (misc subclass, misc)
+        "subsidiary",   # (org, org subsidiary) TODO
+        "territory claimed by",  # (loc Taiwan, loc China)
     ]:
-        mapped_label = "org:facility_or_location"
-    elif doc_red_label == "conflict":
+        return None
+    elif doc_red_label == "author":     # (misc, per)
+        mapped_label = "per:author"
+    elif doc_red_label == "capital of":    # (capital, _)
+        mapped_label = "loc:capital_of"
+    elif doc_red_label == "capital":    # (_, capital)
+        mapped_label = "loc:capital_of"
+    elif doc_red_label == "composer":   # (misc, per)
+        mapped_label = "per:composer"
+        example = utils.swap_args(example)
+    elif doc_red_label == "conflict":   # (per, misc)   TODO check
         mapped_label = "per:conflict"
-    elif doc_red_label == "language":
-        mapped_label = "per:language"
-    # elif doc_red_label == "publisher":
-    #     mapped_label = "publisher"  # TODO name, (per/org, loc) need NER to determine NER prefix for RE label
-    elif doc_red_label == "location of formation":
-        mapped_label = "org:location_of_formation"
-    elif doc_red_label in ["head of government", "head of state"]:
-        mapped_label = "gpe:head_of_gov/state"
-    # elif doc_red_label == "location":
-    #     mapped_label = "location"  # TODO name, (fac/event/item, loc) need NER to determine NER prefix for RE label
-    elif doc_red_label == "country of citizenship":
-        mapped_label = "per:country_of_citizenship"
-    elif doc_red_label == "notable work":
-        mapped_label = "per:notable_work"
-    elif doc_red_label == "production company":
-        mapped_label = "org:production_company"
-    elif doc_red_label == "creator":
-        mapped_label = "per:creator"
-    elif doc_red_label == "ethnic group":
-        mapped_label = "per:ethnic_group"
-    elif doc_red_label in ["manufacturer", "product or material produced"]:
-        mapped_label = "org:product_or_technology_or_service"
-    elif doc_red_label == "position held":
-        mapped_label = "per:title"
-    elif doc_red_label == "producer":
-        mapped_label = "per:producer"
     elif doc_red_label == "contains location":
         mapped_label = "loc:contains_location"
-    elif doc_red_label == "author":
-        mapped_label = "per:author"
-    elif doc_red_label == "director":
-        mapped_label = "per:director"
-    elif doc_red_label == "work location":
-        mapped_label = "per:work_location"
-    elif doc_red_label == "religion":
-        mapped_label = "per:religion"   # TODO political/religious_affiliation mapping?
-    elif doc_red_label == "unemployment rate":
-        mapped_label = "loc:unemployment_rate"
-    elif doc_red_label == "country of origin":
+    elif doc_red_label == "country of citizenship":     # (per, loc)
+        mapped_label = "per:country_of_citizenship"
+    elif doc_red_label == "country of origin":  # (misc, loc)
         mapped_label = "loc:country_of_origin"
-    elif doc_red_label == "performer":
-        mapped_label = "per:performer"
-    elif doc_red_label == "composer":
-        mapped_label = "per:composer"
-    elif doc_red_label == "lyrics by":
-        mapped_label = "per:lyrics_by"
-    elif doc_red_label == "director":
-        mapped_label = "per:director"
-    elif doc_red_label == "screenwriter":
-        mapped_label = "per:screenwriter"
-    elif doc_red_label == "developer":
+        example = utils.swap_args(example)
+    elif doc_red_label == "creator":    # (misc, per)
+        mapped_label = "per:creator"
+        example = utils.swap_args(example)
+    elif doc_red_label == "developer":  # (misc, per)
         mapped_label = "per:developer"
-    elif doc_red_label == "sister city":
+        example = utils.swap_args(example)
+    elif doc_red_label == "director":   # (misc, per)
+        mapped_label = "per:director"
+        example = utils.swap_args(example)
+    elif doc_red_label == "ethnic group":   # (loc, loc ethnic group) or (per, NORP?) TODO check
+        mapped_label = "per:ethnic_group"
+    elif doc_red_label in ["head of government", "head of state"]:  # head of gov (loc, per), head of state
+        mapped_label = "per:head_of_gov/state"
+        example = utils.swap_args(example)
+    elif doc_red_label == "language":
+        mapped_label = "per:language"
+    elif doc_red_label in [
+            "located in the administrative territorial entity",     # (loc, administrative territorial entity)
+            "located on terrain feature",   # (loc, terrain feature)
+            # "located in or next to body of water"     # (loc, body of water)
+    ]:
+        mapped_label = "org:facility_or_location"   # TODO not a really good fit
+    elif doc_red_label == "location of formation":  # (org, loc)
+        mapped_label = "org:location_of_formation"
+    elif doc_red_label == "lyrics by":  # (song, per writer) TODO is this really relevant?
+        mapped_label = "per:lyrics_by"
+        example = utils.swap_args(example)
+    # elif doc_red_label == "location":
+    #     mapped_label = "location"  # TODO name, (fac/event/item, loc) need NER to determine NER prefix for RE label
+    elif doc_red_label == "manufacturer":  # (misc, manufacturer org)
+        mapped_label = "org:product_or_technology_or_service"
+        example = utils.swap_args(example)
+    elif doc_red_label == "notable work":   # (per, misc)
+        mapped_label = "per:notable_work"
+    elif doc_red_label == "performer":  # (misc, org/per performer)
+        mapped_label = "per:performer"
+    elif doc_red_label == "position held":  # (per, misc)
+        mapped_label = "per:title"
+    elif doc_red_label == "producer":   # (misc, per) Bad produced by Quincy Jones
+        mapped_label = "per:producer"
+    elif doc_red_label == "product or material produced":  # (org, misc)
+        mapped_label = "org:product_or_technology_or_service"
+    elif doc_red_label == "production company":  # (misc, org)  Atomic Blonde produced by Focus Features
+        mapped_label = "org:production_company"
+    # elif doc_red_label == "publisher":    # (misc, org/per)
+    #     mapped_label = "publisher"  # TODO name, need NER to determine NER prefix for RE label
+    elif doc_red_label == "religion":   # (per, org religion)
+        mapped_label = "per:religion"
+    elif doc_red_label == "screenwriter":   # (misc, per)
+        mapped_label = "per:screenwriter"
+        example = utils.swap_args(example)
+    elif doc_red_label == "sister city":    # (loc, loc)
         mapped_label = "loc:twinned_adm_body"
-    # TODO sort and check for missing mappings/arg positions
+    elif doc_red_label == "unemployment rate":  # (loc, num)
+        mapped_label = "loc:unemployment_rate"
+    elif doc_red_label == "work location":  # (per, loc)
+        mapped_label = "per:work_location"
 
     if mapped_label is None:
         return None
