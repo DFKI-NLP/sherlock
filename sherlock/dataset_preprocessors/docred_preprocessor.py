@@ -124,7 +124,7 @@ def map_doc_red_label(example):
         # most of the examples seem to be something like (loc Australia, loc Australian)
         mapped_label = "per:ethnic_group"
     elif doc_red_label in ["father", "mother"]:     # (child, father/mother)
-        mapped_label = "per:parent"
+        mapped_label = "per:parents"
     elif doc_red_label == "field of work":  # (per, misc) "German <misc>botanist <per>Conrad Moench"
         # some of the examples are comptatible with position/title
         # but there are also examples such as (Robert Robinson, Organic Chemistry)
@@ -211,7 +211,7 @@ def map_doc_red_label(example):
     if mapped_label is None:
         return None
 
-    assert mapped_label in RELATION_TYPES
+    assert mapped_label in RELATION_TYPES, f"mapped_label='{mapped_label}' not in RELATION_TYPES"
     example["label"] = mapped_label
     return example
 

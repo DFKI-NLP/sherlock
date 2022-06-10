@@ -46,7 +46,7 @@ RELATION_TYPES = [
     "per:spouse",  # [('per', 'spouse'), ('per', 'spouse')],                                       CHECK
     "per:title",  # [('per', 'person'), ('misc', 'title')],                   OPEN title is mostly job positions
     "no_relation",  # [('none', 'none'), ('none', 'none')]
-    "org:location_of_headquarters",     # as superclass for city/country_of_headquarters
+    "org:place_of_headquarters",     # as superclass for city/country_of_headquarters
     # KnowledgeNet
     "per:political_affiliation",  # (per, org)
     "per:place_of_birth",  # as a superclass for city/stateorprovince/country
@@ -78,10 +78,10 @@ RELATION_TYPES = [
     "per:work_location",  # (per, loc) P937                                                           CHECK
     "per:religion",  # (per, norp) P140                                                               CHECK
     "loc:unemployment_rate",  # (loc/gpe, number)                                                     CHECK
-    "loc:country of origin",  # P495 (loc, work of art/misc?)                   OPEN
+    "loc:country_of_origin",  # P495 (loc, work of art/misc?)                   OPEN
     "per:performer",  # P175                                                                          CHECK
     "per:composer",  # per/work_of_art, P86                                                          CHECK
-    "per:lyrics by",  # P676                                                                          CHECK
+    "per:lyrics_by",  # P676                                                                          CHECK
     "per:director",  # P57                                                                            CHECK
     "per:screenwriter",  # P58                                                                        CHECK
     "per:developer",  # P178                                                              OPEN
