@@ -17,11 +17,10 @@ def map_doc_red_label(example):
         "architect",    # (misc, per)   fewrel
         "award received",   # (per, misc)
         "basin country",    # (loc, loc)
-        "cast_member",  # (misc, per)
+        "cast member",  # (misc, per)
         "characters",   # (misc, per)
         "contains administrative territorial entity",   # (loc, contained loc)
         "continent",    # (loc, continent)
-        "dissolved, abolished or demolished",   # (org, time)
         "distributor",  # (misc, distributor org) fewrel
         "end time",  # (misc, time)
         "followed by",  # (org, successor)
@@ -29,7 +28,6 @@ def map_doc_red_label(example):
         "genre",    # (org, org genre)
         "has part",  # (org, per)
         "heritage designation",    # (misc, designation) Jaeckel Hotel added to National Register of Historic Places
-        "inception",    # (loc, time)
         "influenced by",    # (misc, per)
         "instance of",  # (org, org instance)
         "instrument",  # (per, misc) fewrel
@@ -39,7 +37,6 @@ def map_doc_red_label(example):
         "legislative body",  # (loc, org)
         "licensed to broadcast to",  # (wpgg, atlantic city) WSJO added the programming of WPGG 1450 Atlantic City on...
         "located in or next to body of water",  # (loc, loc body of water)
-        "member of",    # (per, org)
         "member of sports team",    # (per, org)
         "military branch",  # (per, org branch)
         "mountain range",   # (loc mount korbu, loc ...) Mount Korbu , the tallest mountain of the Titiwangsa Mountains
@@ -67,7 +64,7 @@ def map_doc_red_label(example):
         "replaced by",  # (loc, loc replacement)
         "replaces",  # (loc replacement, loc)
         "said to be the same as",  # (misc, misc) fewrel
-        "separated_from",   # (org separated from, org) Christianity separated from Judaism
+        "separated from",   # (org separated from, org) Christianity separated from Judaism
         "series",   # (misc, misc series)
         "sports season of league or competition",   # (time, org)
         "start time",    # (misc, time)
@@ -77,7 +74,7 @@ def map_doc_red_label(example):
         "territory claimed by",  # (loc Taiwan, loc China)
         "tributary",    # (loc hudson river, loc schroon river) fewrel
         "winner",   # (misc, per)
-        "work location",    # (per, loc)    TODO is this compatible with any of the relation types?
+        "work location",    # (per, loc) geographical location, e.g. Gianni Alemanno, Mayor of Rome
     ]:
         return None
     elif doc_red_label == "author":     # (misc, per)
@@ -89,11 +86,11 @@ def map_doc_red_label(example):
     elif doc_red_label == "chairperson":    # (org, per)
         mapped_label = "org:top_members/employees"
     elif doc_red_label == "child":    # (parent, child)
-        mapped_label = "per:child"
+        mapped_label = "per:children"
     elif doc_red_label == "composer":   # (misc, per)
         mapped_label = "per:composer"
         example = utils.swap_args(example)
-    elif doc_red_label == "conflict":   # (per, misc)   TODO check NER prefix and NER of head/tail
+    elif doc_red_label == "conflict":   # (per, misc conflict)   TODO check NER prefix, some are actually (org, misc)
         mapped_label = "per:conflict"
     elif doc_red_label == "contains location":
         mapped_label = "loc:contains_location"
@@ -117,16 +114,21 @@ def map_doc_red_label(example):
     elif doc_red_label == "director":   # (misc, per)
         mapped_label = "per:director"
         example = utils.swap_args(example)
+    elif doc_red_label == "dissolved, abolished or demolished":   # (org, time)
+        mapped_label = "org:dissolved"
     elif doc_red_label == "educated at":   # (per, org)
         mapped_label = "per:schools_attended"
     elif doc_red_label == "employer":  # (per, org)
         mapped_label = "per:employee_of"
-    elif doc_red_label == "ethnic group":   # (loc, loc ethnic group) or (per, NORP?) TODO check NER
+    elif doc_red_label == "ethnic group":   # (per/loc, loc ethnic group) or (per, NORP?) TODO check NER
+        # most of the examples seem to be something like (loc Australia, loc Australian)
         mapped_label = "per:ethnic_group"
     elif doc_red_label in ["father", "mother"]:     # (child, father/mother)
         mapped_label = "per:parent"
     elif doc_red_label == "field of work":  # (per, misc) "German <misc>botanist <per>Conrad Moench"
-        mapped_label = "per:field_of_work"  # TODO check if compatible with position/title
+        # some of the examples are comptatible with position/title
+        # but there are also examples such as (Robert Robinson, Organic Chemistry)
+        mapped_label = "per:field_of_work"
     elif doc_red_label == "founded by":     # (org, per)
         mapped_label = "org:founded_by"
     elif doc_red_label in ["head of government", "head of state"]:  # head of gov (loc, per), head of state
@@ -134,6 +136,8 @@ def map_doc_red_label(example):
         example = utils.swap_args(example)
     elif doc_red_label == "headquarters location":   # (org, loc)
         mapped_label = "org:place_of_headquarters"
+    elif doc_red_label == "inception":    # (loc/org/misc, time)
+        mapped_label = "org:founded"    # TODO check NER prefix
     elif doc_red_label == "language":
         mapped_label = "per:language"
     elif doc_red_label in [
@@ -155,14 +159,16 @@ def map_doc_red_label(example):
     elif doc_red_label == "manufacturer":  # (misc, manufacturer org)
         mapped_label = "org:product_or_technology_or_service"
         example = utils.swap_args(example)
-    elif doc_red_label == "member of political party":
-        mapped_label = "per:member_of_political_party"  # TODO (per, org) -> org:political/religious_affiliation
+    elif doc_red_label == "member of":    # (per/org, org)
+        mapped_label = "org:member_of"  # TODO check NER prefix
+    elif doc_red_label == "member of political party":  # (per, org)
+        mapped_label = "per:political_affiliation"
     elif doc_red_label == "notable work":   # (per, misc)
         mapped_label = "per:notable_work"
     elif doc_red_label == "occupation":  # (per, misc)
         mapped_label = "per:title"
     elif doc_red_label == "owned by":   # (org, per/org owner)
-        mapped_label = "org:owned_by"   # TODO parent company/shareholders?
+        mapped_label = "org:shareholders"
     elif doc_red_label == "parent organization":    # (parent org, org)
         mapped_label = "org:parents"    # (daughter company, parent company)
         example = utils.swap_args(example)

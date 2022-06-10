@@ -12,15 +12,15 @@ def map_plass_label(example):
 
     if plass_label in RELATION_TYPES:
         mapped_label = plass_label
-    if plass_label == "CompanyProvidesProduct":
+    elif plass_label == "CompanyProvidesProduct":  # (organization, product)
         mapped_label = "org:product_or_technology_or_service"
-    elif plass_label == "Disaster":
+    elif plass_label == "Disaster":  # (location, disaster_type)
         mapped_label = "loc:event_or_disaster"
-    elif plass_label == "CompanyFacility":
+    elif plass_label == "CompanyFacility":  # (organization, location)
         mapped_label = "org:facility_or_location"
-    elif plass_label == "CompanyFinancialEvent":
+    elif plass_label == "CompanyFinancialEvent":    # (organization, financial_event)
         mapped_label = "org:fin_event"
-    elif plass_label == "CompanyCustomer":
+    elif plass_label == "CompanyCustomer":  # (organization, organization)
         mapped_label = "org:customer"
     # elif plass_label == "Identity":
     #     mapped_label = "org:identity"
