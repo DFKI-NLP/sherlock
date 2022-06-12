@@ -36,20 +36,8 @@ def map_plass_label(example):
 def plass_converter(data):
     converted_examples = []
     for example in data:
-        label = example["relation"]
-        entities = [[example["subj_start"], example["subj_end"]+1], [example["obj_start"], example["obj_end"]+1]]
-        # TODO ner mapping
-        subj_type = example["subj_type"]
-        obj_type = example["obj_type"]
-        ent_type = [subj_type, obj_type]
-        converted_example = map_plass_label({
-            "id": example["id"],
-            "tokens": example["tokens"],
-            "label": label,
-            "grammar": ["SUBJ", "OBJ"],
-            "entities": entities,
-            "type": ent_type
-        })
+        # TODO ner mapping?
+        converted_example = map_plass_label(example)
         if converted_example is not None:
             converted_examples.append(converted_example)
     return converted_examples
@@ -92,7 +80,9 @@ def main():
         logging.info("Processing and exporting to %s", split_export_path)
         with open(split_path, mode="r", encoding="utf-8") as plass_file, \
                 open(split_export_path, mode="w", encoding="utf-8") as plass_export_file:
-            plass_data = json.load(plass_file)
+            plass_data = []
+            for line in plass_file.readlines():
+                plass_data.append(json.loads(line))
             converted_examples = plass_converter(plass_data)
             for conv_example in converted_examples:
                 plass_export_file.write(json.dumps(conv_example))
