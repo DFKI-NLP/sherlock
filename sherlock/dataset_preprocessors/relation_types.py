@@ -44,7 +44,7 @@ RELATION_TYPES = [
     # "per:stateorprovince_of_death",  # [('per', 'person'), ('loc', 'location')],                   CHECK
     # "per:stateorprovinces_of_residence",  # [('per', 'person'), ('loc', 'location')],              CHECK
     "per:spouse",  # [('per', 'spouse'), ('per', 'spouse')],                                       CHECK
-    "per:title",  # [('per', 'person'), ('misc', 'title')],                   OPEN title is mostly job positions
+    "per:title",  # [('per', 'person'), ('misc', 'title')],  TODO OPEN title is mostly job positions, rename??
     "no_relation",  # [('none', 'none'), ('none', 'none')]
     "org:place_of_headquarters",     # as superclass for city/country_of_headquarters
     # KnowledgeNet
