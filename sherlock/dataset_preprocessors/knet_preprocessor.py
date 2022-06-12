@@ -193,6 +193,7 @@ def main():
             for conv_example in converted_examples:
                 export_knet_file.write(json.dumps(conv_example))
                 export_knet_file.write("\n")
+        logging.info(utils.get_label_counter(converted_examples))
 
 
 if __name__ == "__main__":

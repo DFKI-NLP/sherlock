@@ -1,4 +1,5 @@
 from uuid import uuid4
+from collections import Counter
 
 
 def generate_example_id():
@@ -10,3 +11,8 @@ def swap_args(example):
     if "type" in example:
         example["type"][0], example["type"][1] = example["type"][1], example["type"][0]
     return example
+
+
+def get_label_counter(examples):
+    labels = [example["label"] for example in examples]
+    return dict(Counter(labels))

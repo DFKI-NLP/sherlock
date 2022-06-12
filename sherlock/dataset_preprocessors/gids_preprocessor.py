@@ -130,6 +130,7 @@ def main():
             for converted_example in converted_examples:
                 export_gids_file.write(json.dumps(converted_example))
                 export_gids_file.write("\n")
+        logging.info(utils.get_label_counter(converted_examples))
 
 
 if __name__ == "__main__":

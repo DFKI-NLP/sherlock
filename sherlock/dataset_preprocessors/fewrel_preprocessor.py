@@ -92,6 +92,7 @@ def main():
             for conv_example in converted_examples:
                 fewrel_export_file.write(json.dumps(conv_example))
                 fewrel_export_file.write("\n")
+            logging.info(utils.get_label_counter(converted_examples))
 
 
 if __name__ == "__main__":

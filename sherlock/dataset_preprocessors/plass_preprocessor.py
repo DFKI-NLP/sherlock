@@ -3,6 +3,7 @@ import os
 import logging
 import argparse
 
+import utils
 from relation_types import RELATION_TYPES
 
 
@@ -97,6 +98,7 @@ def main():
             for conv_example in converted_examples:
                 plass_export_file.write(json.dumps(conv_example))
                 plass_export_file.write("\n")
+        logging.info(utils.get_label_counter(converted_examples))
 
 
 if __name__ == "__main__":

@@ -328,6 +328,7 @@ def main():
             for conv_example in converted_examples:
                 f.write(json.dumps(conv_example))
                 f.write("\n")
+        logging.info(utils.get_label_counter(converted_examples))
 
 
 if __name__ == "__main__":
