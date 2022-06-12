@@ -12,7 +12,8 @@ def map_fewrel_label(example):
     return map_doc_red_label(example)
 
 
-def fewrel_converter(data, fewrel_rel_info):
+def fewrel_converter(data, fewrel_rel_info, return_num_discarded=False):
+    num_discarded = 0
     converted_examples = []
     for label, examples in data.items():
         for idx, example in enumerate(examples):
@@ -33,7 +34,12 @@ def fewrel_converter(data, fewrel_rel_info):
             })
             if converted_example is not None:
                 converted_examples.append(converted_example)
-    return converted_examples
+            else:
+                num_discarded += 1
+    if return_num_discarded:
+        return converted_examples, num_discarded
+    else:
+        return converted_examples
 
 
 def main():
@@ -79,7 +85,10 @@ def main():
         with open(split_path, mode="r", encoding="utf-8") as fewrel_file, \
                 open(split_export_path, mode="w", encoding="utf-8") as fewrel_export_file:
             fewrel_data = json.load(fewrel_file)
-            converted_examples = fewrel_converter(fewrel_data, fewrel_rel_info)
+            converted_examples, num_discarded = fewrel_converter(fewrel_data, fewrel_rel_info,
+                                                                 return_num_discarded=True)
+            logging.info(f"{len(converted_examples)} examples in converted file")
+            logging.info(f"{num_discarded} examples were discarded during label mapping")
             for conv_example in converted_examples:
                 fewrel_export_file.write(json.dumps(conv_example))
                 fewrel_export_file.write("\n")

@@ -87,7 +87,9 @@ def main():
         with open(split_path, mode="r", encoding="utf-8") as tacred_file, \
                 open(split_export_path, mode="w", encoding="utf-8") as tacred_export_file:
             tacred_data = json.load(tacred_file)
+            logging.info(f"{len(tacred_data)} examples in original file")
             converted_examples = tacred_converter(tacred_data)
+            logging.info(f"{len(converted_examples)} examples in converted file")
             for conv_example in converted_examples:
                 tacred_export_file.write(json.dumps(conv_example))
                 tacred_export_file.write("\n")

@@ -26,50 +26,6 @@ def fix_char_index(char_index, contiguous_whitespaces_indices):
     return new_char_index
 
 
-def knowledge_net_converter(example, word_splitter):
-    converted_examples = []
-    for passage in example["passages"]:
-        # Skip passages without facts right away
-        # TODO Later, we will probably need these passages to generate negative examples
-        if len(passage["facts"]) == 0:
-            continue
-
-        text = passage["passageText"]
-        cleaned_text, contiguous_ws_indices = remove_contiguous_whitespaces(text)
-        doc = word_splitter(cleaned_text)
-        word_tokens = [t.text for t in doc]
-
-        passage_start = passage["passageStart"]
-
-        for fact in passage["facts"]:
-            subj_start = fix_char_index(fact["subjectStart"] - passage_start, contiguous_ws_indices)
-            subj_end = fix_char_index(fact["subjectEnd"] - passage_start, contiguous_ws_indices)
-            obj_start = fix_char_index(fact["objectStart"] - passage_start, contiguous_ws_indices)
-            obj_end = fix_char_index(fact["objectEnd"] - passage_start, contiguous_ws_indices)
-            assert cleaned_text[subj_start:subj_end] == re.sub(" +", " ", fact["subjectText"]), \
-                f"Mismatch: " \
-                f"<{cleaned_text[subj_start:subj_end]}> vs. <{re.sub(' +', ' ', fact['subjectText'])}>"
-            assert cleaned_text[obj_start:obj_end] == re.sub(" +", " ", fact["objectText"]), \
-                f"Mismatch: " \
-                f"<{cleaned_text[obj_start:obj_end]}> vs. <{re.sub(' +', ' ', fact['objectText'])}>"
-            # Get exclusive token spans from char spans
-            subj_span = doc.char_span(subj_start, subj_end, alignment_mode="expand")
-            obj_span = doc.char_span(obj_start, obj_end, alignment_mode="expand")
-
-            relation_label = fact["humanReadable"].split(">")[1][2:]
-            converted_example = map_knet_label({
-                "id": "r/" + utils.generate_example_id(),
-                "tokens": word_tokens,
-                "label": relation_label,
-                "grammar": ["SUBJ", "OBJ"],
-                "entities": [[subj_span.start, subj_span.end], [obj_span.start, obj_span.end]],
-                # "type": [subj_type, obj_type]
-            })
-            if converted_example is not None:
-                converted_examples.append(converted_example)
-    return converted_examples
-
-
 def map_knet_label(example):
     knet_label = example["label"]
     mapped_label = None
@@ -138,6 +94,57 @@ def map_knet_label(example):
     return example
 
 
+def knowledge_net_converter(data, word_splitter, return_num_discarded=False):
+    num_discarded = 0
+    converted_examples = []
+    for example in data:
+        for passage in example["passages"]:
+            # Skip passages without facts right away
+            # TODO Later, we will probably need these passages to generate negative examples
+            if len(passage["facts"]) == 0:
+                continue
+
+            text = passage["passageText"]
+            cleaned_text, contiguous_ws_indices = remove_contiguous_whitespaces(text)
+            doc = word_splitter(cleaned_text)
+            word_tokens = [t.text for t in doc]
+
+            passage_start = passage["passageStart"]
+
+            for fact in passage["facts"]:
+                subj_start = fix_char_index(fact["subjectStart"] - passage_start, contiguous_ws_indices)
+                subj_end = fix_char_index(fact["subjectEnd"] - passage_start, contiguous_ws_indices)
+                obj_start = fix_char_index(fact["objectStart"] - passage_start, contiguous_ws_indices)
+                obj_end = fix_char_index(fact["objectEnd"] - passage_start, contiguous_ws_indices)
+                assert cleaned_text[subj_start:subj_end] == re.sub(" +", " ", fact["subjectText"]), \
+                    f"Mismatch: " \
+                    f"<{cleaned_text[subj_start:subj_end]}> vs. <{re.sub(' +', ' ', fact['subjectText'])}>"
+                assert cleaned_text[obj_start:obj_end] == re.sub(" +", " ", fact["objectText"]), \
+                    f"Mismatch: " \
+                    f"<{cleaned_text[obj_start:obj_end]}> vs. <{re.sub(' +', ' ', fact['objectText'])}>"
+                # Get exclusive token spans from char spans
+                subj_span = doc.char_span(subj_start, subj_end, alignment_mode="expand")
+                obj_span = doc.char_span(obj_start, obj_end, alignment_mode="expand")
+
+                relation_label = fact["humanReadable"].split(">")[1][2:]
+                converted_example = map_knet_label({
+                    "id": "r/" + utils.generate_example_id(),
+                    "tokens": word_tokens,
+                    "label": relation_label,
+                    "grammar": ["SUBJ", "OBJ"],
+                    "entities": [[subj_span.start, subj_span.end], [obj_span.start, obj_span.end]],
+                    # "type": [subj_type, obj_type]
+                })
+                if converted_example is not None:
+                    converted_examples.append(converted_example)
+                else:
+                    num_discarded += 1
+    if return_num_discarded:
+        return converted_examples, num_discarded
+    else:
+        return converted_examples
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -173,15 +180,19 @@ def main():
         split_path = os.path.join(knet_path, split + ".json")
         logging.info("Reading %s", split_path)
         split_export_path = os.path.join(export_path, split + ".jsonl")
-        logging.info("Processing and exporting to %s", split_export_path)
-        with open(split_path, mode="r", encoding="utf-8") as knet_file, \
-                open(split_export_path, mode="w", encoding="utf-8") as export_knet_file:
+        with open(split_path, mode="r", encoding="utf-8") as knet_file:
+            knet_data = []
             for line in knet_file.readlines():
-                json_data = json.loads(line)
-                converted_examples = knowledge_net_converter(json_data, spacy_word_splitter)
-                for conv_example in converted_examples:
-                    export_knet_file.write(json.dumps(conv_example))
-                    export_knet_file.write("\n")
+                knet_data.append(json.loads(line))
+            converted_examples, num_discarded = knowledge_net_converter(knet_data, spacy_word_splitter,
+                                                                        return_num_discarded=True)
+        logging.info("Processing and exporting to %s", split_export_path)
+        logging.info(f"{len(converted_examples)} examples in converted file")
+        logging.info(f"{num_discarded} examples were discarded during label mapping")
+        with open(split_export_path, mode="w", encoding="utf-8") as export_knet_file:
+            for conv_example in converted_examples:
+                export_knet_file.write(json.dumps(conv_example))
+                export_knet_file.write("\n")
 
 
 if __name__ == "__main__":

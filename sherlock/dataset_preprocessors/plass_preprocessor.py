@@ -33,14 +33,20 @@ def map_plass_label(example):
     return example
 
 
-def plass_converter(data):
+def plass_converter(data, return_num_discarded=False):
+    num_discarded = 0
     converted_examples = []
     for example in data:
         # TODO ner mapping?
         converted_example = map_plass_label(example)
         if converted_example is not None:
             converted_examples.append(converted_example)
-    return converted_examples
+        else:
+            num_discarded += 1
+    if return_num_discarded:
+        return converted_examples, num_discarded
+    else:
+        return converted_examples
 
 
 def main():
@@ -77,13 +83,17 @@ def main():
         split_path = os.path.join(plass_path, split + ".jsonl")
         logging.info("Reading %s", split_path)
         split_export_path = os.path.join(export_path, split + ".jsonl")
-        logging.info("Processing and exporting to %s", split_export_path)
         with open(split_path, mode="r", encoding="utf-8") as plass_file, \
                 open(split_export_path, mode="w", encoding="utf-8") as plass_export_file:
             plass_data = []
             for line in plass_file.readlines():
                 plass_data.append(json.loads(line))
-            converted_examples = plass_converter(plass_data)
+            logging.info(f"{len(plass_data)} examples in original file")
+            converted_examples, num_discarded = plass_converter(plass_data, return_num_discarded=True)
+
+            logging.info("Processing and exporting to %s", split_export_path)
+            logging.info(f"{len(converted_examples)} examples in converted file")
+            logging.info(f"{num_discarded} examples were discarded during label mapping")
             for conv_example in converted_examples:
                 plass_export_file.write(json.dumps(conv_example))
                 plass_export_file.write("\n")

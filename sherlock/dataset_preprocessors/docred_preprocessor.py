@@ -216,7 +216,8 @@ def map_doc_red_label(example):
     return example
 
 
-def doc_red_converter(example, docred_rel_info):
+def doc_red_converter(example, docred_rel_info, return_num_discarded=False):
+    num_discarded = 0
     labels = example["labels"]
     converted_examples = []
     for idx, label in enumerate(labels):
@@ -233,6 +234,7 @@ def doc_red_converter(example, docred_rel_info):
             if mention["sent_id"] in evidence:
                 tail_sent_ids.append(mention["sent_id"])
         common_sent_ids = list(set([sent_id for sent_id in head_sent_ids if sent_id in tail_sent_ids]))
+        # TODO not sure how to count original number of examples for document wide re annotation for statistics
         for sent_id in common_sent_ids:
             head = None
             for head_mention in example["vertexSet"][head_idx]:
@@ -260,7 +262,12 @@ def doc_red_converter(example, docred_rel_info):
             })
             if converted_example is not None:
                 converted_examples.append(converted_example)
-    return converted_examples
+            else:
+                num_discarded += 1
+    if return_num_discarded:
+        return converted_examples, num_discarded
+    else:
+        return converted_examples
 
 
 def main():
@@ -307,13 +314,20 @@ def main():
         split_export_path = os.path.join(export_path, split + ".jsonl")
         logging.info("Processing and exporting to %s", split_export_path)
 
+        num_discarded = 0
+        converted_examples = []
+        for example in docred_data:
+            if "labels" in example:
+                converted_exs, num_discrd = doc_red_converter(example, docred_rel_info, return_num_discarded=True)
+                converted_examples += converted_exs
+                num_discarded += num_discrd
+        logging.info(f"{len(converted_examples)} examples in converted file")
+        logging.info(f"{num_discarded} examples were discarded during label mapping")
+
         with open(split_export_path, mode="w", encoding="utf-8") as f:
-            for example in docred_data:
-                if "labels" in example:
-                    converted_examples = doc_red_converter(example, docred_rel_info)
-                    for conv_example in converted_examples:
-                        f.write(json.dumps(conv_example))
-                        f.write("\n")
+            for conv_example in converted_examples:
+                f.write(json.dumps(conv_example))
+                f.write("\n")
 
 
 if __name__ == "__main__":
