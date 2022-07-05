@@ -8,29 +8,42 @@ from spacy.lang.en import English
 
 import utils
 from relation_types import RELATION_TYPES
+from ner_types import NER_TYPES
 
 
-def map_gids_label(example):
+def map_gids_label(example, infer_entity_type=False):
     gids_label = example["label"]
     mapped_label = None
+    subj_type = None
+    obj_type = None
 
-    if gids_label == "/people/person/education./education/education/degree":
+    if gids_label == "/people/person/education./education/education/degree":    # (per, misc)
         mapped_label = "per:degree"
+        subj_type = "PER"
+        obj_type = "DEGREE"
     elif gids_label == "NA":
         mapped_label = "no_relation"
-    # TODO check whether to include the following labels as well
-    elif gids_label == "/people/person/education./education/education/institution":
+    elif gids_label == "/people/person/education./education/education/institution":  # (per, org)
         mapped_label = "per:schools_attended"
-    elif gids_label == "/people/person/place_of_birth":
+        subj_type = "PER"
+        obj_type = "ORG"
+    elif gids_label == "/people/person/place_of_birth":  # (per, loc)
         mapped_label = "per:place_of_birth"
-    elif gids_label == "/people/deceased_person/place_of_death":
+        subj_type = "PER"
+        obj_type = "LOC"
+    elif gids_label == "/people/deceased_person/place_of_death":  # (per, loc)
         mapped_label = "per:place_of_death"
+        subj_type = "PER"
+        obj_type = "LOC"
 
     if mapped_label is None:
         return None
 
     assert mapped_label in RELATION_TYPES
     example["label"] = mapped_label
+    if infer_entity_type and all(e_type is not None for e_type in [subj_type, obj_type]):
+        assert all(e_type in NER_TYPES for e_type in [subj_type, obj_type]), f"{[subj_type, obj_type]} not valid types"
+        example["type"] = [subj_type, obj_type]
     return example
 
 
