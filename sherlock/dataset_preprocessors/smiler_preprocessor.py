@@ -62,9 +62,9 @@ def map_smiler_label(example):
     #     mapped_label = "has-weight"
     elif smiler_label == "headquarters":    # (org, loc)
         mapped_label = "org:place_of_headquarters"
-    # elif smiler_label == "invented-by":
+    # elif smiler_label == "invented-by":   # (misc, per)
     #     mapped_label = "invented-by"
-    # elif smiler_label == "invented-when":
+    # elif smiler_label == "invented-when":  # (misc, time)
     #     mapped_label = "invented-when"
     elif smiler_label == "is-member-of":    # (per, org)
         mapped_label = "org:member_of"

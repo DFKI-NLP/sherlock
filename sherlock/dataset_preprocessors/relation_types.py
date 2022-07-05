@@ -1,7 +1,3 @@
-# TODO merge location relation types: (city|stateorprovince|country)_of_xxx to place_of_xxx ?
-# TODO merge children/parent relation types: org:parents & org_subsidiaries; per:parents & per:children ?
-
-
 RELATION_TYPES = [
     # TACRED
     "org:alternate_names",  # [('org', 'organization'), ('org', 'alternate_name')],                CHECK
