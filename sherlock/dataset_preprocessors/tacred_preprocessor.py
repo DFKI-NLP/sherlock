@@ -6,6 +6,7 @@ import re
 
 import utils
 from relation_types import RELATION_TYPES
+from ner_types import NER_TYPES
 
 
 def map_tacred_label(example, merge_location=True):
@@ -24,13 +25,51 @@ def map_tacred_label(example, merge_location=True):
     return example
 
 
+def map_tacred_ner_label(tacred_label):
+    mapped_label = None
+    if tacred_label == "PERSON":
+        mapped_label = "PERSON"
+    elif tacred_label == "ORGANIZATION":
+        mapped_label = "ORG"
+    elif tacred_label == "LOCATION":
+        mapped_label = "LOC"
+    elif tacred_label == "MISC":
+        mapped_label = "MISC"
+    elif tacred_label == "CITY":
+        mapped_label = "LOC"
+    elif tacred_label == "DATE":
+        mapped_label = "DATE"
+    elif tacred_label == "NATIONALITY":
+        mapped_label = "LOC"    # TODO check this
+    elif tacred_label == "RELIGION":
+        mapped_label = "NORP"
+    elif tacred_label == "URL":
+        mapped_label = "URL"
+    elif tacred_label == "CAUSE_OF_DEATH":
+        mapped_label = "CAUSE_OF_DEATH"
+    elif tacred_label == "COUNTRY":
+        mapped_label = "LOC"
+    elif tacred_label == "DURATION":
+        mapped_label = "TIME"   # TODO check this
+    elif tacred_label == "STATE_OR_PROVINCE":
+        mapped_label = "LOC"
+    elif tacred_label == "CRIMINAL_CHARGE":
+        mapped_label = "CHARGE"
+    elif tacred_label == "IDEOLOGY":
+        mapped_label = "MISC"   # TODO check this
+    elif tacred_label == "TITLE":
+        mapped_label = "POSITION"
+    if mapped_label is not None:
+        assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    return mapped_label
+
+
 def tacred_converter(data):
     converted_examples = []
     for example in data:
         label = example["relation"]
         inverse = False
         entities = [[example["subj_start"], example["subj_end"]+1], [example["obj_start"], example["obj_end"]+1]]
-        # TODO ner mapping
         subj_type = example["subj_type"]
         obj_type = example["obj_type"]
         ent_type = [subj_type, obj_type]

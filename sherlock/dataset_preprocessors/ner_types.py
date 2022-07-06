@@ -1,5 +1,5 @@
 NER_TYPES = [
-    "PER",
+    "PERSON",
     "ORG",
     "LOC",
     "MISC",
