@@ -19,21 +19,21 @@ def map_gids_label(example, infer_entity_type=False):
 
     if gids_label == "/people/person/education./education/education/degree":    # (per, misc)
         mapped_label = "per:degree"
-        subj_type = "PER"
+        subj_type = "PERSON"
         obj_type = "DEGREE"
     elif gids_label == "NA":
         mapped_label = "no_relation"
     elif gids_label == "/people/person/education./education/education/institution":  # (per, org)
         mapped_label = "per:schools_attended"
-        subj_type = "PER"
+        subj_type = "PERSON"
         obj_type = "ORG"
     elif gids_label == "/people/person/place_of_birth":  # (per, loc)
         mapped_label = "per:place_of_birth"
-        subj_type = "PER"
+        subj_type = "PERSON"
         obj_type = "LOC"
     elif gids_label == "/people/deceased_person/place_of_death":  # (per, loc)
         mapped_label = "per:place_of_death"
-        subj_type = "PER"
+        subj_type = "PERSON"
         obj_type = "LOC"
 
     if mapped_label is None:
