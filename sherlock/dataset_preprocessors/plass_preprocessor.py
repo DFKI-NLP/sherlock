@@ -5,6 +5,7 @@ import argparse
 
 import utils
 from relation_types import RELATION_TYPES
+from ner_types import NER_TYPES
 
 
 def map_plass_label(example):
@@ -31,7 +32,27 @@ def map_plass_label(example):
 
     assert mapped_label in RELATION_TYPES
     example["label"] = mapped_label
+    subj_type, obj_type = example["type"]
+    example["type"] = [map_plass_ner_label(subj_type), map_plass_ner_label(obj_type)]
     return example
+
+
+def map_plass_ner_label(plass_label):
+    mapped_label = None
+    if plass_label == "ORGANIZATION":
+        mapped_label = "ORG"
+    elif plass_label == "LOCATION":
+        mapped_label = "LOC"
+    elif plass_label == "DISASTER_TYPE":
+        mapped_label = "DISASTER_TYPE"
+    elif plass_label == "NUMBER":
+        mapped_label = "CARDINAL"     # TODO NUMBER not in plass ner types?
+    elif plass_label == "FINANCIAL_EVENT":
+        mapped_label = "FINANCIAL_EVENT"
+    elif plass_label == "PERSON":
+        mapped_label = "PERSON"
+    assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    return mapped_label
 
 
 def plass_converter(data, return_num_discarded=False):

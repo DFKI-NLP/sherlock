@@ -5,13 +5,14 @@ import argparse
 
 import utils
 from relation_types import RELATION_TYPES
+from ner_types import NER_TYPES
 
 
-def map_doc_red_label(example):
-    doc_red_label = example["label"]
+def map_docred_label(example):
+    docred_label = example["label"]
     mapped_label = None
 
-    if doc_red_label in [
+    if docred_label in [
         "after a work by",  # (misc, per)   fewrel
         "applies to jurisdiction",  # (org, loc)
         "architect",    # (misc, per)   fewrel
@@ -77,135 +78,136 @@ def map_doc_red_label(example):
         "work location",    # (per, loc) geographical location, e.g. Gianni Alemanno, Mayor of Rome
     ]:
         return None
-    elif doc_red_label == "author":     # (misc, per)
+    elif docred_label == "author":     # (misc, per)
         mapped_label = "per:author"
-    elif doc_red_label == "capital of":    # (capital, _)
+        example = utils.swap_args()
+    elif docred_label == "capital of":    # (capital, _)
         mapped_label = "loc:capital_of"
-    elif doc_red_label == "capital":    # (_, capital)
+    elif docred_label == "capital":    # (_, capital)
         mapped_label = "loc:capital_of"
-    elif doc_red_label == "chairperson":    # (org, per)
+    elif docred_label == "chairperson":    # (org, per)
         mapped_label = "org:top_members/employees"
-    elif doc_red_label == "child":    # (parent, child)
+    elif docred_label == "child":    # (parent, child)
         mapped_label = "per:children"
-    elif doc_red_label == "composer":   # (misc, per)
+    elif docred_label == "composer":   # (misc, per)
         mapped_label = "per:composer"
         example = utils.swap_args(example)
-    elif doc_red_label == "conflict":   # (per, misc conflict)   TODO check NER prefix, some are actually (org, misc)
+    elif docred_label == "conflict":   # (per, misc conflict)   TODO check NER prefix, some are actually (org, misc)
         mapped_label = "per:conflict"
-    elif doc_red_label == "contains location":
+    elif docred_label == "contains location":
         mapped_label = "loc:contains_location"
-    elif doc_red_label == "country":    # (org/loc, loc country of)
+    elif docred_label == "country":    # (org/loc, loc country of)
         mapped_label = "loc:country"
-    elif doc_red_label == "country of citizenship":     # (per, loc)
+    elif docred_label == "country of citizenship":     # (per, loc)
         mapped_label = "per:country_of_citizenship"
-    elif doc_red_label == "country of origin":  # (misc/org/per, loc)   TODO check the NER prefix
+    elif docred_label == "country of origin":  # (misc/org/per, loc)   TODO check the NER prefix
         mapped_label = "loc:country_of_origin"
         example = utils.swap_args(example)
-    elif doc_red_label == "creator":    # (misc, per)
+    elif docred_label == "creator":    # (misc, per)
         mapped_label = "per:creator"
         example = utils.swap_args(example)
-    elif doc_red_label == "date of birth":    # (per, time)
+    elif docred_label == "date of birth":    # (per, time)
         mapped_label = "per:date_of_birth"
-    elif doc_red_label == "date of death":    # (per, time)
+    elif docred_label == "date of death":    # (per, time)
         mapped_label = "per:date_of_death"
-    elif doc_red_label == "developer":  # (misc, per/org)   # TODO check the NER prefix
+    elif docred_label == "developer":  # (misc, per/org)   # TODO check the NER prefix
         mapped_label = "per:developer"
         example = utils.swap_args(example)
-    elif doc_red_label == "director":   # (misc, per)
+    elif docred_label == "director":   # (misc, per)
         mapped_label = "per:director"
         example = utils.swap_args(example)
-    elif doc_red_label == "dissolved, abolished or demolished":   # (org, time)
+    elif docred_label == "dissolved, abolished or demolished":   # (org, time)
         mapped_label = "org:dissolved"
-    elif doc_red_label == "educated at":   # (per, org)
+    elif docred_label == "educated at":   # (per, org)
         mapped_label = "per:schools_attended"
-    elif doc_red_label == "employer":  # (per, org)
+    elif docred_label == "employer":  # (per, org)
         mapped_label = "per:employee_of"
-    elif doc_red_label == "ethnic group":   # (per/loc, loc ethnic group) or (per, NORP?) TODO check NER
+    elif docred_label == "ethnic group":   # (per/loc, loc ethnic group) or (per, NORP?) TODO check NER
         # most of the examples seem to be something like (loc Australia, loc Australian)
         mapped_label = "per:ethnic_group"
-    elif doc_red_label in ["father", "mother"]:     # (child, father/mother)
+    elif docred_label in ["father", "mother"]:     # (child, father/mother)
         mapped_label = "per:parents"
-    elif doc_red_label == "field of work":  # (per, misc) "German <misc>botanist <per>Conrad Moench"
+    elif docred_label == "field of work":  # (per, misc) "German <misc>botanist <per>Conrad Moench"
         # some of the examples are comptatible with position/title
         # but there are also examples such as (Robert Robinson, Organic Chemistry)
         mapped_label = "per:field_of_work"
-    elif doc_red_label == "founded by":     # (org, per)
+    elif docred_label == "founded by":     # (org, per)
         mapped_label = "org:founded_by"
-    elif doc_red_label in ["head of government", "head of state"]:  # head of gov (loc, per), head of state
+    elif docred_label in ["head of government", "head of state"]:  # head of gov (loc, per), head of state
         mapped_label = "per:head_of_gov/state"
         example = utils.swap_args(example)
-    elif doc_red_label == "headquarters location":   # (org, loc)
+    elif docred_label == "headquarters location":   # (org, loc)
         mapped_label = "org:place_of_headquarters"
-    elif doc_red_label == "inception":    # (loc/org/misc, time)
+    elif docred_label == "inception":    # (loc/org/misc, time)
         mapped_label = "org:founded"    # TODO check NER prefix
-    elif doc_red_label == "language":
+    elif docred_label == "language":
         mapped_label = "per:language"
-    elif doc_red_label in [
+    elif docred_label in [
         "located in the administrative territorial entity",   # (loc, a.t.e) Memphis , Scotland County
         "located on terrain feature",   # (loc, terrain feature) Kanatadika on Euboea
         # "located in or next to body of water"     # (loc, body of water)
     ]:
         mapped_label = "org:facility_or_location"   # TODO not a really good fit
-    elif doc_red_label == "location of formation":  # (org, loc)
+    elif docred_label == "location of formation":  # (org, loc)
         mapped_label = "org:location_of_formation"
-    elif doc_red_label == "location of":    # (event, loc)
+    elif docred_label == "location of":    # (event, loc)
         mapped_label = "loc:location_of"    # TODO check NER prefix
         example = utils.swap_args(example)
-    elif doc_red_label == "lyrics by":  # (song, per writer) TODO is this really relevant?
+    elif docred_label == "lyrics by":  # (song, per writer) TODO is this really relevant?
         mapped_label = "per:lyrics_by"
         example = utils.swap_args(example)
     # elif doc_red_label == "location":  # (misc, loc) example: Second World War in Europe
     #     mapped_label = "location"  # TODO name, (fac/event/item, loc) need NER to determine NER prefix for RE label
-    elif doc_red_label == "manufacturer":  # (misc, manufacturer org)
+    elif docred_label == "manufacturer":  # (misc, manufacturer org)
         mapped_label = "org:product_or_technology_or_service"
         example = utils.swap_args(example)
-    elif doc_red_label == "member of":    # (per/org, org)
+    elif docred_label == "member of":    # (per/org, org)
         mapped_label = "org:member_of"  # TODO check NER prefix
-    elif doc_red_label == "member of political party":  # (per, org)
+    elif docred_label == "member of political party":  # (per, org)
         mapped_label = "per:political_affiliation"
-    elif doc_red_label == "notable work":   # (per, misc)
+    elif docred_label == "notable work":   # (per, misc)
         mapped_label = "per:notable_work"
-    elif doc_red_label == "occupation":  # (per, misc)
+    elif docred_label == "occupation":  # (per, misc)
         mapped_label = "per:title"
-    elif doc_red_label == "owned by":   # (org, per/org owner)
+    elif docred_label == "owned by":   # (org, per/org owner)
         mapped_label = "org:shareholders"
-    elif doc_red_label == "parent organization":    # (parent org, org)
+    elif docred_label == "parent organization":    # (parent org, org)
         mapped_label = "org:parents"    # (daughter company, parent company)
         example = utils.swap_args(example)
-    elif doc_red_label == "performer":  # (misc, org/per performer)
+    elif docred_label == "performer":  # (misc, org/per performer)
         mapped_label = "per:performer"
-    elif doc_red_label == "place of birth":  # (per, loc)
+    elif docred_label == "place of birth":  # (per, loc)
         mapped_label = "per:place_of_birth"
-    elif doc_red_label == "place of death":  # (per, loc)
+    elif docred_label == "place of death":  # (per, loc)
         mapped_label = "per:place_of_death"
-    elif doc_red_label == "position held":  # (per, misc)
+    elif docred_label == "position held":  # (per, misc)
         mapped_label = "per:title"
-    elif doc_red_label == "producer":   # (misc, per) Bad produced by Quincy Jones
+    elif docred_label == "producer":   # (misc, per) Bad produced by Quincy Jones
         mapped_label = "per:producer"
-    elif doc_red_label == "product or material produced":  # (org, misc)
+    elif docred_label == "product or material produced":  # (org, misc)
         mapped_label = "org:product_or_technology_or_service"
-    elif doc_red_label == "production company":  # (misc, org)  Atomic Blonde produced by Focus Features
+    elif docred_label == "production company":  # (misc, org)  Atomic Blonde produced by Focus Features
         mapped_label = "org:production_company"
     # elif doc_red_label == "publisher":    # (misc, org/per)
     #     mapped_label = "publisher"  # TODO name, need NER to determine NER prefix for RE label
-    elif doc_red_label == "religion":   # (per, org religion)
+    elif docred_label == "religion":   # (per, org religion)
         mapped_label = "per:religion"
-    elif doc_red_label == "residence":  # (per, loc)
+    elif docred_label == "residence":  # (per, loc)
         mapped_label = "per:places_of_residence"
-    elif doc_red_label == "screenwriter":   # (misc, per)
+    elif docred_label == "screenwriter":   # (misc, per)
         mapped_label = "per:screenwriter"
         example = utils.swap_args(example)
-    elif doc_red_label == "sibling":    # (per, per)
+    elif docred_label == "sibling":    # (per, per)
         mapped_label = "per:siblings"
-    elif doc_red_label == "sister city":    # (loc, loc)
+    elif docred_label == "sister city":    # (loc, loc)
         mapped_label = "loc:twinned_adm_body"
-    elif doc_red_label == "spouse":    # (per, per)
+    elif docred_label == "spouse":    # (per, per)
         mapped_label = "per:spouse"
-    elif doc_red_label == "subsidiary":  # (org parent, org subsidiary)
+    elif docred_label == "subsidiary":  # (org parent, org subsidiary)
         mapped_label = "org:subsidiaries"
-    elif doc_red_label == "unemployment rate":  # (loc, num)
+    elif docred_label == "unemployment rate":  # (loc, num)
         mapped_label = "loc:unemployment_rate"
-    elif doc_red_label == "work location":  # (per, loc)
+    elif docred_label == "work location":  # (per, loc)
         mapped_label = "per:work_location"
 
     if mapped_label is None:
@@ -213,10 +215,31 @@ def map_doc_red_label(example):
 
     assert mapped_label in RELATION_TYPES, f"mapped_label='{mapped_label}' not in RELATION_TYPES"
     example["label"] = mapped_label
+    subj_type, obj_type = example["type"]
+    example["type"] = [map_docred_ner_label(subj_type), map_docred_ner_label(obj_type)]
     return example
 
 
-def doc_red_converter(example, docred_rel_info, return_num_discarded=False):
+def map_docred_ner_label(docred_label):
+    mapped_label = None
+    if docred_label == "PER":
+        mapped_label = "PERSON"
+    elif docred_label == "ORG":
+        mapped_label = "ORG"
+    elif docred_label == "LOC":
+        mapped_label = "LOC"
+    elif docred_label == "MISC":
+        mapped_label = "MISC"
+    elif docred_label == "TIME":
+        mapped_label = "TIME"
+    elif docred_label == "NUM":
+        mapped_label = "CARDINAL"   # TODO NUM is not in plass ner label set
+
+    assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    return mapped_label
+
+
+def docred_converter(example, docred_rel_info, return_num_discarded=False):
     num_discarded = 0
     labels = example["labels"]
     converted_examples = []
@@ -252,7 +275,7 @@ def doc_red_converter(example, docred_rel_info, return_num_discarded=False):
             # TODO NER mapping
             subj_type = head["type"]
             obj_type = tail["type"]
-            converted_example = map_doc_red_label({
+            converted_example = map_docred_label({
                 "id": "r/" + utils.generate_example_id(),
                 "tokens": example["sents"][sent_id],
                 "label": rel_type,
@@ -318,7 +341,7 @@ def main():
         converted_examples = []
         for example in docred_data:
             if "labels" in example:
-                converted_exs, num_discrd = doc_red_converter(example, docred_rel_info, return_num_discarded=True)
+                converted_exs, num_discrd = docred_converter(example, docred_rel_info, return_num_discarded=True)
                 converted_examples += converted_exs
                 num_discarded += num_discrd
         logging.info(f"{len(converted_examples)} examples in converted file")
