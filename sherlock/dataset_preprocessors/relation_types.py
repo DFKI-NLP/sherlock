@@ -92,7 +92,7 @@ RELATION_TYPES = [
     # "residence",  # P551 (per, loc)   -> per:places_of_residence
     # "subsidiary",  # P355 (parent, subsidiary) -> org:subsidiary
     # "owned by",  # P127 (org, per/org) -> TACRED shareholders)
-    "loc:location_of",  # TODO check P276 (loc, misc)
+    "loc:location_of",  # P276 (event/work_of_art/misc, loc)
     "per:field_of_work",  # P101 (per, misc) mix of profession/field of work
     # NYT
     # "/business/business_location/parent_company",

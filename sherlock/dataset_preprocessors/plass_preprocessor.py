@@ -59,7 +59,6 @@ def plass_converter(data, return_num_discarded=False):
     num_discarded = 0
     converted_examples = []
     for example in data:
-        # TODO ner mapping?
         converted_example = map_plass_label(example)
         if converted_example is not None:
             converted_examples.append(converted_example)

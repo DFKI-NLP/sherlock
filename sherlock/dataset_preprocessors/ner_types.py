@@ -18,6 +18,7 @@ NER_TYPES = [
     "LAW",
     "MONEY",
     "NORP",  # organization-religion fewnerd
+    "NUM",
     "ORDINAL",
     "PERCENT",
     "POSITION",  # job title/position gazetteer
