@@ -8,9 +8,13 @@ from relation_types import RELATION_TYPES
 from ner_types import NER_TYPES
 
 
-def map_docred_label(example):
+def map_docred_label(example, infer_entity_types=False):
     docred_label = example["label"]
     mapped_label = None
+    if "type" in example:
+        subj_type, obj_type = example["type"]
+    else:
+        subj_type, obj_type = None, None
 
     if docred_label in [
         "after a work by",  # (misc, per)   fewrel
@@ -81,31 +85,55 @@ def map_docred_label(example):
     elif docred_label == "author":     # (misc, per)
         mapped_label = "per:author"
         example = utils.swap_args()
+        subj_type = "PERSON"
+        obj_type = "WORK_OF_ART"    # TODO in docred: [MISC, PER, LOC, ORG], but last 3 mostly mislabeled
     elif docred_label == "capital of":    # (capital, _)
         mapped_label = "loc:capital_of"
+        subj_type = "LOC"
+        obj_type = "LOC"    # TODO in docred [LOC, ORG], GPE? only 2 instances of ORG
     elif docred_label == "capital":    # (_, capital)
         mapped_label = "loc:capital_of"
+        subj_type = "LOC"   # TODO in docred [LOC, ORG], GPE? only 2 instances of ORG
+        obj_type = "LOC"    # TODO in docred [LOC, PER], PER was mislabeled
     elif docred_label == "chairperson":    # (org, per)
         mapped_label = "org:top_members/employees"
+        subj_type = "ORG"   # TODO in docred [ORG, MISC, LOC], MISC and LOC mislabeled
+        obj_type = "PERSON"
     elif docred_label == "child":    # (parent, child)
         mapped_label = "per:children"
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     elif docred_label == "composer":   # (misc, per)
         mapped_label = "per:composer"
         example = utils.swap_args(example)
-    elif docred_label == "conflict":   # (per, misc conflict)   TODO check NER prefix, some are actually (org, misc)
+        subj_type = "PERSON"
+        obj_type = "WORK_OF_ART"    # TODO in docred: [MISC, PER, NUM], PER and NUM mislabeled
+    elif docred_label == "conflict":   # (per/org, misc conflict)   TODO check NER prefix, some are actually (org, misc)
         mapped_label = "per:conflict"
-    elif docred_label == "contains location":
+        subj_type = "PERSON"    # TODO in docred: [PERSON, ORG, MISC, LOC]
+        obj_type = "EVENT"  # TODO in docred: [MISC, LOC, ORG], LOC and ORG most likely mislabeled
+    elif docred_label == "contains location":   # TODO fewrel check examples
         mapped_label = "loc:contains_location"
+        subj_type = "LOC"
+        obj_type = "LOC"
     elif docred_label == "country":    # (org/loc, loc country of)
         mapped_label = "loc:country"
+        subj_type = "LOC"     # TODO in docred: [ORG, LOC, MISC, PER, NUM], where NUM has 6 weird instances
+        obj_type = "LOC"    # TODO in docred: [LOC, ORG, MISC, PER], PER has one instance
     elif docred_label == "country of citizenship":     # (per, loc)
         mapped_label = "per:country_of_citizenship"
+        subj_type = "PERSON"  # TODO in docred: [PER, MISC, ORG, LOC], where LOC, LOC pairs seem to be mislabeled
+        obj_type = "LOC"  # TODO in docred: [LOC, MISC, ORG]
     elif docred_label == "country of origin":  # (misc/org/per, loc)   TODO check the NER prefix
         mapped_label = "loc:country_of_origin"
         example = utils.swap_args(example)
+        subj_type = "LOC"  # TODO in docred: [LOC, ORG, MISC], with one instance each for ORG and MISC
+        obj_type = "MISC"  # TODO in docred: [MISC, PER, ORG, LOC]
     elif docred_label == "creator":    # (misc, per)
         mapped_label = "per:creator"
         example = utils.swap_args(example)
+        subj_type = "PERSON"  # TODO in docred: [PER, MISC, ORG, LOC], where LOC, LOC pairs seem to be mislabeled
+        obj_type = "WORK_OF_ART"  # TODO in docred: [LOC, MISC, ORG]
     elif docred_label == "date of birth":    # (per, time)
         mapped_label = "per:date_of_birth"
     elif docred_label == "date of death":    # (per, time)
