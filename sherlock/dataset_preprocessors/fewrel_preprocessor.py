@@ -4,15 +4,15 @@ import logging
 import argparse
 
 import utils
-from docred_preprocessor import map_doc_red_label
+from docred_preprocessor import map_docred_label
 
 
 def map_fewrel_label(example):
     # fewrel and docred mostly use the same label set
-    return map_doc_red_label(example)
+    return map_docred_label(example)
 
 
-def fewrel_converter(data, fewrel_rel_info, return_num_discarded=False):
+def fewrel_converter(data, fewrel_rel_info, return_num_discarded=False, spacy_ner_predictor=None):
     num_discarded = 0
     converted_examples = []
     for label, examples in data.items():
@@ -21,17 +21,22 @@ def fewrel_converter(data, fewrel_rel_info, return_num_discarded=False):
             tail_token_positions = example["t"][2][0]
 
             subj_start = head_token_positions[0]
-            subj_end = head_token_positions[-1]
+            subj_end = head_token_positions[-1]+1
             obj_start = tail_token_positions[0]
-            obj_end = tail_token_positions[-1]
-            converted_example = map_fewrel_label({
+            obj_end = tail_token_positions[-1]+1
+            converted_example = {
                 "id": "r/" + utils.generate_example_id(),
                 "tokens": example["tokens"],
                 "label": fewrel_rel_info[label][0],
                 "grammar": ["SUBJ", "OBJ"],
-                "entities": [[subj_start, subj_end+1], [obj_start, obj_end+1]],
-                # "type": [subj_type, obj_type]
-            })
+                "entities": [[subj_start, subj_end], [obj_start, obj_end]]
+            }
+            if spacy_ner_predictor is not None:
+                doc = spacy_ner_predictor(example["tokens"])
+                subj_type = utils.get_entity_type(doc, subj_start, subj_end)
+                obj_type = utils.get_entity_type(doc, obj_start, obj_end)
+                converted_example["type"] = [subj_type, obj_type]
+            converted_example = map_fewrel_label(converted_example)
             if converted_example is not None:
                 converted_examples.append(converted_example)
             else:
@@ -58,6 +63,12 @@ def main():
         type=str,
         help="path to directory where the converted files should be saved",
     )
+    parser.add_argument(
+        "--ner_model_path",
+        # default="./models/spacy_trf/model-best",
+        type=str,
+        help="path to ner model",
+    )
     args = parser.parse_args()
 
     fewrel_path = args.data_path
@@ -77,6 +88,8 @@ def main():
     with open(rel_info_path, mode="r", encoding="utf-8") as f:
         fewrel_rel_info = json.load(f)
 
+    spacy_ner_predictor = utils.load_spacy_predictor(args.ner_model_path) if args.ner_model_path else None
+
     for split in ["train", "val"]:
         split_path = os.path.join(fewrel_path, split + ".json")
         logging.info("Reading %s", split_path)
@@ -86,7 +99,8 @@ def main():
                 open(split_export_path, mode="w", encoding="utf-8") as fewrel_export_file:
             fewrel_data = json.load(fewrel_file)
             converted_examples, num_discarded = fewrel_converter(fewrel_data, fewrel_rel_info,
-                                                                 return_num_discarded=True)
+                                                                 return_num_discarded=True,
+                                                                 spacy_ner_predictor=spacy_ner_predictor)
             logging.info(f"{len(converted_examples)} examples in converted file")
             logging.info(f"{num_discarded} examples were discarded during label mapping")
             for conv_example in converted_examples:

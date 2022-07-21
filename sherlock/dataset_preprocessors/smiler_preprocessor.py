@@ -12,16 +12,17 @@ from relation_types import RELATION_TYPES
 from ner_types import NER_TYPES
 
 
-def map_smiler_label(example, infer_entity_type=True):
+def map_smiler_label(example, override_entity_types=True):
     smiler_label = example["label"]
     mapped_label = None
-    subj_type = None
-    obj_type = None
+    if "type" in example:
+        subj_type, obj_type = example["type"]
+    else:
+        subj_type, obj_type = None, None
+    original_types = subj_type, obj_type
 
     if smiler_label == "birth-place":   # (per, loc)
         mapped_label = "per:place_of_birth"
-        subj_type = "PER"
-        obj_type = "LOC"
     # elif smiler_label == "eats":    # (anteaters, ants) so (misc, misc)?
     #     mapped_label = "eats"
     # elif smiler_label == "event-year":    # (event, time), e.g. (Uncial 0301, 5th century)
@@ -30,21 +31,14 @@ def map_smiler_label(example, infer_entity_type=True):
     #     mapped_label = "first-product"
     elif smiler_label == "from-country":    # (per, loc)   perhaps similar "per:country_of_citizenship
         mapped_label = "per:origin"  # e.g. (Selden Connor Gile, American)
-        subj_type = "PER"
-        obj_type = "LOC"
     elif smiler_label == "has-author":  # (misc, per)
         mapped_label = "per:author"
         example = utils.swap_args(example)
-        subj_type = "PER"
         obj_type = "WORK_OF_ART"
     elif smiler_label == "has-child":   # (per parent, per child)
         mapped_label = "per:children"
-        subj_type = "PER"
-        obj_type = "PER"
     elif smiler_label == "has-edu":  # (per, org)
         mapped_label = "per:schools_attended"
-        subj_type = "PER"
-        obj_type = "ORG"
     # elif smiler_label == "has-genre":  # (misc, misc), e.g. (Web browser, Links)
     #     mapped_label = "has-genre"
     # elif smiler_label == "has-height":    # (misc, number)
@@ -57,26 +51,17 @@ def map_smiler_label(example, infer_entity_type=True):
     #     mapped_label = "has-lifespan"
     elif smiler_label == "has-nationality":  # (per, loc)
         mapped_label = "per:country_of_citizenship"
-        subj_type = "PER"
-        obj_type = "GPE"    # TODO or "LOC"
     elif smiler_label == "has-occupation":  # (per, misc)
         mapped_label = "per:title"
-        subj_type = "PER"
-        obj_type = "POSITION"   # TODO or "MISC"
+        obj_type = "POSITION"
     elif smiler_label == "has-parent":  # (per child, per parent)
         mapped_label = "per:parents"
-        subj_type = "PER"
-        obj_type = "PER"
     # elif smiler_label == "has-population":    # (loc, number)
     #     mapped_label = "has-population"
     elif smiler_label == "has-sibling":     # (per, per)
         mapped_label = "per:siblings"
-        subj_type = "PER"
-        obj_type = "PER"
     elif smiler_label == "has-spouse":   # (per, per)
         mapped_label = "per:spouse"
-        subj_type = "PER"
-        obj_type = "PER"
     # elif smiler_label == "has-tourist-attraction":    # (loc, loc attraction)
     #     mapped_label = "has-tourist-attraction"
     # elif smiler_label == "has-type":  # (misc, type), e.g. <e1>Trice</e1> was a 36 foot <e2>trimaran</e2> sailboat
@@ -85,26 +70,21 @@ def map_smiler_label(example, infer_entity_type=True):
     #     mapped_label = "has-weight"
     elif smiler_label == "headquarters":    # (org, loc)
         mapped_label = "org:place_of_headquarters"
-        subj_type = "ORG"
-        obj_type = "LOC"
     # elif smiler_label == "invented-by":   # (misc, per)
     #     mapped_label = "invented-by"
     # elif smiler_label == "invented-when":  # (misc, time)
     #     mapped_label = "invented-when"
     elif smiler_label == "is-member-of":    # (per, org)
         mapped_label = "org:member_of"
-        subj_type = "PER"
-        obj_type = "ORG"
     elif smiler_label == "is-where":    # (org, loc)
         mapped_label = "loc:location_of"
         example = utils.swap_args(example)
-        subj_type = "LOC"
-        obj_type = "ORG"
     elif smiler_label == "loc-leader":  # (loc, per) TODO check if it fits "per:head_of_gov/state"?
         mapped_label = "per:head_of_gov/state"
     elif smiler_label == "movie-has-director":  # (misc, per)
         mapped_label = "per:director"
         example = utils.swap_args(example)
+        obj_type = "WORK_OF_ART"
     elif smiler_label == "no_relation":
         mapped_label = "no_relation"
     elif smiler_label == "org-has-founder":  # (org, per)
@@ -125,13 +105,26 @@ def map_smiler_label(example, infer_entity_type=True):
 
     assert mapped_label in RELATION_TYPES
     example["label"] = mapped_label
-    if infer_entity_type and all(e_type is not None for e_type in [subj_type, obj_type]):
-        assert all(e_type in NER_TYPES for e_type in [subj_type, obj_type]), f"{[subj_type, obj_type]} not valid types"
-        example["type"] = [subj_type, obj_type]
+    if "type" in example:
+        if not override_entity_types:
+            subj_type, obj_type = original_types
+        example["type"] = [map_smiler_ner_label(subj_type), map_smiler_ner_label(obj_type)]
     return example
 
 
-def smiler_converter(data, word_splitter, return_num_discarded=False):
+def map_smiler_ner_label(smiler_label):
+    # not really necessary since we either do not include NER labels or use correct NER labels from plass ner model
+    mapped_label = smiler_label
+    # if smiler_label == "PER":
+    #     mapped_label = "PERSON"
+    # elif smiler_label == "ORG":
+    #     mapped_label = "ORG"
+
+    assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    return mapped_label
+
+
+def smiler_converter(data, word_splitter, return_num_discarded=False, spacy_ner_predictor=None):
     num_discarded = 0
     converted_examples = []
     for example in data:
@@ -166,14 +159,19 @@ def smiler_converter(data, word_splitter, return_num_discarded=False):
             tokens.pop(subj_end)
 
         rel_type = example[3]
-        converted_example = map_smiler_label({
+        converted_example = {
             "id": example[0],
             "tokens": tokens,
             "label": rel_type,
             "grammar": ["SUBJ", "OBJ"],
-            "entities": [[subj_start, subj_end], [obj_start, obj_end]],
-            # "type": [subj_type, obj_type]
-        })
+            "entities": [[subj_start, subj_end], [obj_start, obj_end]]
+        }
+        if spacy_ner_predictor is not None:
+            doc = spacy_ner_predictor(example["tokens"])
+            subj_type = utils.get_entity_type(doc, subj_start, subj_end)
+            obj_type = utils.get_entity_type(doc, obj_start, obj_end)
+            converted_example["type"] = [subj_type, obj_type]
+        converted_example = map_smiler_label(converted_example)
         if converted_example is not None:
             converted_examples.append(converted_example)
         else:
@@ -200,6 +198,12 @@ def main():
         type=str,
         help="path to directory where the converted files should be saved",
     )
+    parser.add_argument(
+        "--ner_model_path",
+        # default="./models/spacy_trf/model-best",
+        type=str,
+        help="path to ner model",
+    )
     args = parser.parse_args()
 
     smiler_path = args.data_path
@@ -214,6 +218,8 @@ def main():
         level=logging.INFO,
     )
 
+    spacy_ner_predictor = utils.load_spacy_predictor(args.ner_model_path) if args.ner_model_path else None
+    # possible TODO is to combine the spacy ner predictor and the word splitter
     spacy_word_splitter = English()
     spacy_word_splitter.tokenizer.add_special_case("<e1>", [{ORTH: "<e1>"}])
     spacy_word_splitter.tokenizer.add_special_case("</e1>", [{ORTH: "</e1>"}])
@@ -230,7 +236,8 @@ def main():
 
         logging.info("Processing and exporting to %s", split_export_path)
         converted_examples, num_discarded = smiler_converter(smiler_data, spacy_word_splitter,
-                                                             return_num_discarded=True)
+                                                             return_num_discarded=True,
+                                                             spacy_ner_predictor=spacy_ner_predictor)
 
         logging.info(f"{len(converted_examples)} examples in converted file")
         logging.info(f"{num_discarded} examples were discarded during label mapping")

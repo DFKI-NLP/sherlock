@@ -94,7 +94,7 @@ def map_knet_label(example):
     return example
 
 
-def knowledge_net_converter(data, word_splitter, return_num_discarded=False):
+def knowledge_net_converter(data, word_splitter, return_num_discarded=False, spacy_ner_predictor=None):
     num_discarded = 0
     converted_examples = []
     for example in data:
@@ -127,14 +127,19 @@ def knowledge_net_converter(data, word_splitter, return_num_discarded=False):
                 obj_span = doc.char_span(obj_start, obj_end, alignment_mode="expand")
 
                 relation_label = fact["humanReadable"].split(">")[1][2:]
-                converted_example = map_knet_label({
+                converted_example = {
                     "id": "r/" + utils.generate_example_id(),
                     "tokens": word_tokens,
                     "label": relation_label,
                     "grammar": ["SUBJ", "OBJ"],
-                    "entities": [[subj_span.start, subj_span.end], [obj_span.start, obj_span.end]],
-                    # "type": [subj_type, obj_type]
-                })
+                    "entities": [[subj_span.start, subj_span.end], [obj_span.start, obj_span.end]]
+                }
+                if spacy_ner_predictor is not None:
+                    doc = spacy_ner_predictor(example["tokens"])
+                    subj_type = utils.get_entity_type(doc, subj_start, subj_end)
+                    obj_type = utils.get_entity_type(doc, obj_start, obj_end)
+                    converted_example["type"] = [subj_type, obj_type]
+                converted_example = map_knet_label(converted_example)
                 if converted_example is not None:
                     converted_examples.append(converted_example)
                 else:
@@ -161,6 +166,12 @@ def main():
         type=str,
         help="path to directory where the converted files should be saved",
     )
+    parser.add_argument(
+        "--ner_model_path",
+        # default="./models/spacy_trf/model-best",
+        type=str,
+        help="path to ner model",
+    )
     args = parser.parse_args()
 
     knet_path = args.data_path
@@ -175,6 +186,8 @@ def main():
         level=logging.INFO,
     )
 
+    spacy_ner_predictor = utils.load_spacy_predictor(args.ner_model_path) if args.ner_model_path else None
+    # possible TODO is to combine the spacy ner predictor and the word splitter
     spacy_word_splitter = English()
     for split in ["train", "test-no-facts"]:
         split_path = os.path.join(knet_path, split + ".json")
@@ -185,7 +198,8 @@ def main():
             for line in knet_file.readlines():
                 knet_data.append(json.loads(line))
             converted_examples, num_discarded = knowledge_net_converter(knet_data, spacy_word_splitter,
-                                                                        return_num_discarded=True)
+                                                                        return_num_discarded=True,
+                                                                        spacy_ner_predictor=spacy_ner_predictor)
         logging.info("Processing and exporting to %s", split_export_path)
         logging.info(f"{len(converted_examples)} examples in converted file")
         logging.info(f"{num_discarded} examples were discarded during label mapping")
