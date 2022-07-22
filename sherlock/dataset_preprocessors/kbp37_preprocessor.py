@@ -18,78 +18,98 @@ def map_kbp37_label(example, override_entity_types=True):
         subj_type, obj_type = None, None
     original_types = subj_type, obj_type
 
-    if kbp37_label == "org:alternate_names(e1,e2)":   #
+    if kbp37_label == "no_relation":
+        mapped_label = kbp37_label
+    elif kbp37_label == "org:alternate_names(e1,e2)":   # (org, alternate name)
         mapped_label = "org:alternate_names"
-    elif kbp37_label == "rg:alternate_names(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:city_of_headquarters(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:city_of_headquarters(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:country_of_headquarters(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:country_of_headquarters(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:founded(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:founded(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:founded_by(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:founded_by(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:members(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:members(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:stateorprovince_of_headquarters(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:stateorprovince_of_headquarters(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:subsidiaries(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:subsidiaries(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:top_members/employees(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "org:top_members/employees(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:alternate_names(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:alternate_names(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:cities_of_residence(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:cities_of_residence(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:countries_of_residence(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:countries_of_residence(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:country_of_birth(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:country_of_birth(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:employee_of(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:employee_of(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:origin(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:origin(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:spouse(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:spouse(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:stateorprovinces_of_residence(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:stateorprovinces_of_residence(e2,e1)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:title(e1,e2)":   #
-        mapped_label = ""
-    elif kbp37_label == "per:title(e2,e1)":   #
-        mapped_label = ""
+    elif kbp37_label == "rg:alternate_names(e2,e1)":   # (alternate name, org)
+        mapped_label = "org:alternate_names"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:city_of_headquarters(e1,e2)":   # (org, hq city)
+        mapped_label = "org:place_of_headquarters"
+    elif kbp37_label == "org:city_of_headquarters(e2,e1)":   # (hq city, org)
+        mapped_label = "org:place_of_headquarters"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:country_of_headquarters(e1,e2)":   # (org, hq country)
+        mapped_label = "org:place_of_headquarters"
+    elif kbp37_label == "org:country_of_headquarters(e2,e1)":   # (hq country, org)
+        mapped_label = "org:place_of_headquarters"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:founded(e1,e2)":   # (org, date)
+        mapped_label = "org:founded"
+    elif kbp37_label == "org:founded(e2,e1)":   # (date, org)
+        mapped_label = "org:founded"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:founded_by(e1,e2)":   # (org, founder)
+        mapped_label = "org:founded_by"
+    elif kbp37_label == "org:founded_by(e2,e1)":   # (founder, org)
+        mapped_label = "org:founded_by"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:members(e1,e2)":   # (org, member)
+        mapped_label = "org:members"
+    elif kbp37_label == "org:members(e2,e1)":   # (member, org)
+        mapped_label = "org:members"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:stateorprovince_of_headquarters(e1,e2)":   # (org, state)
+        mapped_label = "org:place_of_headquarters"
+    elif kbp37_label == "org:stateorprovince_of_headquarters(e2,e1)":   # (state, org)
+        mapped_label = "org:place_of_headquarters"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:subsidiaries(e1,e2)":   # (org, subsidiary)
+        mapped_label = "org:subsidiaries"
+    elif kbp37_label == "org:subsidiaries(e2,e1)":   # (subsidiary, org)
+        mapped_label = "org:subsidiaries"
+        example = utils.swap_args(example)
+    elif kbp37_label == "org:top_members/employees(e1,e2)":   # (org, employee)
+        mapped_label = "org:top_members/employees"
+    elif kbp37_label == "org:top_members/employees(e2,e1)":   # (employee, org)
+        mapped_label = "org:top_members/employees"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:alternate_names(e1,e2)":   # (per, alternate name)
+        mapped_label = "per:alternate_names"
+    elif kbp37_label == "per:alternate_names(e2,e1)":   # (alternate name, per)
+        mapped_label = "per:alternate_names"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:cities_of_residence(e1,e2)":   # (per, city)
+        mapped_label = "per:places_of_residence"
+    elif kbp37_label == "per:cities_of_residence(e2,e1)":   # (city, per)
+        mapped_label = "per:places_of_residence"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:countries_of_residence(e1,e2)":   # (per, country)
+        mapped_label = "per:places_of_residence"
+    elif kbp37_label == "per:countries_of_residence(e2,e1)":   # (country, per)
+        mapped_label = "per:places_of_residence"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:country_of_birth(e1,e2)":   # (per, country)
+        mapped_label = "per:place_of_birth"
+    elif kbp37_label == "per:country_of_birth(e2,e1)":   # (country, per)
+        mapped_label = "per:place_of_birth"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:employee_of(e1,e2)":   # (per, org)
+        mapped_label = "per:employee_of"
+    elif kbp37_label == "per:employee_of(e2,e1)":   # (org, per)
+        mapped_label = "per:employee_of"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:origin(e1,e2)":   # (per, loc)
+        mapped_label = "per:origin"
+    elif kbp37_label == "per:origin(e2,e1)":   # (loc, per)
+        mapped_label = "per:origin"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:spouse(e1,e2)":   # (per, per)
+        mapped_label = "per:spouse"
+    elif kbp37_label == "per:spouse(e2,e1)":   # (per, per)
+        mapped_label = "per:spouse"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:stateorprovinces_of_residence(e1,e2)":   # (per, state)
+        mapped_label = "per:places_of_residence"
+    elif kbp37_label == "per:stateorprovinces_of_residence(e2,e1)":   # (state, per)
+        mapped_label = "per:places_of_residence"
+        example = utils.swap_args(example)
+    elif kbp37_label == "per:title(e1,e2)":   # (per, title)
+        mapped_label = "per:title"
+    elif kbp37_label == "per:title(e2,e1)":   # (title, per)
+        mapped_label = "per:title"
+        example = utils.swap_args(example)
 
     if mapped_label is None:
         return None
@@ -119,13 +139,30 @@ def kbp37_converter(data, return_num_discarded=False, spacy_ner_predictor=None):
     num_discarded = 0
     converted_examples = []
     for example in data:
-        tokens = example["tokens"]
+        text = example["example"][1]
+        tokens = text.split()
 
-        subj_start, subj_end = get_entity_spans(tokens, example["h"]["name"])
-        obj_start, obj_end = get_entity_spans(tokens, example["t"]["name"])
+        subj_start = tokens.index("<e1>")
+        obj_start = tokens.index("<e2>")
+        if subj_start < obj_start:
+            tokens.pop(subj_start)
+            subj_end = tokens.index("</e1>")
+            tokens.pop(subj_end)
+            obj_start = tokens.index("<e2>")
+            tokens.pop(obj_start)
+            obj_end = tokens.index("</e2>")
+            tokens.pop(obj_end)
+        else:
+            tokens.pop(obj_start)
+            obj_end = tokens.index("</e2>")
+            tokens.pop(obj_end)
+            subj_start = tokens.index("<e1>")
+            tokens.pop(subj_start)
+            subj_end = tokens.index("</e1>")
+            tokens.pop(subj_end)
 
         converted_example = {
-            "id": example[0],
+            "id": example["example"][2],
             "tokens": tokens,
             "label": example["relation"],
             "grammar": ["SUBJ", "OBJ"],
@@ -145,28 +182,6 @@ def kbp37_converter(data, return_num_discarded=False, spacy_ner_predictor=None):
         return converted_examples, num_discarded
     else:
         return converted_examples
-
-
-def get_entity_spans(tokens, entity_text):
-    entity_tokens = entity_text.split()
-    token_matches = 0
-    start = None
-    end = None
-    for idx, tk in enumerate(tokens):
-        if tk == entity_tokens[token_matches]:
-            if token_matches == 0:
-                start = idx
-            token_matches += 1
-        else:
-            token_matches = 0
-        if token_matches == len(entity_tokens):
-            end = idx + 1
-            break
-    if start is not None and end is not None:
-        assert entity_text == " ".join(tokens[start:end]), f"{entity_text} vs. {tokens[start:end]}"
-        return start, end
-    else:
-        return None, None
 
 
 def main():
@@ -206,17 +221,24 @@ def main():
     )
 
     spacy_ner_predictor = utils.load_spacy_predictor(args.ner_model_path) if args.ner_model_path else None
+
     for split in ["train", "dev", "test"]:
         split_path = os.path.join(kbp37_path, split + ".txt")
         logging.info("Reading %s", split_path)
         split_export_path = os.path.join(export_path, split + ".jsonl")
+        kbp37_examples = []
         with open(split_path, mode="r", encoding="utf-8") as kbp37_file:
-
-            kbp37_data = list(csv.reader(kbp37_file, delimiter="\t"))[1:]     # skip first header line
-            logging.info(f"{len(kbp37_data)} examples in original file")
+            example_line = None
+            for idx, line in enumerate(kbp37_file.readlines()):
+                line_no = idx % 4   # first line contains example, second line relation, third and fourth lines are \n
+                if line_no == 0:
+                    example_line = line.strip().split("\t")
+                elif line_no == 1:
+                    kbp37_examples.append({"example": example_line, "relation": line.strip()})
+            logging.info(f"{len(kbp37_examples)} examples in original file")
 
         logging.info("Processing and exporting to %s", split_export_path)
-        converted_examples, num_discarded = kbp37_converter(kbp37_data,
+        converted_examples, num_discarded = kbp37_converter(kbp37_examples,
                                                              return_num_discarded=True,
                                                              spacy_ner_predictor=spacy_ner_predictor)
 
