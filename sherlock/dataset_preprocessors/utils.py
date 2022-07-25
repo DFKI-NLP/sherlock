@@ -1,5 +1,6 @@
 from typing import Union, List
 
+import logging
 import spacy
 import torch
 from spacy.tokens import Doc
@@ -7,6 +8,14 @@ from spacy.vocab import Vocab
 
 from uuid import uuid4
 from collections import Counter
+
+
+# Setup logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+    datefmt="%m/%d/%Y %H:%M:%S",
+    level=logging.INFO,
+)
 
 
 def generate_example_id():
@@ -68,6 +77,12 @@ def load_spacy_predictor(saved_model_path, cuda_device: int = 0):
 
 def get_entity_type(doc, start, end):
     entity_tokens = [t for t in doc][start:end]
-    head_token = entity_tokens[0]   # use entity tag of the head token
-    assert head_token.ent_iob_ != "O", "NER model predicted O tag for the head token"
-    return head_token.ent_type_
+    entity_type = "O"
+    for t in entity_tokens:
+        # use entity tag of the first token with no O tag, which is hopefully the head token
+        if t.ent_iob_ != "O":
+            entity_type = t.ent_type_
+            break
+    if entity_type == "O":
+        logging.warning(f"NER model predicted O tag for [{doc[start:end]}] in: {doc} ")
+    return entity_type
