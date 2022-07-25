@@ -84,5 +84,5 @@ def get_entity_type(doc, start, end):
             entity_type = t.ent_type_
             break
     if entity_type == "O":
-        logging.warning(f"NER model predicted O tag for [{doc[start:end]}] in: {doc} ")
+        logging.debug(f"NER model predicted O tag for [{doc[start:end]}] in: {doc} ")
     return entity_type

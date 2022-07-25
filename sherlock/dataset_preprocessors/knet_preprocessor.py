@@ -201,13 +201,22 @@ def main():
                                                                         return_num_discarded=True,
                                                                         spacy_ner_predictor=spacy_ner_predictor)
         logging.info("Processing and exporting to %s", split_export_path)
-        logging.info(f"{len(converted_examples)} examples in converted file")
         logging.info(f"{num_discarded} examples were discarded during label mapping")
+
+        final_examples = []
+        for example in converted_examples:
+            if "type" in example and "O" in example["type"]:
+                logging.warning(f"Examples has erroneous entity types: [{example}]")
+            else:
+                final_examples.append(converted_examples)
+        logging.info(f"Removed {len(converted_examples)-len(final_examples)} examples with erroneous entity types")
+        logging.info(f"{len(final_examples)} examples in converted file")
+
         with open(split_export_path, mode="w", encoding="utf-8") as export_knet_file:
-            for conv_example in converted_examples:
+            for conv_example in final_examples:
                 export_knet_file.write(json.dumps(conv_example))
                 export_knet_file.write("\n")
-        logging.info(utils.get_label_counter(converted_examples))
+        logging.info(utils.get_label_counter(final_examples))
 
 
 if __name__ == "__main__":

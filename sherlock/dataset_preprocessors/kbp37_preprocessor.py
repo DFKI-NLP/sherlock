@@ -1,5 +1,4 @@
 import json
-import csv
 import os
 import logging
 import argparse
@@ -140,6 +139,12 @@ def kbp37_converter(data, return_num_discarded=False, spacy_ner_predictor=None):
     converted_examples = []
     for example in data:
         text = example["example"][1]
+
+        text = text.replace("<e1>", " <e1> ")
+        text = text.replace("<e2>", " <e2> ")
+        text = text.replace("</e1>", " </e1> ")
+        text = text.replace("</e2>", " </e2> ")
+        text = text.strip().replace(r"\s\s+", r"\s")
         tokens = text.split()
 
         subj_start = tokens.index("<e1>")
@@ -162,14 +167,14 @@ def kbp37_converter(data, return_num_discarded=False, spacy_ner_predictor=None):
             tokens.pop(subj_end)
 
         converted_example = {
-            "id": example["example"][2],
+            "id": example["example"][0],
             "tokens": tokens,
             "label": example["relation"],
             "grammar": ["SUBJ", "OBJ"],
             "entities": [[subj_start, subj_end], [obj_start, obj_end]]
         }
         if spacy_ner_predictor is not None:
-            doc = spacy_ner_predictor(example["tokens"])
+            doc = spacy_ner_predictor(tokens)
             subj_type = utils.get_entity_type(doc, subj_start, subj_end)
             obj_type = utils.get_entity_type(doc, obj_start, obj_end)
             converted_example["type"] = [subj_type, obj_type]
@@ -242,14 +247,22 @@ def main():
                                                              return_num_discarded=True,
                                                              spacy_ner_predictor=spacy_ner_predictor)
 
-        logging.info(f"{len(converted_examples)} examples in converted file")
         logging.info(f"{num_discarded} examples were discarded during label mapping")
 
+        final_examples = []
+        for example in converted_examples:
+            if "type" in example and "O" in example["type"]:
+                logging.warning(f"Examples has erroneous entity types: [{example}]")
+            else:
+                final_examples.append(converted_examples)
+        logging.info(f"Removed {len(converted_examples)-len(final_examples)} examples with erroneous entity types")
+        logging.info(f"{len(final_examples)} examples in converted file")
+
         with open(split_export_path, mode="w", encoding="utf-8") as export_kbp37_file:
-            for converted_example in converted_examples:
+            for converted_example in final_examples:
                 export_kbp37_file.write(json.dumps(converted_example))
                 export_kbp37_file.write("\n")
-        logging.info(utils.get_label_counter(converted_examples))
+        logging.info(utils.get_label_counter(final_examples))
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from spacy.lang.en import English
 import utils
 from relation_types import RELATION_TYPES
 from ner_types import NER_TYPES
+from tqdm import tqdm
 
 
 def map_smiler_label(example, override_entity_types=True):
@@ -127,7 +128,7 @@ def map_smiler_ner_label(smiler_label):
 def smiler_converter(data, word_splitter, return_num_discarded=False, spacy_ner_predictor=None):
     num_discarded = 0
     converted_examples = []
-    for example in data:
+    for example in tqdm(data):
         text = example[4]
 
         text = text.replace("<e1>", " <e1> ")
@@ -167,7 +168,7 @@ def smiler_converter(data, word_splitter, return_num_discarded=False, spacy_ner_
             "entities": [[subj_start, subj_end], [obj_start, obj_end]]
         }
         if spacy_ner_predictor is not None:
-            doc = spacy_ner_predictor(example["tokens"])
+            doc = spacy_ner_predictor(tokens)
             subj_type = utils.get_entity_type(doc, subj_start, subj_end)
             obj_type = utils.get_entity_type(doc, obj_start, obj_end)
             converted_example["type"] = [subj_type, obj_type]
@@ -238,9 +239,16 @@ def main():
         converted_examples, num_discarded = smiler_converter(smiler_data, spacy_word_splitter,
                                                              return_num_discarded=True,
                                                              spacy_ner_predictor=spacy_ner_predictor)
-
-        logging.info(f"{len(converted_examples)} examples in converted file")
         logging.info(f"{num_discarded} examples were discarded during label mapping")
+
+        final_examples = []
+        for example in converted_examples:
+            if "type" in example and "O" in example["type"]:
+                logging.warning(f"Examples has erroneous entity types: [{example}]")
+            else:
+                final_examples.append(converted_examples)
+        logging.info(f"Removed {len(converted_examples)-len(final_examples)} examples with erroneous entity types")
+        logging.info(f"{len(final_examples)} examples in converted file")
 
         with open(split_export_path, mode="w", encoding="utf-8") as export_smiler_file:
             for converted_example in converted_examples:

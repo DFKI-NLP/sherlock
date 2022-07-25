@@ -101,12 +101,22 @@ def main():
             converted_examples, num_discarded = fewrel_converter(fewrel_data, fewrel_rel_info,
                                                                  return_num_discarded=True,
                                                                  spacy_ner_predictor=spacy_ner_predictor)
-            logging.info(f"{len(converted_examples)} examples in converted file")
+
             logging.info(f"{num_discarded} examples were discarded during label mapping")
-            for conv_example in converted_examples:
+
+            final_examples = []
+            for example in converted_examples:
+                if "type" in example and "O" in example["type"]:
+                    logging.warning(f"Examples has erroneous entity types: [{example}]")
+                else:
+                    final_examples.append(converted_examples)
+            logging.info(
+                f"Removed {len(converted_examples) - len(final_examples)} examples with erroneous entity types")
+            logging.info(f"{len(final_examples)} examples in converted file")
+            for conv_example in final_examples:
                 fewrel_export_file.write(json.dumps(conv_example))
                 fewrel_export_file.write("\n")
-            logging.info(utils.get_label_counter(converted_examples))
+            logging.info(utils.get_label_counter(final_examples))
 
 
 if __name__ == "__main__":
