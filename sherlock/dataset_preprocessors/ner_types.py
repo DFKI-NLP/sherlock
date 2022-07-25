@@ -26,5 +26,6 @@ NER_TYPES = [
     "QUANTITY",
     "TIME",
     "URL",  # gazetteer/regex
-    "WORK_OF_ART"   # art fewnerd
+    "WORK_OF_ART",   # art fewnerd
+    "O"
 ]
