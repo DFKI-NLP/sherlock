@@ -31,20 +31,26 @@ def fewrel_converter(data, fewrel_rel_info, return_num_discarded=False, spacy_ne
                 "grammar": ["SUBJ", "OBJ"],
                 "entities": [[subj_start, subj_end], [obj_start, obj_end]]
             }
-            if spacy_ner_predictor is not None:
-                doc = spacy_ner_predictor(example["tokens"])
-                subj_type = utils.get_entity_type(doc, subj_start, subj_end)
-                obj_type = utils.get_entity_type(doc, obj_start, obj_end)
-                converted_example["type"] = [subj_type, obj_type]
-            converted_example = map_fewrel_label(converted_example)
-            if converted_example is not None:
-                converted_examples.append(converted_example)
-            else:
-                num_discarded += 1
+            converted_examples.append(converted_example)
+    if spacy_ner_predictor is not None:
+        docs = spacy_ner_predictor([example["tokens"] for example in converted_examples])
+        for doc, example in zip(docs, converted_examples):
+            subj_start, subj_end = example["entities"][0]
+            obj_start, obj_end = example["entities"][0]
+            subj_type = utils.get_entity_type(doc, subj_start, subj_end)
+            obj_type = utils.get_entity_type(doc, obj_start, obj_end)
+            example["type"] = [subj_type, obj_type]
+    final_examples = []
+    for converted_example in converted_examples:
+        converted_example = map_fewrel_label(converted_example)
+        if converted_example is not None:
+            final_examples.append(converted_example)
+        else:
+            num_discarded += 1
     if return_num_discarded:
-        return converted_examples, num_discarded
+        return final_examples, num_discarded
     else:
-        return converted_examples
+        return final_examples
 
 
 def main():

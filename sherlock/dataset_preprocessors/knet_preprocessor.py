@@ -134,20 +134,28 @@ def knowledge_net_converter(data, word_splitter, return_num_discarded=False, spa
                     "grammar": ["SUBJ", "OBJ"],
                     "entities": [[subj_span.start, subj_span.end], [obj_span.start, obj_span.end]]
                 }
-                if spacy_ner_predictor is not None:
-                    doc = spacy_ner_predictor(example["tokens"])
-                    subj_type = utils.get_entity_type(doc, subj_start, subj_end)
-                    obj_type = utils.get_entity_type(doc, obj_start, obj_end)
-                    converted_example["type"] = [subj_type, obj_type]
-                converted_example = map_knet_label(converted_example)
-                if converted_example is not None:
-                    converted_examples.append(converted_example)
-                else:
-                    num_discarded += 1
+                converted_examples.append(converted_example)
+    if spacy_ner_predictor is not None:
+        tokens_list = [example["tokens"] for example in converted_examples]
+        i = 0
+        for doc in spacy_ner_predictor.pipe(tokens_list):
+            subj_start, subj_end = converted_examples[i]["entities"][0]
+            obj_start, obj_end = converted_examples[i]["entities"][1]
+            subj_type = utils.get_entity_type(doc, subj_start, subj_end)
+            obj_type = utils.get_entity_type(doc, obj_start, obj_end)
+            converted_examples[i]["type"] = [subj_type, obj_type]
+            i += 1
+    final_examples = []
+    for converted_example in converted_examples:
+        converted_example = map_knet_label(converted_example)
+        if converted_example is not None:
+            final_examples.append(converted_example)
+        else:
+            num_discarded += 1
     if return_num_discarded:
-        return converted_examples, num_discarded
+        return final_examples, num_discarded
     else:
-        return converted_examples
+        return final_examples
 
 
 def main():

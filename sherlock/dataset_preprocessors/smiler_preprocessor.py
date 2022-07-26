@@ -3,6 +3,7 @@ import csv
 import os
 import logging
 import argparse
+import pickle
 
 from spacy.attrs import ORTH
 from spacy.lang.en import English
@@ -10,7 +11,6 @@ from spacy.lang.en import English
 import utils
 from relation_types import RELATION_TYPES
 from ner_types import NER_TYPES
-from tqdm import tqdm
 
 
 def map_smiler_label(example, override_entity_types=True):
@@ -128,7 +128,7 @@ def map_smiler_ner_label(smiler_label):
 def smiler_converter(data, word_splitter, return_num_discarded=False, spacy_ner_predictor=None):
     num_discarded = 0
     converted_examples = []
-    for example in tqdm(data):
+    for example in data:
         text = example[4]
 
         text = text.replace("<e1>", " <e1> ")
@@ -167,20 +167,28 @@ def smiler_converter(data, word_splitter, return_num_discarded=False, spacy_ner_
             "grammar": ["SUBJ", "OBJ"],
             "entities": [[subj_start, subj_end], [obj_start, obj_end]]
         }
-        if spacy_ner_predictor is not None:
-            doc = spacy_ner_predictor(tokens)
+        converted_examples.append(converted_example)
+    if spacy_ner_predictor is not None:
+        tokens_list = [example["tokens"] for example in converted_examples]
+        i = 0
+        for doc in spacy_ner_predictor.pipe(tokens_list):
+            subj_start, subj_end = converted_examples[i]["entities"][0]
+            obj_start, obj_end = converted_examples[i]["entities"][1]
             subj_type = utils.get_entity_type(doc, subj_start, subj_end)
             obj_type = utils.get_entity_type(doc, obj_start, obj_end)
-            converted_example["type"] = [subj_type, obj_type]
+            converted_examples[i]["type"] = [subj_type, obj_type]
+            i += 1
+    final_examples = []
+    for converted_example in converted_examples:
         converted_example = map_smiler_label(converted_example)
         if converted_example is not None:
-            converted_examples.append(converted_example)
+            final_examples.append(converted_example)
         else:
             num_discarded += 1
     if return_num_discarded:
-        return converted_examples, num_discarded
+        return final_examples, num_discarded
     else:
-        return converted_examples
+        return final_examples
 
 
 def main():
