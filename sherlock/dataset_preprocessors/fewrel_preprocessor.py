@@ -32,14 +32,8 @@ def fewrel_converter(data, fewrel_rel_info, return_num_discarded=False, spacy_ne
                 "entities": [[subj_start, subj_end], [obj_start, obj_end]]
             }
             converted_examples.append(converted_example)
-    if spacy_ner_predictor is not None:
-        docs = spacy_ner_predictor([example["tokens"] for example in converted_examples])
-        for doc, example in zip(docs, converted_examples):
-            subj_start, subj_end = example["entities"][0]
-            obj_start, obj_end = example["entities"][0]
-            subj_type = utils.get_entity_type(doc, subj_start, subj_end)
-            obj_type = utils.get_entity_type(doc, obj_start, obj_end)
-            example["type"] = [subj_type, obj_type]
+    converted_examples = utils.predict_entity_type(spacy_ner_predictor=spacy_ner_predictor,
+                                                   examples=converted_examples)
     final_examples = []
     for converted_example in converted_examples:
         converted_example = map_fewrel_label(converted_example)

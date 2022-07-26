@@ -86,3 +86,17 @@ def get_entity_type(doc, start, end):
     if entity_type == "O":
         logging.debug(f"NER model predicted O tag for [{doc[start:end]}] in: {doc} ")
     return entity_type
+
+
+def predict_entity_type(spacy_ner_predictor, examples):
+    if spacy_ner_predictor is not None:
+        tokens_list = [example["tokens"] for example in examples]
+        i = 0
+        for doc in spacy_ner_predictor.pipe(tokens_list):
+            subj_start, subj_end = examples[i]["entities"][0]
+            obj_start, obj_end = examples[i]["entities"][1]
+            subj_type = get_entity_type(doc, subj_start, subj_end)
+            obj_type = get_entity_type(doc, obj_start, obj_end)
+            examples[i]["type"] = [subj_type, obj_type]
+            i += 1
+    return examples
