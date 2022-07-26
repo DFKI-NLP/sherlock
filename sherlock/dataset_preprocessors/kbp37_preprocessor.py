@@ -21,94 +21,167 @@ def map_kbp37_label(example, override_entity_types=True):
         mapped_label = kbp37_label
     elif kbp37_label == "org:alternate_names(e1,e2)":   # (org, alternate name)
         mapped_label = "org:alternate_names"
+        subj_type = "ORG"
+        obj_type = "ORG"
     elif kbp37_label == "rg:alternate_names(e2,e1)":   # (alternate name, org)
         mapped_label = "org:alternate_names"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "ORG"
     elif kbp37_label == "org:city_of_headquarters(e1,e2)":   # (org, hq city)
         mapped_label = "org:place_of_headquarters"
+        subj_type = "ORG"
+        obj_type = "LOC"
     elif kbp37_label == "org:city_of_headquarters(e2,e1)":   # (hq city, org)
         mapped_label = "org:place_of_headquarters"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "LOC"
     elif kbp37_label == "org:country_of_headquarters(e1,e2)":   # (org, hq country)
         mapped_label = "org:place_of_headquarters"
+        subj_type = "ORG"
+        obj_type = "LOC"
     elif kbp37_label == "org:country_of_headquarters(e2,e1)":   # (hq country, org)
         mapped_label = "org:place_of_headquarters"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "LOC"
     elif kbp37_label == "org:founded(e1,e2)":   # (org, date)
         mapped_label = "org:founded"
+        subj_type = "ORG"
+        obj_type = "DATE"
     elif kbp37_label == "org:founded(e2,e1)":   # (date, org)
         mapped_label = "org:founded"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "DATE"
     elif kbp37_label == "org:founded_by(e1,e2)":   # (org, founder)
         mapped_label = "org:founded_by"
+        subj_type = "ORG"
+        obj_type = "PERSON"
     elif kbp37_label == "org:founded_by(e2,e1)":   # (founder, org)
         mapped_label = "org:founded_by"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "PERSON"
     elif kbp37_label == "org:members(e1,e2)":   # (org, member)
         mapped_label = "org:members"
+        subj_type = "ORG"
+        if obj_type not in ["PERSON", "ORG"]:
+            obj_type = "PERSON"  # or "ORG
     elif kbp37_label == "org:members(e2,e1)":   # (member, org)
         mapped_label = "org:members"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        if obj_type not in ["PERSON", "ORG"]:
+            obj_type = "PERSON"  # or "ORG
     elif kbp37_label == "org:stateorprovince_of_headquarters(e1,e2)":   # (org, state)
         mapped_label = "org:place_of_headquarters"
+        subj_type = "ORG"
+        obj_type = "LOC"
     elif kbp37_label == "org:stateorprovince_of_headquarters(e2,e1)":   # (state, org)
         mapped_label = "org:place_of_headquarters"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "LOC"
     elif kbp37_label == "org:subsidiaries(e1,e2)":   # (org, subsidiary)
         mapped_label = "org:subsidiaries"
+        subj_type = "ORG"
+        obj_type = "ORG"
     elif kbp37_label == "org:subsidiaries(e2,e1)":   # (subsidiary, org)
-        mapped_label = "org:subsidiaries"
-        example = utils.swap_args(example)
+        mapped_label = "org:parents"
+        subj_type = "ORG"
+        obj_type = "ORG"
     elif kbp37_label == "org:top_members/employees(e1,e2)":   # (org, employee)
         mapped_label = "org:top_members/employees"
+        subj_type = "ORG"
+        obj_type = "PERSON"
     elif kbp37_label == "org:top_members/employees(e2,e1)":   # (employee, org)
         mapped_label = "org:top_members/employees"
         example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "PERSON"
     elif kbp37_label == "per:alternate_names(e1,e2)":   # (per, alternate name)
         mapped_label = "per:alternate_names"
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     elif kbp37_label == "per:alternate_names(e2,e1)":   # (alternate name, per)
         mapped_label = "per:alternate_names"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     elif kbp37_label == "per:cities_of_residence(e1,e2)":   # (per, city)
         mapped_label = "per:places_of_residence"
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:cities_of_residence(e2,e1)":   # (city, per)
         mapped_label = "per:places_of_residence"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:countries_of_residence(e1,e2)":   # (per, country)
         mapped_label = "per:places_of_residence"
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:countries_of_residence(e2,e1)":   # (country, per)
         mapped_label = "per:places_of_residence"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:country_of_birth(e1,e2)":   # (per, country)
         mapped_label = "per:place_of_birth"
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:country_of_birth(e2,e1)":   # (country, per)
         mapped_label = "per:place_of_birth"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:employee_of(e1,e2)":   # (per, org)
         mapped_label = "per:employee_of"
+        subj_type = "PERSON"
+        obj_type = "ORG"
     elif kbp37_label == "per:employee_of(e2,e1)":   # (org, per)
         mapped_label = "per:employee_of"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "ORG"
     elif kbp37_label == "per:origin(e1,e2)":   # (per, loc)
         mapped_label = "per:origin"
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:origin(e2,e1)":   # (loc, per)
         mapped_label = "per:origin"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:spouse(e1,e2)":   # (per, per)
         mapped_label = "per:spouse"
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     elif kbp37_label == "per:spouse(e2,e1)":   # (per, per)
         mapped_label = "per:spouse"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     elif kbp37_label == "per:stateorprovinces_of_residence(e1,e2)":   # (per, state)
         mapped_label = "per:places_of_residence"
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:stateorprovinces_of_residence(e2,e1)":   # (state, per)
         mapped_label = "per:places_of_residence"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "LOC"
     elif kbp37_label == "per:title(e1,e2)":   # (per, title)
         mapped_label = "per:title"
+        subj_type = "PERSON"
+        obj_type = "POSITION"
     elif kbp37_label == "per:title(e2,e1)":   # (title, per)
         mapped_label = "per:title"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "POSITION"
 
     if mapped_label is None:
         return None

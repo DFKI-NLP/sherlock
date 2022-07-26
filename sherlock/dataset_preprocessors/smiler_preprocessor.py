@@ -108,7 +108,7 @@ def map_smiler_label(example, override_entity_types=True):
         mapped_label = "per:head_of_gov/state"  # TODO check
         example = utils.swap_args(example)
         subj_type = "PERSON"
-        obj_type = "loc"
+        obj_type = "LOC"
     elif smiler_label == "movie-has-director":  # (misc, per)
         mapped_label = "per:director"
         example = utils.swap_args(example)
