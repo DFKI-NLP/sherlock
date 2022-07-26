@@ -3,7 +3,6 @@ import csv
 import os
 import logging
 import argparse
-import pickle
 
 from spacy.attrs import ORTH
 from spacy.lang.en import English
@@ -24,6 +23,8 @@ def map_smiler_label(example, override_entity_types=True):
 
     if smiler_label == "birth-place":   # (per, loc)
         mapped_label = "per:place_of_birth"
+        subj_type = "PERSON"
+        obj_type = "LOC"
     # elif smiler_label == "eats":    # (anteaters, ants) so (misc, misc)?
     #     mapped_label = "eats"
     # elif smiler_label == "event-year":    # (event, time), e.g. (Uncial 0301, 5th century)
@@ -32,14 +33,21 @@ def map_smiler_label(example, override_entity_types=True):
     #     mapped_label = "first-product"
     elif smiler_label == "from-country":    # (per, loc)   perhaps similar "per:country_of_citizenship
         mapped_label = "per:origin"  # e.g. (Selden Connor Gile, American)
-    elif smiler_label == "has-author":  # (misc, per)
+        subj_type = "PERSON"
+        obj_type = "LOC"
+    elif smiler_label == "has-author":  # (misc, per), only in the big train set, not in the small manually validated
         mapped_label = "per:author"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
         obj_type = "WORK_OF_ART"
     elif smiler_label == "has-child":   # (per parent, per child)
         mapped_label = "per:children"
-    elif smiler_label == "has-edu":  # (per, org)
+        subj_type = "PERSON"
+        obj_type = "PERSON"
+    elif smiler_label == "has-edu":  # (per, org), only in the big train set, not in the small manually validated
         mapped_label = "per:schools_attended"
+        subj_type = "PERSON"
+        obj_type = "ORG"
     # elif smiler_label == "has-genre":  # (misc, misc), e.g. (Web browser, Links)
     #     mapped_label = "has-genre"
     # elif smiler_label == "has-height":    # (misc, number)
@@ -52,17 +60,26 @@ def map_smiler_label(example, override_entity_types=True):
     #     mapped_label = "has-lifespan"
     elif smiler_label == "has-nationality":  # (per, loc)
         mapped_label = "per:country_of_citizenship"
+        subj_type = "PERSON"
+        obj_type = "LOC"    # GPE(?)
     elif smiler_label == "has-occupation":  # (per, misc)
         mapped_label = "per:title"
+        subj_type = "PERSON"
         obj_type = "POSITION"
     elif smiler_label == "has-parent":  # (per child, per parent)
         mapped_label = "per:parents"
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     # elif smiler_label == "has-population":    # (loc, number)
     #     mapped_label = "has-population"
     elif smiler_label == "has-sibling":     # (per, per)
         mapped_label = "per:siblings"
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     elif smiler_label == "has-spouse":   # (per, per)
         mapped_label = "per:spouse"
+        subj_type = "PERSON"
+        obj_type = "PERSON"
     # elif smiler_label == "has-tourist-attraction":    # (loc, loc attraction)
     #     mapped_label = "has-tourist-attraction"
     # elif smiler_label == "has-type":  # (misc, type), e.g. <e1>Trice</e1> was a 36 foot <e2>trimaran</e2> sailboat
@@ -71,29 +88,46 @@ def map_smiler_label(example, override_entity_types=True):
     #     mapped_label = "has-weight"
     elif smiler_label == "headquarters":    # (org, loc)
         mapped_label = "org:place_of_headquarters"
+        subj_type = "ORG"
+        obj_type = "LOCATION"
     # elif smiler_label == "invented-by":   # (misc, per)
     #     mapped_label = "invented-by"
     # elif smiler_label == "invented-when":  # (misc, time)
     #     mapped_label = "invented-when"
     elif smiler_label == "is-member-of":    # (per, org)
         mapped_label = "org:member_of"
+        example = utils.swap_args(example)
+        subj_type = "ORG"
+        obj_type = "PERSON"
     elif smiler_label == "is-where":    # (org, loc)
         mapped_label = "loc:location_of"
         example = utils.swap_args(example)
-    elif smiler_label == "loc-leader":  # (loc, per) TODO check if it fits "per:head_of_gov/state"?
-        mapped_label = "per:head_of_gov/state"
+        subj_type = "LOC"
+        obj_type = "ORG"
+    elif smiler_label == "loc-leader":  # (loc, per), only in the big train set, not in the small manually validated
+        mapped_label = "per:head_of_gov/state"  # TODO check
+        example = utils.swap_args(example)
+        subj_type = "PERSON"
+        obj_type = "loc"
     elif smiler_label == "movie-has-director":  # (misc, per)
         mapped_label = "per:director"
         example = utils.swap_args(example)
+        subj_type = "PERSON"
         obj_type = "WORK_OF_ART"
     elif smiler_label == "no_relation":
         mapped_label = "no_relation"
     elif smiler_label == "org-has-founder":  # (org, per)
         mapped_label = "org:founded_by"
+        subj_type = "ORG"
+        obj_type = "PERSON"
     elif smiler_label == "org-has-member":  # (org, per)
         mapped_label = "org:members"
+        subj_type = "ORG"
+        obj_type = "PERSON"
     elif smiler_label == "org-leader":  # (org, per)
         mapped_label = "org:top_members/employees"
+        subj_type = "ORG"
+        obj_type = "PERSON"
     # elif smiler_label == "post-code":  # (loc, number)
     #     mapped_label = "post-code"
     # elif smiler_label == "starring":  # (misc, per)
