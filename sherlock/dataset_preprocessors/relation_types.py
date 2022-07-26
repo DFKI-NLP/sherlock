@@ -7,6 +7,7 @@ RELATION_TYPES = [
     "org:founded",  # [('org', 'organization'), ('date', 'founded')],                              CHECK
     "org:founded_by",  # [('org', 'organization'), ('per', 'founder')],                            CHECK
     "org:member_of",  # [('org', 'member'), ('org', 'organization')],                              CHECK
+    "per:member_of"
     "org:members",  # [('org', 'organization'), ('org', 'member')],                                CHECK
     "org:number_of_employees/members",  # [('org', 'organization'), ('num', 'num_employees')],     CHECK
     "org:parents",  # [('org', 'daughter_company'), ('org', 'parent_company')],                    CHECK

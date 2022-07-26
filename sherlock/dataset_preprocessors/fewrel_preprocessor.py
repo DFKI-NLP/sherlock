@@ -9,7 +9,7 @@ from docred_preprocessor import map_docred_label
 
 def map_fewrel_label(example):
     # fewrel and docred mostly use the same label set
-    return map_docred_label(example)
+    return map_docred_label(example, override_entity_types=True)
 
 
 def fewrel_converter(data, fewrel_rel_info, return_num_discarded=False, spacy_ner_predictor=None):
