@@ -254,7 +254,8 @@ def map_docred_ner_label(docred_label):
     elif docred_label == "NUM":
         mapped_label = "CARDINAL"   # TODO NUM is not in plass ner label set
 
-    assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    if mapped_label is not None:
+        assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
     return mapped_label
 
 

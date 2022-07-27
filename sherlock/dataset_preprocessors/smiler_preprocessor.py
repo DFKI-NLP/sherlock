@@ -118,7 +118,8 @@ def map_smiler_ner_label(smiler_label):
     # elif smiler_label == "ORG":
     #     mapped_label = "ORG"
 
-    assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    if mapped_label is not None:
+        assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
     return mapped_label
 
 

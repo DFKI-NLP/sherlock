@@ -129,7 +129,8 @@ def map_kbp37_ner_label(kbp37_label):
     # elif kbp37_label == "ORG":
     #     mapped_label = "ORG"
 
-    assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    if mapped_label is not None:
+        assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
     return mapped_label
 
 

@@ -93,7 +93,7 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
     elif relation_label == "loc:location_of":
         subj_type = "LOC"
         obj_type = "ORG"
-        if obj_type not in ["PERSON", "ORG", "MISC", "WORK_OF_ART"]:
+        if obj_type is not None and obj_type not in ["PERSON", "ORG", "MISC", "WORK_OF_ART"]:
             obj_type = "PERSON"     # TODO ambivalent
     elif relation_label == "per:head_of_gov/state":
         subj_type = "PERSON"
@@ -113,15 +113,15 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
     elif relation_label == "per:composer":
         subj_type = "PERSON"
         obj_type = "WORK_OF_ART"
-    elif relation_label == "per:conflict":
-        subj_type = "PERSON"    # TODO often ORG
-        obj_type = "EVENT"
+    elif relation_label == "event:conflict":
+        subj_type = "EVENT"
+        obj_type = "PER"    # TODO often ORG
     elif relation_label == "loc:country":
         subj_type = "LOC"   # TODO org/loc
         obj_type = "LOC"
     elif relation_label == "loc:country_of_origin":
         subj_type = "LOC"
-        if obj_type not in ["MISC", "ORG", "PERSON"]:
+        if obj_type is not None and obj_type not in ["MISC", "ORG", "PERSON"]:
             obj_type = "MISC"      # TODO misc/org/per
     elif relation_label == "per:creator":
         subj_type = "PERSON"
