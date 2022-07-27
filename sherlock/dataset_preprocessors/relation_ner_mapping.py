@@ -83,7 +83,7 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
         obj_type = "PERSON"
     elif relation_label == "org:place_of_headquarters":
         subj_type = "ORG"
-        obj_type = "LOCATION"
+        obj_type = "LOC"
     elif relation_label == "org:member_of":
         subj_type = "ORG"
         obj_type = "ORG"
@@ -187,6 +187,9 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
         obj_type = "NUM"
     elif relation_label == "per:work_location":
         subj_type = "PERSON"
+        obj_type = "LOC"
+    elif relation_label == "loc:located_in":
+        subj_type = "LOC"
         obj_type = "LOC"
 
     if subj_type is not None and obj_type is not None:

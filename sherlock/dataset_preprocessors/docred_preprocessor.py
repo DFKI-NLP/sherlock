@@ -85,7 +85,7 @@ def map_docred_label(example, override_entity_types=False, override_obj_type=Tru
         return None
     elif docred_label == "author":     # (misc, per)
         mapped_label = "per:author"
-        example = utils.swap_args()
+        example = utils.swap_args(example)
         obj_type = "WORK_OF_ART" if override_obj_type else obj_type
     elif docred_label == "capital of":    # (capital, _)
         mapped_label = "loc:capital_of"
@@ -239,7 +239,7 @@ def map_docred_label(example, override_entity_types=False, override_obj_type=Tru
 
 
 def map_docred_ner_label(docred_label):
-    mapped_label = None
+    mapped_label = docred_label
     if docred_label == "PER":
         mapped_label = "PERSON"
     elif docred_label == "ORG":

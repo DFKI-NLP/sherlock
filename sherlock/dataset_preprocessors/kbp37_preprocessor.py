@@ -144,7 +144,7 @@ def kbp37_converter(data, return_num_discarded=False, spacy_ner_predictor=None):
         text = text.replace("</e1>", " </e1> ")
         text = text.replace("</e2>", " </e2> ")
         text = text.strip().replace(r"\s\s+", r"\s")
-        tokens = text.split()
+        tokens = text.split()[1:-1]  # remove quotation marks
 
         subj_start = tokens.index("<e1>")
         obj_start = tokens.index("<e2>")
@@ -253,7 +253,7 @@ def main():
             if "type" in example and "O" in example["type"]:
                 logging.warning(f"Examples has erroneous entity types: [{example}]")
             else:
-                final_examples.append(converted_examples)
+                final_examples.append(example)
         logging.info(f"Removed {len(converted_examples)-len(final_examples)} examples with erroneous entity types")
         logging.info(f"{len(final_examples)} examples in converted file")
 

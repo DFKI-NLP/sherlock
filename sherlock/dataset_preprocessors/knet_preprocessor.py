@@ -216,7 +216,7 @@ def main():
             if "type" in example and "O" in example["type"]:
                 logging.warning(f"Examples has erroneous entity types: [{example}]")
             else:
-                final_examples.append(converted_examples)
+                final_examples.append(example)
         logging.info(f"Removed {len(converted_examples)-len(final_examples)} examples with erroneous entity types")
         logging.info(f"{len(final_examples)} examples in converted file")
 
