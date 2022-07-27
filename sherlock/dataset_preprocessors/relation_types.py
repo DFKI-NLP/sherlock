@@ -41,7 +41,7 @@ RELATION_TYPES = [
     # "per:stateorprovince_of_death",  # [('per', 'person'), ('loc', 'location')],                   CHECK
     # "per:stateorprovinces_of_residence",  # [('per', 'person'), ('loc', 'location')],              CHECK
     "per:spouse",  # [('per', 'spouse'), ('per', 'spouse')],                                       CHECK
-    "per:title",  # [('per', 'person'), ('misc', 'title')],  TODO OPEN title is mostly job positions, rename??
+    "per:title",  # [('per', 'person'), ('misc', 'title')],
     "no_relation",  # [('none', 'none'), ('none', 'none')]
     "org:place_of_headquarters",     # as superclass for city/country_of_headquarters
     # KnowledgeNet
@@ -53,7 +53,7 @@ RELATION_TYPES = [
     "per:degree",  # (per, degree)   list of degree names can be obtained from GIDS file!     OPEN
     # DOCRED
     "loc:capital_of",  # (loc, loc/gpe) P1376, P36                                           CHECK
-    "per:conflict",  # (per, loc) P607                                                             CHECK
+    "event:conflict",  # (per, loc) P607                                                             CHECK
     "loc:located_in",  # (loc, loc) P131  , P706      ? P206                                               CHECK
     "per:language",  # (per, language) P1412                                                       CHECK
     # "publisher",  # TODO naming (org/per, work_of_art) P123                                                 CHECK
