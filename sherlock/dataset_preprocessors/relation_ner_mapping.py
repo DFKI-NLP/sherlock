@@ -56,7 +56,7 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
         obj_type = "LOC"
     elif relation_label == "per:political_affiliation":
         subj_type = "PERSON"
-        obj_type = "ORG"    # TODO check
+        obj_type = "ORG"
     elif relation_label == "per:title":
         subj_type = "PERSON"
         obj_type = "POSITION"
@@ -116,9 +116,6 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
     elif relation_label == "per:conflict":
         subj_type = "PERSON"    # TODO often ORG
         obj_type = "EVENT"
-    elif relation_label == "loc:contains_location": # TODO check fewrel
-        subj_type = "LOC"
-        obj_type = "LOC"
     elif relation_label == "loc:country":
         subj_type = "LOC"   # TODO org/loc
         obj_type = "LOC"
@@ -172,10 +169,10 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
         obj_type = "WORK_OF_ART"
     elif relation_label == "per:producer":
         subj_type = "PERSON"
-        obj_type = "WORK_OF_ART"    # TODO or MISC?
+        obj_type = "WORK_OF_ART"
     elif relation_label == "org:production_company":
         subj_type = "ORG"
-        obj_type = "WORK_OF_ART"    # TODO or MISC?
+        obj_type = "WORK_OF_ART"
     elif relation_label == "per:religion":
         subj_type = "PERSON"
         obj_type = "ORG"

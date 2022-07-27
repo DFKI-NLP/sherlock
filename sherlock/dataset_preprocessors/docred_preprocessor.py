@@ -103,8 +103,6 @@ def map_docred_label(example, override_entity_types=False, override_obj_type=Tru
     elif docred_label == "conflict":   # (per/org, misc conflict)   TODO check NER prefix, some are actually (org, misc)
         mapped_label = "per:conflict"
         obj_type = "EVENT" if override_obj_type else obj_type
-    elif docred_label == "contains location":   # TODO fewrel check examples
-        mapped_label = "loc:contains_location"
     elif docred_label == "country":    # (org/loc, loc country of)
         mapped_label = "loc:country"
     elif docred_label == "country of citizenship":     # (per, loc)
@@ -158,13 +156,10 @@ def map_docred_label(example, override_entity_types=False, override_obj_type=Tru
         "located on terrain feature",   # (loc, terrain feature) Kanatadika on Euboea
         # "located in or next to body of water"     # (loc, body of water)
     ]:
-        mapped_label = "org:facility_or_location"   # TODO not a really good fit
+        mapped_label = "loc:located_in"
     elif docred_label == "location of formation":  # (org, loc)
         mapped_label = "org:location_of_formation"
-    elif docred_label == "location of":    # (event, loc)
-        mapped_label = "loc:location_of"    # TODO check NER prefix
-        example = utils.swap_args(example)
-    elif docred_label == "lyrics by":  # (song, per writer) TODO is this really relevant?
+    elif docred_label == "lyrics by":  # (song, per writer)
         mapped_label = "per:lyrics_by"
         example = utils.swap_args(example)
         obj_type = "WORK_OF_ART" if override_obj_type else obj_type
@@ -173,8 +168,12 @@ def map_docred_label(example, override_entity_types=False, override_obj_type=Tru
     elif docred_label == "manufacturer":  # (misc, manufacturer org)
         mapped_label = "org:product_or_technology_or_service"
         example = utils.swap_args(example)
-    elif docred_label == "member of":    # (per/org, org)
-        mapped_label = "org:member_of"  # TODO check NER prefix
+    elif docred_label == "member of":    # (per/org/loc, org)
+        if subj_type in ["PER", "PERSON"]:
+            mapped_label = "per:member_of"
+        else:
+            mapped_label = "org:members"
+            example = utils.swap_args(example)
     elif docred_label == "member of political party":  # (per, org)
         mapped_label = "per:political_affiliation"
     elif docred_label == "notable work":   # (per, misc)
