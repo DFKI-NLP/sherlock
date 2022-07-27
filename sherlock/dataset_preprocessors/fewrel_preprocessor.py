@@ -113,8 +113,10 @@ def main():
                     example.pop("type")
                 final_examples.append(example)
             logging.info(
-                f"Removed type field from {erroneous_ent_types_counter} examples that had erroneous entity types")
+                f"Removed type field from {erroneous_ent_types_counter} examples that had erroneous or"
+                f"incomplete entity types")
             logging.info(f"{len(final_examples)} examples in converted file")
+
             for conv_example in final_examples:
                 fewrel_export_file.write(json.dumps(conv_example))
                 fewrel_export_file.write("\n")

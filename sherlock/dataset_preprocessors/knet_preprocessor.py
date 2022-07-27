@@ -213,12 +213,16 @@ def main():
         logging.info(f"{num_discarded} examples were discarded during label mapping")
 
         final_examples = []
+        erroneous_ent_types_counter = 0
         for example in converted_examples:
-            if "type" in example and "O" in example["type"]:
-                logging.warning(f"Examples has erroneous entity types: [{example}]")
-            else:
-                final_examples.append(example)
-        logging.info(f"Removed {len(converted_examples)-len(final_examples)} examples with erroneous entity types")
+            if "type" in example and ("O" in example["type"] or None in example["type"]):
+                erroneous_ent_types_counter += 1
+                logging.debug(f"Examples has erroneous entity types: [{example}], dropping type field")
+                example.pop("type")
+            final_examples.append(example)
+        logging.info(
+            f"Removed type field from {erroneous_ent_types_counter} examples that had erroneous or"
+            f"incomplete entity types")
         logging.info(f"{len(final_examples)} examples in converted file")
 
         with open(split_export_path, mode="w", encoding="utf-8") as export_knet_file:
