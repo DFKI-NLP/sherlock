@@ -7,11 +7,13 @@ import logging
 from pathlib import Path
 
 
-def load_examples(file_path, filter_examples=False):
+def load_examples(file_path, filter_examples=False, id_prefix=None):
     examples = []
     with open(file_path, mode="r", encoding="utf8") as f:
         for line in f.readlines():
             example = json.loads(line)
+            if id_prefix is not None:
+                example["id"] = f"{id_prefix}_{example['id']}"
             if not filter_examples or (filter_examples and "type" in example):
                 examples.append(example)
     return examples
@@ -29,43 +31,45 @@ def main():
     collated_examples = []
 
     docred_path = Path(f"../../ds/text/DocRED/converted")
-    collated_examples += load_examples(docred_path.joinpath("train_annotated.jsonl"))
+    collated_examples += load_examples(docred_path.joinpath("train_annotated.jsonl"), id_prefix="DocRED")
 
     fewrel_path = Path(f"../../ds/text/fewrel/converted")
-    collated_examples += load_examples(fewrel_path.joinpath("train.jsonl"))
-    collated_examples += load_examples(fewrel_path.joinpath("val.jsonl"))
+    collated_examples += load_examples(fewrel_path.joinpath("train.jsonl"), id_prefix="fewrel")
+    collated_examples += load_examples(fewrel_path.joinpath("val.jsonl"), id_prefix="fewrel")
 
     gids_path = Path(f"../../ds/text/gids/converted")
-    collated_examples += load_examples(gids_path.joinpath("train.jsonl"))
-    collated_examples += load_examples(gids_path.joinpath("dev.jsonl"))
-    collated_examples += load_examples(gids_path.joinpath("test.jsonl"))
+    collated_examples += load_examples(gids_path.joinpath("train.jsonl"), id_prefix="gids")
+    collated_examples += load_examples(gids_path.joinpath("dev.jsonl"), id_prefix="gids")
+    collated_examples += load_examples(gids_path.joinpath("test.jsonl"), id_prefix="gids")
 
     kbp37_path = Path(f"../../ds/text/kbp37/converted")
-    collated_examples += load_examples(kbp37_path.joinpath("train.jsonl"))
-    collated_examples += load_examples(kbp37_path.joinpath("dev.jsonl"))
-    collated_examples += load_examples(kbp37_path.joinpath("test.jsonl"))
+    collated_examples += load_examples(kbp37_path.joinpath("train.jsonl"), id_prefix="kbp37")
+    collated_examples += load_examples(kbp37_path.joinpath("dev.jsonl"), id_prefix="kbp37")
+    collated_examples += load_examples(kbp37_path.joinpath("test.jsonl"), id_prefix="kbp37")
 
     knet_path = Path(f"../../ds/text/knowledge-net/converted")
-    collated_examples += load_examples(knet_path.joinpath("train.jsonl"))
+    collated_examples += load_examples(knet_path.joinpath("train.jsonl"), id_prefix="knet")
 
     plass_product_path = Path(f"../../ds/text/plass-corpus/product-corpus-v3-20190618/converted")
-    collated_examples += load_examples(plass_product_path.joinpath("train.jsonl"))
-    collated_examples += load_examples(plass_product_path.joinpath("dev.jsonl"))
-    collated_examples += load_examples(plass_product_path.joinpath("test.jsonl"))
+    collated_examples += load_examples(plass_product_path.joinpath("train.jsonl"), id_prefix="plass_product")
+    collated_examples += load_examples(plass_product_path.joinpath("dev.jsonl"), id_prefix="plass_product")
+    collated_examples += load_examples(plass_product_path.joinpath("test.jsonl"), id_prefix="plass_product")
 
     plass_sdw_path = Path(f"../../ds/text/plass-corpus/sdw-iter02/converted")
-    collated_examples += load_examples(plass_sdw_path.joinpath("train.jsonl"))
-    collated_examples += load_examples(plass_sdw_path.joinpath("dev.jsonl"))
-    collated_examples += load_examples(plass_sdw_path.joinpath("test.jsonl"))
+    collated_examples += load_examples(plass_sdw_path.joinpath("train.jsonl"), id_prefix="plass_sdw")
+    collated_examples += load_examples(plass_sdw_path.joinpath("dev.jsonl"), id_prefix="plass_sdw")
+    collated_examples += load_examples(plass_sdw_path.joinpath("test.jsonl"), id_prefix="plass_sdw")
 
     smiler_product_path = Path(f"../../ds/text/smiler/converted")
-    collated_examples += load_examples(smiler_product_path.joinpath("en-small_corpora_train.jsonl"))
-    collated_examples += load_examples(smiler_product_path.joinpath("en-small_corpora_test.jsonl"))
+    collated_examples += load_examples(smiler_product_path.joinpath("en-small_corpora_train.jsonl"),
+                                       id_prefix="smiler")
+    collated_examples += load_examples(smiler_product_path.joinpath("en-small_corpora_test.jsonl"),
+                                       id_prefix="smiler")
 
     tacrev_path = Path(f"../../ds/text/tacrev/converted")
-    collated_examples += load_examples(tacrev_path.joinpath("train.jsonl"))
-    collated_examples += load_examples(tacrev_path.joinpath("dev.jsonl"))
-    collated_examples += load_examples(tacrev_path.joinpath("test.jsonl"))
+    collated_examples += load_examples(tacrev_path.joinpath("train.jsonl"), id_prefix="tacrev")
+    collated_examples += load_examples(tacrev_path.joinpath("dev.jsonl"), id_prefix="tacrev")
+    collated_examples += load_examples(tacrev_path.joinpath("test.jsonl"), id_prefix="tacrev")
 
     # Shuffle the examples and create train, dev, test split
     random.seed(42)
