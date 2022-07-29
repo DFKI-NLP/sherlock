@@ -88,7 +88,7 @@ def get_entity_type(doc, start, end):
     return entity_type
 
 
-def predict_entity_type(spacy_ner_predictor, examples, batch_size=128):
+def predict_entity_type(spacy_ner_predictor, examples, batch_size=1000):
     if spacy_ner_predictor is not None:
         tokens_list = [example["tokens"] for example in examples]
         i = 0

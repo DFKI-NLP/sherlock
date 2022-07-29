@@ -241,7 +241,7 @@ def main():
     )
     parser.add_argument(
         "--batch_size",
-        default=1000,
+        default=100,
         type=int,
         help="batch size for processing (for progress report)",
     )
@@ -258,6 +258,7 @@ def main():
     if not os.path.exists(export_path):
         os.makedirs(export_path)
     batch_size = args.batch_size
+    spacy_batch_size = args.spacy_batch_size
     spacy_ner_predictor = utils.load_spacy_predictor(args.ner_model_path)
 
     examples = []
@@ -269,7 +270,9 @@ def main():
         i = 0
         # batch processing
         for j in tqdm(range(int(len(examples) / batch_size))):
-            batch = utils.predict_entity_type(spacy_ner_predictor, examples[i:j], batch_size=batch_size)
+            logging.debug(f"Processing batch {j}/{int(len(examples) / batch_size)}")
+            batch = utils.predict_entity_type(spacy_ner_predictor, examples[i:i+batch_size],
+                                              batch_size=spacy_batch_size)
             # remove entity type field if O is predicted for any of the head or tail entity
             if remove_o_tags or override_entity_types:
                 for example in batch:
@@ -283,6 +286,7 @@ def main():
                     annotated_examples.append(example)
             else:
                 annotated_examples += batch
+            i += batch_size
         assert len(examples) == len(annotated_examples), \
             f"{len(examples)} examples vs. {len(annotated_examples)} annotated examples"
     logging.info(utils.get_label_counter(annotated_examples))
