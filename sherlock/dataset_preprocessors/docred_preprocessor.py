@@ -120,8 +120,9 @@ def map_docred_label(example, override_entity_types=False, adjust_entity_type=Tr
     elif docred_label == "date of death":    # (per, time)
         mapped_label = "per:date_of_death"
     elif docred_label == "developer":  # (misc, per/org)
-        mapped_label = "per:developer"
-        example = utils.swap_args(example)
+        if obj_type == "ORG":
+            mapped_label = "org:developer"
+            example = utils.swap_args(example)
     elif docred_label == "director":   # (misc, per)
         mapped_label = "per:director"
         example = utils.swap_args(example)
@@ -149,7 +150,8 @@ def map_docred_label(example, override_entity_types=False, adjust_entity_type=Tr
     elif docred_label == "headquarters location":   # (org, loc)
         mapped_label = "org:place_of_headquarters"
     elif docred_label == "inception":    # (loc/org/misc, time)
-        mapped_label = "org:founded"
+        if subj_type == "ORG":
+            mapped_label = "org:founded"
     elif docred_label == "language":
         mapped_label = "per:language"
     elif docred_label in [

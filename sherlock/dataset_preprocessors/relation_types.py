@@ -81,7 +81,7 @@ RELATION_TYPES = [
     "per:lyrics_by",  # P676                                                                          CHECK
     "per:director",  # P57                                                                            CHECK
     "per:screenwriter",  # P58                                                                        CHECK
-    "per:developer",  # P178                                                              OPEN
+    "org:developer",  # P178                                                              OPEN
     "loc:twinned_adm_body",  # P190  (loc, loc)   sister city                                                   CHECK
     # Fewrel
     # "parent",  # P22 actually father, P25 mother -> per:parent
