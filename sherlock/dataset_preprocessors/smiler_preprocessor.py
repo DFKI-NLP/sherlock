@@ -199,7 +199,7 @@ def main():
     )
     parser.add_argument(
         "--ner_model_path",
-        # default="./models/spacy_trf/model-best",
+        # default="../../models/spacy_trf/model-best",
         type=str,
         help="path to ner model",
     )
