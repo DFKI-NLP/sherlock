@@ -9,9 +9,10 @@ from spacy.lang.en import English
 import utils
 from relation_types import RELATION_TYPES
 from ner_types import NER_TYPES
+from add_ner_annotation import get_entity_types_from_relation
 
 
-def map_gids_label(example, infer_entity_type=False):
+def map_gids_label(example, override_entity_types=True):
     gids_label = example["label"]
     mapped_label = None
     subj_type = None
@@ -19,32 +20,38 @@ def map_gids_label(example, infer_entity_type=False):
 
     if gids_label == "/people/person/education./education/education/degree":    # (per, misc)
         mapped_label = "per:degree"
-        subj_type = "PERSON"
-        obj_type = "DEGREE"
     elif gids_label == "NA":
         mapped_label = "no_relation"
     elif gids_label == "/people/person/education./education/education/institution":  # (per, org)
         mapped_label = "per:schools_attended"
-        subj_type = "PERSON"
-        obj_type = "ORG"
     elif gids_label == "/people/person/place_of_birth":  # (per, loc)
         mapped_label = "per:place_of_birth"
-        subj_type = "PERSON"
-        obj_type = "LOC"
     elif gids_label == "/people/deceased_person/place_of_death":  # (per, loc)
         mapped_label = "per:place_of_death"
-        subj_type = "PERSON"
-        obj_type = "LOC"
 
     if mapped_label is None:
         return None
 
     assert mapped_label in RELATION_TYPES
     example["label"] = mapped_label
-    if infer_entity_type and all(e_type is not None for e_type in [subj_type, obj_type]):
-        assert all(e_type in NER_TYPES for e_type in [subj_type, obj_type]), f"{[subj_type, obj_type]} not valid types"
-        example["type"] = [subj_type, obj_type]
+    if override_entity_types:
+        subj_type, obj_type = get_entity_types_from_relation(mapped_label, subj_type, obj_type)
+        example["type"] = [map_gids_ner_label(subj_type), map_gids_ner_label(obj_type)]
+    if subj_type is not None and obj_type is not None:
+        example["type"] = [map_gids_ner_label(subj_type), map_gids_ner_label(obj_type)]
     return example
+
+
+def map_gids_ner_label(gids_label):
+    mapped_label = gids_label
+    # if gids_label == "PER":
+    #     mapped_label = "PERSON"
+    # elif gids_label == "ORG":
+    #     mapped_label = "ORG"
+
+    if mapped_label is not None:
+        assert mapped_label in NER_TYPES, f"{mapped_label} not valid label"
+    return mapped_label
 
 
 def replace_underscore_in_span(text, start, end):

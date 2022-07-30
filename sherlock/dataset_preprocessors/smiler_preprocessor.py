@@ -9,7 +9,7 @@ from spacy.lang.en import English
 
 import utils
 from relation_types import RELATION_TYPES
-from relation_ner_mapping import get_entity_types_from_relation
+from add_ner_annotation import get_entity_types_from_relation
 from ner_types import NER_TYPES
 
 

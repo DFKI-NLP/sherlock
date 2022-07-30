@@ -22,6 +22,9 @@ def get_entity_types_from_relation(relation_label, subj_type=None, obj_type=None
     if relation_label == "per:place_of_birth":
         subj_type = "PERSON"
         obj_type = "LOC"
+    elif relation_label == "per:degree":
+        subj_type = "PERSON"
+        obj_type = "DEGREE"
     elif relation_label == "per:place_of_death":
         subj_type = "PERSON"
         obj_type = "LOC"
