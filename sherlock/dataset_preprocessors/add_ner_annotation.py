@@ -258,8 +258,8 @@ def main():
 
     data_path = Path(args.data_path)
     export_path = Path(args.export_path)
-    if not os.path.exists(export_path):
-        os.makedirs(export_path)
+    export_path.parent.absolute().mkdir(parents=True, exist_ok=True)
+
     batch_size = args.batch_size
     spacy_batch_size = args.spacy_batch_size
     spacy_ner_predictor = utils.load_spacy_predictor(args.ner_model_path)
