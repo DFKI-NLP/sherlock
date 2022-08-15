@@ -66,6 +66,7 @@ from sherlock.feature_converters import FeatureConverter
 from sherlock.metrics import compute_f1
 from sherlock.tasks import IETask
 
+from typing import Optional, Sequence
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -443,7 +444,7 @@ def load_and_cache_examples(args, dataset_reader, converter, tokenizer, split):
     return dataset
 
 
-def main():
+def main(args:Optional[Sequence[str]] = None):
     parser = argparse.ArgumentParser()
 
     # Required parameters
@@ -678,7 +679,7 @@ def main():
         default="",
         help="Optional experiment name identifier which is appended to the prediction file name"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # Setup logging
     logging.basicConfig(
