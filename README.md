@@ -70,20 +70,20 @@ The crux of the configs lies in the `dataset_reader` and `model` section.
 
 ### dataset_reader
 
-The [dataset_reader](sherlock/allennlp/sherlock_dataset_reader.py) for AllenNLP is a patch-together of the [dataset_reader](sherlock/dataset_readers/) from sherlock and the [feature_converter](sherlock/feature_converters/) from sherlock.
+The [dataset_reader](sherlock/sherlock_allennlp/sherlock_dataset_reader.py) for AllenNLP is a patch-together of the [dataset_reader](sherlock/dataset_readers/) from sherlock and the [feature_converter](sherlock/feature_converters/) from sherlock.
 
 It inherits from `allennlp.data.DatasetReader` and its name ("type") is `"sherlock"`. It accepts a dataset_reader_name,
 which must be a registered sherlock-dataset_reader and dataset_reader_kwargs to initialize the dataset_reader with correct arguments.
 The same happens for the `feature_converter`. Besides that, it takes
 the standart arguments that a AllenNLP-DatasetReader takes.
-For more details look into the documentation of the [sherlock_dataset_reader](sherlock/allennlp/sherlock_dataset_reader.py).
+For more details look into the documentation of the [sherlock_dataset_reader](sherlock/sherlock_allennlp/sherlock_dataset_reader.py).
 
 ### model
 
-The [models](sherlock/allennlp/models/) directory contains the models which
+The [models](sherlock/sherlock_allennlp/models/) directory contains the models which
 can be used as of now. Because of dependency-injection you can produce quite
 a lot with these models already: whereby the [transformer](sherlock/allennp/models/relation_classification/transformer_relation_classifier) model is
-limited to a certain type of (bert-like) transformers, the [basic_relation_classifier](sherlock/allennlp/models/relation_classification/basic_relation_classifier.py) can handle anything which fits into the schema of "embedder" -> "encoder" -> "classifier" (yes, theoretically transformer based models too).
+limited to a certain type of (bert-like) transformers, the [basic_relation_classifier](sherlock/sherlock_allennlp/models/relation_classification/basic_relation_classifier.py) can handle anything which fits into the schema of "embedder" -> "encoder" -> "classifier" (yes, theoretically transformer based models too).
 
 *For the transformers module it is important to give it the correct tokenizer keyword arguments, in this case `additional_special_tokens`, as it uses those to rescale its embedding dimension. There did not seem another generic and clean way to do this.*
 
