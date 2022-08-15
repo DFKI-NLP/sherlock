@@ -38,6 +38,9 @@ setup(
         "allennlp==2.8.0",
         "allennlp-models==2.8.0",
         "transformers[ja]>=4.1,<4.13",
+        # "farasapy", pre-processing of Arabic text according to \
+        # https://huggingface.co/aubmindlab/bert-base-arabertv02#preprocessing, but would require extensive hacking \
+        # in binary_rc#documents_to_features for Transformers
 
         # code formatting
         "black",
