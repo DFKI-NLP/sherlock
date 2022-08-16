@@ -213,13 +213,13 @@ def main():
         random.shuffle(test)
 
     # Write data to files
-    export_path = Path(export_path)
     export_path.mkdir(parents=True, exist_ok=True)
 
     for data, export_name in zip([train, dev, test], ["train", "dev", "test"]):
-        logging.info(f"Exporting {export_name} data")
+        file_path = export_path.joinpath(export_name + ".jsonl")
+        logging.info(f"Exporting {export_name} data ({len(data)} examples) to {file_path}")
         logging.info(utils.get_label_counter(data))
-        with open(export_path.joinpath(export_name + ".jsonl"), mode="w", encoding="utf8") as f:
+        with open(file_path, mode="w", encoding="utf8") as f:
             for example in data:
                 f.write(json.dumps(example))
                 f.write("\n")
