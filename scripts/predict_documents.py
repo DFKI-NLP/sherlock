@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import sys
+import torch
 from time import time
 from pathlib import Path
 
@@ -45,7 +46,7 @@ def main():
     # Setup logging
     logger = logging.getLogger(__name__)
     formatter = logging.Formatter(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+        fmt="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S"
     )
     ch = logging.StreamHandler(sys.stdout)
@@ -61,7 +62,8 @@ def main():
             num_of_docs += 1
     num_batches = math.ceil(num_of_docs / document_batch_size)
     docs = dataset_reader.get_documents(file_path=input_path)
-    annotator = TransformersBinaryRcAnnotator.from_pretrained(model_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    annotator = TransformersBinaryRcAnnotator.from_pretrained(model_path, device=device)
 
     logger.info(f"Processing {num_of_docs} documents in {num_batches} batches")
     batch_docs = []
