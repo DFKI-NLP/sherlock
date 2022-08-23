@@ -32,7 +32,7 @@ setup(
         "spacy>=2.1.0,<3.3",
         "transformers>=4.1,<4.13",
         "seqeval",
-        "torch>=1.6.0,<1.11.0",
+        "torch>=1.11.0,<1.14.0",
         "registrable",
         "tensorboardX>=1.2",
         "allennlp==2.8.0",
