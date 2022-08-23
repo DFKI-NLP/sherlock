@@ -35,8 +35,8 @@ setup(
         "torch>=1.11",
         "registrable",
         "tensorboardX>=1.2",
-        "allennlp==2.9.0",
-        "allennlp-models==2.9.0",
+        "allennlp==2.10.0",
+        "allennlp-models==2.10.0",
         "transformers[ja]>=4.1,<4.13",
         # "farasapy", pre-processing of Arabic text according to \
         # https://huggingface.co/aubmindlab/bert-base-arabertv02#preprocessing, but would require extensive hacking \
