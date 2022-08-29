@@ -1,6 +1,7 @@
 from typing import Union, List
 
 import logging
+import gzip
 import spacy
 import torch
 from spacy.tokens import Doc
@@ -17,6 +18,14 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
+
+def open_file(filename, mode, is_gzip=False, encoding="utf-8"):
+    if is_gzip:
+        if mode == "w":
+            mode = "wt"
+        return gzip.open(filename, mode)
+    else:
+        return open(filename, mode=mode, encoding=encoding)
 
 def generate_example_id():
     return str(uuid4())
