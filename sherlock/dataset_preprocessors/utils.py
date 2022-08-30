@@ -1,3 +1,4 @@
+import os
 from typing import Union, List
 
 import logging
@@ -19,10 +20,10 @@ logging.basicConfig(
 )
 
 
-def open_file(filename, mode, is_gzip=False, encoding="utf-8"):
-    if is_gzip:
-        if mode == "w":
-            mode = "wt"
+def open_file(filename, mode, encoding="utf-8"):
+    if ".gz" in os.path.splitext(filename)[1]:
+        if mode == "w" or mode == "a":
+            mode += "t"     # text mode
         return gzip.open(filename, mode)
     else:
         return open(filename, mode=mode, encoding=encoding)
