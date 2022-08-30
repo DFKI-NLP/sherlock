@@ -3,9 +3,6 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import List
-from itertools import permutations
-from allennlp.data.dataset_readers.dataset_utils import span_utils
 
 from sherlock.dataset_preprocessors.utils import open_file
 
@@ -22,81 +19,14 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-def get_entities(ner_labels: List[str], tagging_format: str = "bio") -> List[dict]:
-    """
-    Given a sequence corresponding to e.g. BIO tags, extracts named entities.
-
-    Parameters
-    ----------
-    ner_labels : List[str]
-        Sequence of NER tags
-    tagging_format : str, default="bio"
-        Used to determine which span util function to use
-
-    Returns
-    ----------
-    entities : List[dict]
-        List of entity dictionaries with spans and entity label
-    """
-    assert tagging_format in [
-        "bio",
-        "iob1",
-        "bioul",
-    ], "Valid tagging format options are ['bio', 'iob1', 'bioul']"
-    if tagging_format == "iob1":
-        tags_to_spans = span_utils.iob1_tags_to_spans
-    elif tagging_format == "bioul":
-        tags_to_spans = span_utils.bioul_tags_to_spans
-    else:
-        tags_to_spans = span_utils.bio_tags_to_spans
-
-    typed_string_spans = tags_to_spans(ner_labels)
-    entities = []
-    for label, span in typed_string_spans:
-        entities.append(
-            {
-                "start": span[0],
-                "end": span[1] + 1,  # make span exclusive
-                "label": label,
-            }
-        )
-    entities.sort(key=lambda e: e["start"])
-    return entities
-
-
 def businesswire_converter(data):
+    # only set the ent_type field and remove ent_dist
     for document in data:
-        guid = document["guid"]
-        for sent_idx, span in enumerate(document["sents"]):
-            ner_labels = []
-            tokens = []
-            annotated_tokens = [token for token in document["tokens"][span["start"]: span["end"]]]
-            for token in annotated_tokens:
-                if token["ent_type"]:
-                    ner_labels.append(token["ent_type"])
-                else:
-                    ent_dist = token["ent_dist"]
-                    majority_ner_label = max(ent_dist, key=ent_dist.get)
-                    ner_labels.append(majority_ner_label)
-                tokens.append(document["text"][token["start"]:token["end"]])
-            entities = get_entities(ner_labels)
-
-            entity_pairs = permutations(entities, r=2)
-            # TODO exclude pairs with impossible ent type combination (?)
-            for ent_pair in entity_pairs:
-                subj = ent_pair[0]
-                obj = ent_pair[1]
-
-                converted_example = {
-                    "id": guid,
-                    "sent_idx": sent_idx,   # needed to reconstruct documents after the prediction step
-                    "tokens": tokens,
-                    "label": None,
-                    "grammar": ["SUBJ", "OBJ"],
-                    "entities": [[subj["start"], subj["end"]], [obj["start"], obj["end"]]],
-                    "type": [subj["label"], obj["label"]]
-                }
-                yield converted_example
+        for idx, token in enumerate(document["tokens"]):
+            ent_dist = token.pop("ent_dist")
+            majority_ner_label = max(ent_dist, key=ent_dist.get)
+            document["tokens"][idx]["ent_type"] = majority_ner_label
+        yield document
 
 
 def process_businesswire(data_path, export_path):
@@ -117,7 +47,7 @@ def process_businesswire(data_path, export_path):
             output_file.write("\n")
             example_counter += 1
 
-        logger.info(f"{example_counter} examples in converted file")
+        logger.info(f"{example_counter} docs in converted file")
 
 
 def main():
