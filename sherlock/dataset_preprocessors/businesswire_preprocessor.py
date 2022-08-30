@@ -1,13 +1,25 @@
 import argparse
 import json
 import logging
-import os
+import sys
 from pathlib import Path
 from typing import List
 from itertools import permutations
 from allennlp.data.dataset_readers.dataset_utils import span_utils
 
-from utils import open_file
+from sherlock.dataset_preprocessors.utils import open_file
+
+
+# Setup logging
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter(
+    fmt="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+    datefmt="%m/%d/%Y %H:%M:%S"
+)
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 def get_entities(ner_labels: List[str], tagging_format: str = "bio") -> List[dict]:
@@ -87,6 +99,27 @@ def businesswire_converter(data):
                 yield converted_example
 
 
+def process_businesswire(data_path, export_path):
+    data_path = Path(data_path)
+    export_path = Path(export_path)
+    export_path.parent.absolute().mkdir(parents=True, exist_ok=True)
+    logger.info("Reading %s", data_path)
+    with open_file(data_path, mode="r") as input_file, \
+            open_file(export_path, mode="w") as output_file:
+        businesswire_data = (json.loads(line) for line in input_file)
+
+        logger.info("Processing and exporting to %s", export_path)
+        converted_examples = businesswire_converter(businesswire_data)
+
+        example_counter = 0
+        for conv_example in converted_examples:
+            output_file.write(json.dumps(conv_example))
+            output_file.write("\n")
+            example_counter += 1
+
+        logger.info(f"{example_counter} examples in converted file")
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -99,41 +132,17 @@ def main():
     )
     parser.add_argument(
         "--export_path",
-        default="../../ds/text/businesswire/converted/businesswire_20210115_20210912_v2_dedup_token_assembled"
-                ".jsonlines.gz",
+        default=
+        "../../ds/text/businesswire/converted/businesswire_20210115_20210912_v2_dedup_token_assembled.jsonlines",
         type=str,
         help="path to save converted businesswire file",
     )
     args = parser.parse_args()
 
     data_path = args.data_path
-    is_gzip = True if ".gz" in os.path.splitext(data_path)[1] else False
-    data_path = Path(data_path)
-    export_path = Path(args.export_path)
-    export_path.parent.absolute().mkdir(parents=True, exist_ok=True)
+    export_path = args.export_path
 
-    # Setup logging
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO,
-    )
-
-    logging.info("Reading %s", data_path)
-    with open_file(data_path, mode="r", encoding="utf-8", is_gzip=is_gzip) as input_file, \
-            open_file(export_path, mode="w", encoding="utf-8", is_gzip=is_gzip) as output_file:
-        businesswire_data = (json.loads(line) for line in input_file)
-
-        logging.info("Processing and exporting to %s", export_path)
-        converted_examples = businesswire_converter(businesswire_data)
-
-        example_counter = 0
-        for conv_example in converted_examples:
-            output_file.write(json.dumps(conv_example))
-            output_file.write("\n")
-            example_counter += 1
-
-        logging.info(f"{example_counter} examples in converted file")
+    process_businesswire(data_path, export_path)
 
 
 if __name__ == "__main__":
