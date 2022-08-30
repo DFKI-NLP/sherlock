@@ -1,15 +1,15 @@
 import os
-from typing import Union, List
-
 import logging
 import gzip
 import spacy
 import torch
-from spacy.tokens import Doc
-from spacy.vocab import Vocab
 
+from typing import Union, List
 from uuid import uuid4
 from collections import Counter
+from spacy.tokens import Doc
+from spacy.vocab import Vocab
+from allennlp.data.dataset_readers.dataset_utils import span_utils
 
 
 # Setup logging
@@ -110,3 +110,45 @@ def predict_entity_type(spacy_ner_predictor, examples, batch_size=1000):
             examples[i]["type"] = [subj_type, obj_type]
             i += 1
     return examples
+
+
+def get_entities(ner_labels: List[str], tagging_format: str = "bio") -> List[dict]:
+    """
+    Given a sequence corresponding to e.g. BIO tags, extracts named entities.
+
+    Parameters
+    ----------
+    ner_labels : List[str]
+        Sequence of NER tags
+    tagging_format : str, default="bio"
+        Used to determine which span util function to use
+
+    Returns
+    ----------
+    entities : List[dict]
+        List of entity dictionaries with spans and entity label
+    """
+    assert tagging_format in [
+        "bio",
+        "iob1",
+        "bioul",
+    ], "Valid tagging format options are ['bio', 'iob1', 'bioul']"
+    if tagging_format == "iob1":
+        tags_to_spans = span_utils.iob1_tags_to_spans
+    elif tagging_format == "bioul":
+        tags_to_spans = span_utils.bioul_tags_to_spans
+    else:
+        tags_to_spans = span_utils.bio_tags_to_spans
+
+    typed_string_spans = tags_to_spans(ner_labels)
+    entities = []
+    for label, span in typed_string_spans:
+        entities.append(
+            {
+                "start": span[0],
+                "end": span[1] + 1,  # make span exclusive
+                "label": label,
+            }
+        )
+    entities.sort(key=lambda e: e["start"])
+    return entities
