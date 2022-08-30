@@ -28,17 +28,22 @@ logger.addHandler(ch)
 
 
 def get_businesswire_documents(data_path):
+    # Sets "ent_type" for each token to the majority vote label (model ensemble output) and fill "ments" field
     data_path = Path(data_path)
     with open_file(data_path, mode="r") as input_file:
         businesswire_data = (json.loads(line) for line in input_file)
         for document in businesswire_data:
             ner_labels = []
             for idx, token in enumerate(document["tokens"]):
-                ent_dist = token.pop("ent_dist")
-                majority_ner_label = max(ent_dist, key=ent_dist.get)
-                document["tokens"][idx]["ent_type"] = majority_ner_label
+                if token["ent_type"]:
+                    majority_ner_label = token["ent_type"]
+                else:
+                    ent_dist = token.pop("ent_dist")
+                    majority_ner_label = max(ent_dist, key=ent_dist.get)
+                    document["tokens"][idx]["ent_type"] = majority_ner_label
                 ner_labels.append(majority_ner_label)
-            document["ments"] = get_entities(ner_labels)
+            if document["ments"] is None or len(document["ments"]) == 0:
+                document["ments"] = get_entities(ner_labels)
             yield Document.from_dict(document)
 
 
