@@ -311,13 +311,13 @@ class BinaryRcConverter(FeatureConverter):
                         for idx, ment in enumerate(document.ments)
                         if sent.start <= ment.start < sent.end
                     ]
-                    for head_idx, tail_idx in itertools.permutations(sent_ments, repeat=2):
+                    for head_idx, tail_idx in itertools.permutations(sent_ments, r=2):
                         if head_idx == tail_idx:
                             continue
                         mention_combinations.append((head_idx, tail_idx, None, sent_idx))
             else:
                 # No sentences -> create combinations between all Mentions
-                for head_idx, tail_idx in itertools.permutations(range(len(document.ments)), repeat=2):
+                for head_idx, tail_idx in itertools.permutations(range(len(document.ments)), r=2):
                     if head_idx == tail_idx:
                         continue
                     mention_combinations.append((head_idx, tail_idx, None, None))
