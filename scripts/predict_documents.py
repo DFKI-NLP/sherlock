@@ -58,8 +58,12 @@ def predict_documents(docs, model_path, output_path, document_batch_size, num_of
     first_batch = True
     batch_counter = 1
 
+    if document_batch_size is None:
+        document_batch_size = num_of_examples
     num_batches = math.ceil(num_of_examples / document_batch_size)
-    logger.info(f"Processing {num_of_examples} examples in {num_batches} batches")
+    logger.info(f"Processing {num_of_examples} documents in {num_batches} batches")
+    start = time()
+    processed_doc_guid = []
 
     for doc_idx, doc in enumerate(docs):
         batch_docs.append(doc)
@@ -67,15 +71,22 @@ def predict_documents(docs, model_path, output_path, document_batch_size, num_of
             logger.info(f"Processing batch {batch_counter}/{num_batches}")
             batch_start = time()
             annotated_docs = annotator.process_documents(batch_docs)
+            # assert len(batch_docs) == len(annotated_docs), \
+            #     f"Mismatch: {len(batch_docs)} input docs vs. {len(annotated_docs)}"
             write_mode = "w" if first_batch else "a"
             first_batch = False
             with open_file(output_path, mode=write_mode, encoding="utf-8") as out_file:
                 for annotated_doc in annotated_docs:
+                    if annotated_doc.guid in processed_doc_guid:
+                        continue
+                    processed_doc_guid.append(annotated_doc.guid)
                     out_file.write(json.dumps(annotated_doc.to_dict()) + "\n")
             batch_end = time()
             logger.info(f"Took {batch_end - batch_start} seconds for {len(batch_docs)} documents")
             batch_docs = []
             batch_counter += 1
+    end = time()
+    logger.info(f"Took {end - start} seconds for {num_of_examples} documents")
     assert len(batch_docs) == 0, f"{len(batch_docs)} docs were not annotated"
 
 
@@ -101,8 +112,8 @@ def main():
     parser.add_argument(
         "--document_batch_size",
         type=int,
-        help="Batch size for document processing",
-        default=1000,
+        default=100,
+        help="Batch size for document processing"
     )
     parser.add_argument(
         "--businesswire_prediction",
