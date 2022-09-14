@@ -1,0 +1,27 @@
+python ./scripts/run_binary_relation_clf.py \
+  --model_type roberta \
+  --model_name_or_path roberta-base \
+  --do_train \
+  --do_eval \
+  --do_predict \
+  --evaluate_during_training \
+  --eval_all_checkpoints \
+  --data_dir /ds/text/UnionizedRelExDataset/split/ \
+  --train_file train.jsonl \
+  --dev_file dev.jsonl \
+  --test_file test.jsonl \
+  --cache_dir ../.cache_slurm/binary_relation_clf/in_language/en/RoBERTa-base-UnionizedRelExDataset \
+  --save_steps 8500 \
+  --logging_steps 8500 \
+  --max_seq_length 128 \
+  --per_gpu_eval_batch_size=32 \
+  --per_gpu_train_batch_size=32 \
+  --learning_rate 4e-5 \
+  --num_train_epochs 5.0 \
+  --overwrite_cache \
+  --overwrite_output_dir \
+  --entity_handling mark_entity_append_ner \
+  --output_dir ./experiments/binary_relation_clf/in_language/en/RoBERTa-base-UnionizedRelExDataset \
+  --dataset_reader tacred_dfki_jsonl \
+  --predictions_exp_name RoBERTa-base-UnionizedRelExDataset \
+  --seed 42 
