@@ -40,7 +40,8 @@ def main():
     # Required parameters
     parser.add_argument(
         "--data_path",
-        default="../../ds/text/businesswire/businesswire_20210115_20210912_v2_dedup_token_assembled.jsonlines.gz",
+        default=
+        "../../ds/text/businesswire/annotated/businesswire_20210115_20210912_v2_dedup_token_assembled.jsonlines.gz",
         type=str,
         help="path to businesswire data file",
     )
@@ -62,6 +63,8 @@ def main():
     entity_token_dist = Counter()
     num_entities = 0
     entity_dist = Counter()
+    num_relations = 0
+    relation_dist = Counter()
 
     print("Processing businesswire data")
     with gzip.open(data_path, mode="r") as f:
@@ -74,7 +77,10 @@ def main():
             tokens = doc["tokens"]
             num_tokens += len(tokens)
             for token in tokens:
-                majority_tag, _ = _compute_majority_tag(token)
+                if "ent_type" in token:
+                    majority_tag = token["ent_type"]
+                else:
+                    majority_tag, _ = _compute_majority_tag(token)
                 ner_labels.append(majority_tag)
                 if majority_tag != "O":
                     entity_tokens.append(majority_tag)
@@ -84,6 +90,10 @@ def main():
             entity_labels = [entity["label"] for entity in entities]
             num_entities += len(entities)
             entity_dist.update(entity_labels)
+            relations = doc["rels"]
+            num_relations += len(relations)
+            relation_labels = [relation["label"] for relation in relations]
+            relation_dist.update(relation_labels)
 
     # Overview table with number of docs, tokens, entity tokens, entities
     overview_dict = {
@@ -92,6 +102,7 @@ def main():
         'Tokens': num_tokens,
         'Entity Tokens': num_entity_tokens,
         'Entities': num_entities,
+        'Relationen': num_relations
     }
 
     print("Writing overview statistics to file")
@@ -113,6 +124,13 @@ def main():
     with open(export_path.joinpath('entity_dist.csv'), 'w', encoding='utf8') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(entity_dist.items())
+
+    # Table with relation distribution
+    print("Writing relation distribution to file")
+    print(relation_dist)
+    with open(export_path.joinpath('relation_dist.csv'), 'w', encoding='utf8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(relation_dist.items())
 
 
 if __name__ == "__main__":
