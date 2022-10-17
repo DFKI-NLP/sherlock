@@ -1,6 +1,5 @@
 import json
 import gzip
-import operator
 import argparse
 import csv
 
@@ -8,30 +7,7 @@ from tqdm import tqdm
 from pathlib import Path
 from collections import Counter
 
-from sherlock.dataset_preprocessors.utils import get_entities
-
-
-def _compute_majority_tag(token, exclude_tags=None) -> (str, float):
-    """
-    Compute the most frequent tag and its probability in token.ent_dist that is not in exclude_tags.
-    Note that exclude_tags only affects the tag selection, not the probability computation.
-    Returns None,None if all tags are excluded or ent_dist.values() sums to <= 0.
-    :param token:
-    :param exclude_tags:
-    :return:
-    """
-    if exclude_tags is None:
-        exclude_tags = []
-    tag_sum = sum(token["ent_dist"].values())
-    ent_dist_copy = dict(token["ent_dist"])
-    for ex_tag in exclude_tags:
-        if ex_tag in ent_dist_copy:
-            ent_dist_copy.pop(ex_tag)
-    if len(ent_dist_copy) == 0:
-        return None, None
-    majority_tag = max(ent_dist_copy.items(), key=operator.itemgetter(1))[0]
-    prob = max(ent_dist_copy.values()) / tag_sum
-    return majority_tag, prob
+from sherlock.dataset_preprocessors.utils import get_entities, _compute_majority_tag
 
 
 def main():
@@ -77,10 +53,7 @@ def main():
             tokens = doc["tokens"]
             num_tokens += len(tokens)
             for token in tokens:
-                if "ent_type" in token:
-                    majority_tag = token["ent_type"]
-                else:
-                    majority_tag, _ = _compute_majority_tag(token)
+                majority_tag, _ = _compute_majority_tag(token)
                 ner_labels.append(majority_tag)
                 if majority_tag != "O":
                     entity_tokens.append(majority_tag)

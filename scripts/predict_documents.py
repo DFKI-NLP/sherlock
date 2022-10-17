@@ -11,7 +11,7 @@ from pathlib import Path
 
 from sherlock.annotators.transformers.transformers_binary_rc import TransformersBinaryRcAnnotator
 from sherlock.dataset_readers.dfki_tacred_jsonl import TacredDatasetReaderDfkiJsonl
-from sherlock.dataset_preprocessors.utils import open_file, get_entities
+from sherlock.dataset_preprocessors.utils import open_file, get_entities, _compute_majority_tag
 from sherlock.document import Document
 
 
@@ -38,8 +38,8 @@ def get_businesswire_documents(data_path):
                 if token["ent_type"]:
                     majority_ner_label = token["ent_type"]
                 else:
-                    ent_dist = token.pop("ent_dist")
-                    majority_ner_label = max(ent_dist, key=ent_dist.get)
+                    majority_ner_label = _compute_majority_tag(token)
+                    token.pop("ent_dist")
                     document["tokens"][idx]["ent_type"] = majority_ner_label
                 ner_labels.append(majority_ner_label)
             if document["ments"] is None or len(document["ments"]) == 0:

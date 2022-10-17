@@ -20,6 +20,19 @@ logging.basicConfig(
 )
 
 
+TAG_O = 'O'
+gazetteer_tags = [
+    'CAUSE_OF_DEATH',
+    'CHARGE',
+    'DEGREE',
+    'DISASTER_TYPE',
+    'FINANCIAL_EVENT',
+    'INDUSTRY',
+    'POSITION',
+    'URL'
+]
+
+
 def open_file(filename, mode, encoding="utf-8"):
     if ".gz" in os.path.splitext(filename)[1]:
         if mode == "w" or mode == "a":
@@ -152,3 +165,48 @@ def get_entities(ner_labels: List[str], tagging_format: str = "bio") -> List[dic
         )
     entities.sort(key=lambda e: e["start"])
     return entities
+
+
+def _normalize_tag(tag: str) -> str:
+    if tag.startswith(('B-', 'I-', 'E-', 'S-', 'L-', 'U-')):
+        return tag[2:]
+    return tag
+
+
+def _compute_majority_tag(token, exclude_tags=None, prob_threshold=0.8) -> (str, float):
+    """
+    Compute the most frequent tag and its probability in token.ent_dist that is not in exclude_tags.
+    Exclude TAG_O if the probability of the majority tag is below the prob_threshold.
+    Note that exclude_tags only affects the tag selection, not the probability computation.
+    Returns None,None if all tags are excluded or ent_dist.values() sums to <= 0.
+    :param token:
+    :param exclude_tags:
+    :return:
+    """
+    if exclude_tags is None:
+        exclude_tags = []
+
+    tag_sum = sum(token["ent_dist"].values())
+    if tag_sum <= 0:
+        return None, None
+    sorted_ent_dist = sorted(token["ent_dist"].items(), key=lambda item: item[1], reverse=True)
+
+    sorted_ent_dist = [i for i in sorted_ent_dist if i[0] not in exclude_tags]
+    if len(sorted_ent_dist) == 0:
+        return None, None
+
+    majority_tag, majority_tag_count = sorted_ent_dist[0]
+    prob = majority_tag_count / tag_sum
+
+    if majority_tag == TAG_O:
+        # if TAG_O is uncertain, use next-most likely tag
+        if prob < prob_threshold:
+            majority_tag = sorted_ent_dist[1][0]
+            prob = sorted_ent_dist[1][1] / tag_sum
+        # if there is a gazetteer tag, it will have a count of 1 and therefore a low prob -> use it anyway
+        else:
+            gaz_tags = [t for t in sorted_ent_dist if _normalize_tag(t[0]) in gazetteer_tags]
+            if len(gaz_tags) > 0:
+                majority_tag = gaz_tags[0][0]
+                prob = 1 / tag_sum
+    return majority_tag, prob
