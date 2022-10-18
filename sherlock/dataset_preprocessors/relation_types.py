@@ -73,13 +73,13 @@ RELATION_TYPES = [
     "per:author",  # (per, work of art) P50                                                           CHECK
     "per:director",  # (per, work of art) P57                                                         CHECK
     "per:work_location",  # (per, loc) P937                                                           CHECK
-    "per:religion",  # (per, norp) P140                                                               CHECK
-    "loc:unemployment_rate",  # (loc/gpe, number)                                                     CHECK
+    #"per:religion",  # (per, norp) P140           -> TACRED per:religion                              CHECK
+    "loc:unemployment_rate",  # (loc/gpe, number)  P1198                                                    CHECK
     "loc:country_of_origin",  # P495 (loc, work of art/misc?)                   OPEN
     "per:performer",  # P175                                                                          CHECK
     "per:composer",  # per/work_of_art, P86                                                          CHECK
     "per:lyrics_by",  # P676                                                                          CHECK
-    "per:director",  # P57                                                                            CHECK
+    #"per:director",  # P57                                                                            CHECK
     "per:screenwriter",  # P58                                                                        CHECK
     "org:developer",  # P178                                                              OPEN
     "loc:twinned_adm_body",  # P190  (loc, loc)   sister city                                                   CHECK
@@ -143,15 +143,15 @@ RELATION_TYPES = [
     "org:facility_or_location",  # (org, fac/loc) maybe Docred P706? P276, FewRel P276                     CHECK
     "org:acquisition",  # (org, org)                                                                 CHECK
     "loc:event_or_disaster",  # (loc, disaster-type/event)                            CHECK
-    "org:insolvency",  # (org, cause_of_insolvency)  or rumor of insolvency?                OPEN
-    "org:date_of_insolvency",  # (org, date)                                                         CHECK
-    "org:layoffs",  # (org, loc)                                                                 CHECK
-    "org:merger",  # (org, org)                                                                 CHECK
-    "org:spinoff",  # (org, org)                                                                 CHECK
-    "org:strike",  # (org, loc)                                                                 CHECK
-    "org:turnover",  # (org, number/money)                                                        CHECK
-    "org:revenue",  # (org, number/money)                                                        CHECK
-    "org:industry",  # (org, industry)                                                    CHECK
+    #"org:insolvency",  # (org, cause_of_insolvency)  or rumor of insolvency?                OPEN
+    #"org:date_of_insolvency",  # (org, date)                                                         CHECK
+    #"org:layoffs",  # (org, loc)                                                                 CHECK
+    #"org:merger",  # (org, org)                                                                 CHECK
+    #"org:spinoff",  # (org, org)                                                                 CHECK
+    #"org:strike",  # (org, loc)                                                                 CHECK
+    #"org:turnover",  # (org, number/money)                                                        CHECK
+    #"org:revenue",  # (org, number/money)                                                        CHECK
+    #"org:industry",  # (org, industry)                                                    CHECK
     "org:customer",  # (org, org)                                                                 CHECK
     "org:fin_event",  # (org, fin_event)    fin-events -> spree gazetteer                  OPEN
 ]
