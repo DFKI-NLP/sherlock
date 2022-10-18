@@ -27,25 +27,30 @@ def get_train_test_split(data, test_size=0.2, train_size=0.8, check_tokens_ident
     train = data[:split]
     test = data[split:]
     if check_tokens_identity:
-        """
-            Used for datasets such as DocRED, KnowledgeNet that do not have a train, dev, test split and
-            contain multiple relation annotations for the same sentence, resulting in multiple examples
-            with the same tokens. Those examples should be put in the same split to avoid data leakage.
-        """
-        # Move examples from train to test split if the test split contains examples with the same tokens
-        train_token_seqs = [" ".join(example["tokens"]) for example in train]
-        test_token_seqs = [" ".join(example["tokens"]) for example in test]
-        indices = []
-        for i, token_seq in enumerate(train_token_seqs):
-            if token_seq in test_token_seqs:
-                indices.append(i)
-        for i in reversed(indices):
-            test.append(train.pop(i))
-        train_size = len(train) / (len(train) + len(test))
-        test_size = 1.0 - train_size
-        logging.info(f"Moved {len(indices)} examples from the train split to the test split to prevent data leakage.\n"
-                     f"This resulted in a {train_size} train - {test_size} test - split.")
+        train, test = move_same_sentence_examples(train, test)
     return train, test
+
+
+def move_same_sentence_examples(split_a, split_b):
+    """
+        Used for datasets such as DocRED, KnowledgeNet that do not have a train, dev, test split and
+        contain multiple relation annotations for the same sentence, resulting in multiple examples
+        with the same tokens. Those examples should be put in the same split to avoid data leakage.
+    """
+    # Move examples from train to test split if the test split contains examples with the same tokens
+    train_token_seqs = [" ".join(example["tokens"]) for example in split_a]
+    test_token_seqs = [" ".join(example["tokens"]) for example in split_b]
+    indices = []
+    for i, token_seq in enumerate(train_token_seqs):
+        if token_seq in test_token_seqs:
+            indices.append(i)
+    for i in reversed(indices):
+        split_b.append(split_a.pop(i))
+    split_a_size = len(split_a) / (len(split_a) + len(split_b))
+    split_b_size = 1.0 - split_a_size
+    logging.info(f"Moved {len(indices)} examples from split a to split b to prevent data leakage.\n"
+                 f"This resulted in a {split_a_size} split a - {split_b_size} split b ratio.")
+    return split_a, split_b
 
 
 def main():
@@ -198,18 +203,24 @@ def main():
             smiler_train, tacrev_train
         ]:
             train += train_split
-        random.shuffle(train)
         for dev_split in [
             docred_dev, fewrel_dev, gids_dev, kbp37_dev, knet_dev, plass_product_dev, plass_sdw_dev,
             smiler_dev, tacrev_dev
         ]:
             dev += dev_split
-        random.shuffle(dev)
         for test_split in [
             docred_test, fewrel_test, gids_test, kbp37_test, knet_test, plass_product_test, plass_sdw_test,
             smiler_test, tacrev_test
         ]:
             test += test_split
+
+        # This is to prevent data leakage caused by multiple datasets being constructed from the same raw data such that
+        # train examples in one dataset may occur as test examples in another dataset
+        train, dev = move_same_sentence_examples(train, dev)
+        train, test = move_same_sentence_examples(train, test)
+
+        random.shuffle(train)
+        random.shuffle(dev)
         random.shuffle(test)
 
     # Write data to files

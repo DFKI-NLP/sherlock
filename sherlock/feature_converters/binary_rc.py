@@ -20,7 +20,6 @@ from sherlock.feature_converters.feature_converter import FeatureConverter
 from sherlock.feature_converters.input_features import (
     InputFeatures, InputFeaturesAllennlp, InputFeaturesTransformers)
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -70,14 +69,15 @@ class BinaryRcConverter(FeatureConverter):
                 set for allennlp-transformers, but for other models
                 has to be set to separator used in training.
     """
+
     def __init__(
-        self,
-        max_length: Optional[int] = None,
-        framework: str = "transformers",
-        entity_handling: str = "mark_entity",
-        log_num_input_features: int = -1,
-        tokenize_special_tokens: Optional[bool] = None,
-        **kwargs,
+            self,
+            max_length: Optional[int] = None,
+            framework: str = "transformers",
+            entity_handling: str = "mark_entity",
+            log_num_input_features: int = -1,
+            tokenize_special_tokens: Optional[bool] = None,
+            **kwargs,
     ) -> None:
         super().__init__(max_length, framework, **kwargs)
         if entity_handling not in [
@@ -169,10 +169,10 @@ class BinaryRcConverter(FeatureConverter):
 
         if self.lower_cases:
             self.marker_tokens = [
-                "[head_start]","[head_end]", "[tail_start]", "[tail_end]"]
+                "[head_start]", "[head_end]", "[tail_start]", "[tail_end]"]
         else:
             self.marker_tokens = [
-                "[HEAD_START]","[HEAD_END]", "[TAIL_START]", "[TAIL_END]"]
+                "[HEAD_START]", "[HEAD_END]", "[TAIL_START]", "[TAIL_END]"]
 
     @property
     def name(self) -> str:
@@ -186,11 +186,11 @@ class BinaryRcConverter(FeatureConverter):
             return ["max_length", "entity_handling", "sep_token"]
 
     def document_to_features_transformers(
-        self, document: Document, verbose: bool = False
+            self, document: Document, verbose: bool = False
     ) -> List[InputFeaturesTransformers]:
 
-        assert isinstance(self.tokenizer, PreTrainedTokenizer) or isinstance(self.tokenizer, PreTrainedTokenizerFast),\
-                f"FeatureConverter initialized with wrong Tokenizer class: {self.tokenizer.__class__}"
+        assert isinstance(self.tokenizer, PreTrainedTokenizer) or isinstance(self.tokenizer, PreTrainedTokenizerFast), \
+            f"FeatureConverter initialized with wrong Tokenizer class: {self.tokenizer.__class__}"
 
         mention_combinations = self._create_mention_combinations(document)
 
@@ -236,10 +236,10 @@ class BinaryRcConverter(FeatureConverter):
         return input_features
 
     def document_to_features_allennlp(
-        self, document: Document, verbose: bool=False
+            self, document: Document, verbose: bool = False
     ) -> List[InputFeaturesAllennlp]:
 
-        assert isinstance(self.tokenizer, Tokenizer),\
+        assert isinstance(self.tokenizer, Tokenizer), \
             "FeatureConverter initialized with wrong Tokenizer class"
 
         mention_combinations = self._create_mention_combinations(document)
@@ -287,7 +287,6 @@ class BinaryRcConverter(FeatureConverter):
 
         return input_features
 
-
     def _create_mention_combinations(self, document: Document) -> List[str]:
         """
         Converts Document to List of InputFeatures usable to train
@@ -312,19 +311,18 @@ class BinaryRcConverter(FeatureConverter):
                         for idx, ment in enumerate(document.ments)
                         if sent.start <= ment.start < sent.end
                     ]
-                    for head_idx, tail_idx in itertools.product(sent_ments, repeat=2):
+                    for head_idx, tail_idx in itertools.permutations(sent_ments, r=2):
                         if head_idx == tail_idx:
                             continue
                         mention_combinations.append((head_idx, tail_idx, None, sent_idx))
             else:
                 # No sentences -> create combinations between all Mentions
-                for head_idx, tail_idx in itertools.product(range(len(document.ments)), repeat=2):
+                for head_idx, tail_idx in itertools.permutations(range(len(document.ments)), r=2):
                     if head_idx == tail_idx:
                         continue
                     mention_combinations.append((head_idx, tail_idx, None, None))
 
         return mention_combinations
-
 
     def documents_to_features(self, documents: List[Document]) -> List[InputFeatures]:
         input_features: List[InputFeatures] = []
@@ -357,15 +355,13 @@ class BinaryRcConverter(FeatureConverter):
         )
         return input_features
 
-
     def _handle_special_token(self, token: str) -> Union[List[str], List[Token]]:
         if self.tokenize_special_tokens:
             return self.tokenizer.tokenize(token)
         if self.framework == "allennlp":
             # Need to return Token class for allennlp
-            return [Token(text=token),]
-        return [token,]
-
+            return [Token(text=token), ]
+        return [token, ]
 
     def _handle_special_tokens(self, tokens: List[str]) -> Union[List[str], List[Token]]:
         return list(
@@ -374,19 +370,17 @@ class BinaryRcConverter(FeatureConverter):
             )
         )
 
-
     def _check_truncated_entity(self, tokens: Union[List[str], List[Token]]):
         if self.max_length:
             return len(tokens) + self.n_special_tokens > self.max_length
         return False
 
-
     def _tokenize_with_entities(
-        self,
-        document: Document,
-        head_idx: int,
-        tail_idx: int,
-        sent_idx: Optional[int] = None,
+            self,
+            document: Document,
+            head_idx: int,
+            tail_idx: int,
+            sent_idx: Optional[int] = None,
     ) -> Tuple[Union[List[str], List[Token]], bool, bool]:
         """Apply entity handling strategy on Document and tokenize
         text.
@@ -419,7 +413,7 @@ class BinaryRcConverter(FeatureConverter):
             input_tokens = document.tokens
         else:
             sent = document.sents[sent_idx]
-            input_tokens = document.tokens[sent.start : sent.end]
+            input_tokens = document.tokens[sent.start: sent.end]
 
         truncated_entity = False
         tokens = []
