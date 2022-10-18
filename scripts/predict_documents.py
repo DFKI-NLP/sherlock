@@ -38,7 +38,7 @@ def get_businesswire_documents(data_path):
                 if token["ent_type"]:
                     majority_ner_label = token["ent_type"]
                 else:
-                    majority_ner_label = _compute_majority_tag(token)
+                    majority_ner_label, _ = _compute_majority_tag(token)
                     token.pop("ent_dist")
                     document["tokens"][idx]["ent_type"] = majority_ner_label
                 ner_labels.append(majority_ner_label)

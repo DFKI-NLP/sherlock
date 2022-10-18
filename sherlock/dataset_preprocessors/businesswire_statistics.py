@@ -53,7 +53,10 @@ def main():
             tokens = doc["tokens"]
             num_tokens += len(tokens)
             for token in tokens:
-                majority_tag, _ = _compute_majority_tag(token)
+                if "ent_type" in token and token["ent_type"]:
+                    majority_tag = token["ent_type"]
+                else:
+                    majority_tag, _ = _compute_majority_tag(token)
                 ner_labels.append(majority_tag)
                 if majority_tag != "O":
                     entity_tokens.append(majority_tag)
