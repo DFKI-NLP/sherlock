@@ -1,7 +1,7 @@
 from .document import Document
 from .document_processor import DocumentProcessor
-from .allennlp.sherlock_dataset_reader import SherlockDatasetReader
-from .allennlp.models.relation_classification import TransformerRelationClassifier
+from .sherlock_allennlp.sherlock_dataset_reader import SherlockDatasetReader
+from .sherlock_allennlp.models.relation_classification import TransformerRelationClassifier
 
 
 __all__ = [
