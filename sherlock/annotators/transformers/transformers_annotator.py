@@ -79,10 +79,12 @@ class TransformersAnnotator(Annotator):
 
         tensor_dicts = []
         for features in input_features:
+            # Fix to support RoBERTa models that do not make use of token type ids and may return None
+            token_type_ids = features.token_type_ids if features.token_type_ids else [0 for _ in features.input_ids]
             tensor_dict = {
                 "input_ids": torch.tensor(features.input_ids, dtype=torch.long),
                 "attention_mask": torch.tensor(features.attention_mask, dtype=torch.long),
-                "token_type_ids": torch.tensor(features.token_type_ids, dtype=torch.long),
+                "token_type_ids": torch.tensor(token_type_ids, dtype=torch.long),
             }
             if features.labels is not None:
                 tensor_dict["labels"] = torch.tensor(features.labels, dtype=torch.long)
