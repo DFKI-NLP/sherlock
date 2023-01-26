@@ -4,7 +4,7 @@ from sklearn.metrics import precision_recall_fscore_support
 
 def compute_f1(preds, labels, exclude=[0]):
     label_set = sorted(list(set(labels + preds)))
-    label_set.remove(exclude)
+    label_set = [l for l in label_set if l not in exclude]
     prec, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='micro', labels=label_set)
     #n_gold = n_pred = n_correct = 0
     #for pred, label in zip(preds, labels):
