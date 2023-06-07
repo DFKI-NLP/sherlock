@@ -31,9 +31,9 @@ setup(
         # core
         "spacy>=3.1",
         #"transformers>=4.29",
-        #"seqeval",
+        "seqeval",
         #"torch>=1.10",
-        #"registrable",
+        "registrable",
         #"tensorboardX>=1.2",
         "allennlp>=2.8.0",
         "allennlp-models>=2.8.0",
