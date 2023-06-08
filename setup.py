@@ -32,14 +32,14 @@ setup(
         "spacy>=3.1",
         #"transformers>=4.29",
         "seqeval",
-        "overrides"
+        "overrides",
         #"torch>=1.10",
         "registrable",
         #"tensorboardX>=1.2",
         "allennlp>=2.8.0",
         "allennlp-models>=2.8.0",
         #"transformers[ja]>=4.1,<4.13",
-        "transformers[ja]"
+        "transformers[ja]",
         # "farasapy", pre-processing of Arabic text according to \
         # https://huggingface.co/aubmindlab/bert-base-arabertv02#preprocessing, but would require extensive hacking \
         # in binary_rc#documents_to_features for Transformers
