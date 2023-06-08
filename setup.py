@@ -29,16 +29,15 @@ setup(
                                     "tests.*", "tests"]),
     install_requires=[
         # core
-        "spacy>=3.1",
-        #"transformers>=4.29",
+        "spacy>=3.3",
+        "transformers>=4.20",
         "seqeval",
         "overrides",
-        #"torch>=1.10",
+        "torch>=1.12",
         "registrable",
-        #"tensorboardX>=1.2",
-        "allennlp>=2.8.0",
-        "allennlp-models>=2.8.0",
-        #"transformers[ja]>=4.1,<4.13",
+        "tensorboardX",
+        "allennlp==2.10.1",
+        "allennlp-models==2.10.1",
         "transformers[ja]",
         # "farasapy", pre-processing of Arabic text according to \
         # https://huggingface.co/aubmindlab/bert-base-arabertv02#preprocessing, but would require extensive hacking \
@@ -49,7 +48,7 @@ setup(
         "flake8",
 
         # Microscope
-        #"jsonnet>=0.10.0 ; sys.platform != 'win32'",
+        "jsonnet>=0.10.0 ; sys.platform != 'win32'",
         "flask",
         "flask_cors",
         "gevent",
