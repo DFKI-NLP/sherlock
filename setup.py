@@ -16,7 +16,7 @@ extras["dev"] = extras["testing"] + extras["quality"] + ["torch"]
 
 setup(
     name="sherlock",
-    version="0.2.1",
+    version="0.2.2",
     author="Christoph Alt,Leonhard Hennig,Marc Hübner,Gabriel Kressin",
     author_email="christoph.alt@posteo.de,marc.huebner@dfki.de,leonhard.hennig@dfki.de,gabriel.kressin@dfki.de",
     description="Sherlock - A state-of-the-art information extraction framework",
@@ -32,13 +32,14 @@ setup(
         "spacy>=3.1",
         #"transformers>=4.29",
         "seqeval",
+        "overrides"
         #"torch>=1.10",
         "registrable",
         #"tensorboardX>=1.2",
         "allennlp>=2.8.0",
         "allennlp-models>=2.8.0",
         #"transformers[ja]>=4.1,<4.13",
-        #"transformers[ja]"
+        "transformers[ja]"
         # "farasapy", pre-processing of Arabic text according to \
         # https://huggingface.co/aubmindlab/bert-base-arabertv02#preprocessing, but would require extensive hacking \
         # in binary_rc#documents_to_features for Transformers
