@@ -33,7 +33,10 @@ setup(
         "transformers>=4.20",
         "seqeval",
         "overrides",
-        "torch>=1.12",
+        # can't upgrade to 1.13.1 due to allennlp dependencies. 1.13.1 would fix a critical security vulnerability,
+        # see https://github.com/pytorch/pytorch/issues/89855
+        "torch>=1.12", # with a more recent CUDA versions, you may need to use
+        # `pip install torch==1.12.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116`
         "registrable",
         "tensorboardX",
         "allennlp==2.10.1",
