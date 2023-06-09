@@ -10,7 +10,7 @@ extras["serving"] = ["pydantic", "uvicorn", "fastapi"]
 extras["all"] = extras["serving"] + ["torch"]
 
 extras["testing"] = ["pytest", "pytest-xdist"]
-extras["quality"] = ["black==19.10b0", "isort>=4.3.21,<5.0.0", "flake8~=3.8", "mypy"]
+extras["quality"] = ["black", "isort", "flake8", "mypy"]
 extras["docs"] = ["recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme"]
 extras["dev"] = extras["testing"] + extras["quality"] + ["torch"]
 
@@ -38,17 +38,13 @@ setup(
         "tensorboardX",
         "allennlp==2.10.1",
         "allennlp-models==2.10.1",
-        "transformers[ja]",
-        # "farasapy", pre-processing of Arabic text according to \
-        # https://huggingface.co/aubmindlab/bert-base-arabertv02#preprocessing, but would require extensive hacking \
-        # in binary_rc#documents_to_features for Transformers
 
         # code formatting
         "black",
         "flake8",
 
         # Microscope
-        "jsonnet>=0.10.0 ; sys.platform != 'win32'",
+        #"jsonnet>=0.10.0 ; sys.platform != 'win32'",
         "flask",
         "flask_cors",
         "gevent",
