@@ -194,7 +194,7 @@ class BasicRelationClassifier(Model):
 
         initializer(self)
 
-    @overrides
+    @overrides(check_signature=False)
     def forward(
         self,  # type: ignore
         text: Dict[str, torch.LongTensor],

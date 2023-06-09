@@ -10,13 +10,13 @@ extras["serving"] = ["pydantic", "uvicorn", "fastapi"]
 extras["all"] = extras["serving"] + ["torch"]
 
 extras["testing"] = ["pytest", "pytest-xdist"]
-extras["quality"] = ["black==19.10b0", "isort>=4.3.21,<5.0.0", "flake8~=3.8", "mypy"]
+extras["quality"] = ["black", "isort", "flake8", "mypy"]
 extras["docs"] = ["recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme"]
 extras["dev"] = extras["testing"] + extras["quality"] + ["torch"]
 
 setup(
     name="sherlock",
-    version="0.2.1",
+    version="0.2.2",
     author="Christoph Alt,Leonhard Hennig,Marc Hübner,Gabriel Kressin",
     author_email="christoph.alt@posteo.de,marc.huebner@dfki.de,leonhard.hennig@dfki.de,gabriel.kressin@dfki.de",
     description="Sherlock - A state-of-the-art information extraction framework",
@@ -29,25 +29,25 @@ setup(
                                     "tests.*", "tests"]),
     install_requires=[
         # core
-        "spacy>=2.1.0,<3.3",
-        "transformers>=4.1,<4.13",
+        "spacy>=3.3",
+        "transformers>=4.20",
         "seqeval",
-        "torch>=1.10",
+        "overrides",
+        # can't upgrade to 1.13.1 due to allennlp dependencies. 1.13.1 would fix a critical security vulnerability,
+        # see https://github.com/pytorch/pytorch/issues/89855
+        "torch>=1.12", # with a more recent CUDA versions, you may need to use
+        # `pip install torch==1.12.1+cu116 --extra-index-url https://download.pytorch.org/whl/cu116`
         "registrable",
-        "tensorboardX>=1.2",
-        "allennlp==2.8.0",
-        "allennlp-models==2.8.0",
-        "transformers[ja]>=4.1,<4.13",
-        # "farasapy", pre-processing of Arabic text according to \
-        # https://huggingface.co/aubmindlab/bert-base-arabertv02#preprocessing, but would require extensive hacking \
-        # in binary_rc#documents_to_features for Transformers
+        "tensorboardX",
+        "allennlp==2.10.1",
+        "allennlp-models==2.10.1",
 
         # code formatting
         "black",
         "flake8",
 
         # Microscope
-        "jsonnet>=0.10.0 ; sys.platform != 'win32'",
+        #"jsonnet>=0.10.0 ; sys.platform != 'win32'",
         "flask",
         "flask_cors",
         "gevent",
